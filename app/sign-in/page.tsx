@@ -1,18 +1,10 @@
 "use client";
 
 import { authClient } from "@/lib/auth-client";
+import { getSiteUrl } from "@/lib/get-site-url";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
-
-function getSiteUrl(): string {
-  return (
-    process.env.NEXT_PUBLIC_SITE_URL ??
-    (typeof window !== "undefined"
-      ? window.location.origin
-      : "http://localhost:3000")
-  );
-}
 
 function SignInForm() {
   const router = useRouter();

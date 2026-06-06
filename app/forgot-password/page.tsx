@@ -1,6 +1,7 @@
 "use client";
 
 import { authClient } from "@/lib/auth-client";
+import { getSiteUrl } from "@/lib/get-site-url";
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 
@@ -17,12 +18,9 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      const redirectTo =
-        process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
-
       const result = await authClient.requestPasswordReset({
         email,
-        redirectTo: `${redirectTo}/reset-password`,
+        redirectTo: `${getSiteUrl()}/reset-password`,
       });
 
       if (result.error) {

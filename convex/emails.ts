@@ -21,17 +21,24 @@ export const sendPasswordResetEmail = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await resend.sendEmail(ctx, {
-      from: fromAddress,
-      to: args.to,
-      template: {
-        id: PASSWORD_RESET_TEMPLATE_ID,
-        variables: {
-          name: args.name ?? "",
-          password_reset_link: args.url,
+    try {
+      await resend.sendEmail(ctx, {
+        from: fromAddress,
+        to: args.to,
+        template: {
+          id: PASSWORD_RESET_TEMPLATE_ID,
+          variables: {
+            name: args.name ?? "",
+            password_reset_link: args.url,
+          },
         },
-      },
-    });
+      });
+    } catch (error) {
+      console.error("Failed to send password reset email", {
+        to: args.to,
+        error,
+      });
+    }
     return null;
   },
 });
@@ -44,17 +51,24 @@ export const sendVerificationEmail = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    await resend.sendEmail(ctx, {
-      from: fromAddress,
-      to: args.to,
-      template: {
-        id: EMAIL_VERIFICATION_TEMPLATE_ID,
-        variables: {
-          name: args.name ?? "",
-          verification_link: args.url,
+    try {
+      await resend.sendEmail(ctx, {
+        from: fromAddress,
+        to: args.to,
+        template: {
+          id: EMAIL_VERIFICATION_TEMPLATE_ID,
+          variables: {
+            name: args.name ?? "",
+            verification_link: args.url,
+          },
         },
-      },
-    });
+      });
+    } catch (error) {
+      console.error("Failed to send verification email", {
+        to: args.to,
+        error,
+      });
+    }
     return null;
   },
 });
