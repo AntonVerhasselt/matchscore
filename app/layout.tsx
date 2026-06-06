@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
+import { getToken } from "@/lib/auth-server";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -21,17 +22,26 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  let token: string | null = null;
+  try {
+    token = (await getToken()) ?? null;
+  } catch (error) {
+    console.error("Failed to get auth token in root layout:", error);
+  }
+
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ConvexClientProvider>{children}</ConvexClientProvider>
+        <ConvexClientProvider initialToken={token}>
+          {children}
+        </ConvexClientProvider>
       </body>
     </html>
   );
