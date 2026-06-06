@@ -1,6 +1,7 @@
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
+import { requireRunMutationCtx } from "@convex-dev/better-auth/utils";
 import { convex } from "@convex-dev/better-auth/plugins";
-import { components } from "./_generated/api";
+import { components, internal } from "./_generated/api";
 import { DataModel } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 import { betterAuth } from "better-auth/minimal";
@@ -16,9 +17,31 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     database: authComponent.adapter(ctx),
     emailAndPassword: {
       enabled: true,
-      // Intentionally disabled until an email provider (e.g. Resend) is configured.
-      // TODO: set to true and configure email sending before production.
-      requireEmailVerification: false,
+      requireEmailVerification: true,
+      sendResetPassword: async ({ user, url }) => {
+        await requireRunMutationCtx(ctx).runMutation(
+          internal.emails.sendPasswordResetEmail,
+          {
+            to: user.email,
+            url,
+            name: user.name,
+          },
+        );
+      },
+    },
+    emailVerification: {
+      sendOnSignIn: true,
+      autoSignInAfterVerification: true,
+      sendVerificationEmail: async ({ user, url }) => {
+        await requireRunMutationCtx(ctx).runMutation(
+          internal.emails.sendVerificationEmail,
+          {
+            to: user.email,
+            url,
+            name: user.name,
+          },
+        );
+      },
     },
     plugins: [convex({ authConfig })],
   });
@@ -27,6 +50,6 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
 export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {
-    return authComponent.getAuthUser(ctx);
+    return (await authComponent.safeGetAuthUser(ctx)) ?? null;
   },
 });
