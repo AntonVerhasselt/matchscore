@@ -14,6 +14,11 @@ export default function SignInPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const switchMode = (newMode: "sign-in" | "sign-up") => {
+    setError(null);
+    setMode(newMode);
+  };
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -124,7 +129,7 @@ export default function SignInPage() {
               No account?{" "}
               <button
                 type="button"
-                onClick={() => setMode("sign-up")}
+                onClick={() => switchMode("sign-up")}
                 className="text-slate-800 dark:text-slate-200 underline cursor-pointer"
               >
                 Sign up
@@ -135,7 +140,7 @@ export default function SignInPage() {
               Already have an account?{" "}
               <button
                 type="button"
-                onClick={() => setMode("sign-in")}
+                onClick={() => switchMode("sign-in")}
                 className="text-slate-800 dark:text-slate-200 underline cursor-pointer"
               >
                 Sign in

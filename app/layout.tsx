@@ -27,7 +27,12 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const token = await getToken();
+  let token: string | null = null;
+  try {
+    token = (await getToken()) ?? null;
+  } catch (error) {
+    console.error("Failed to get auth token in root layout:", error);
+  }
 
   return (
     <html lang="en">

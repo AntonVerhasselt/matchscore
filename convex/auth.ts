@@ -16,6 +16,8 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     database: authComponent.adapter(ctx),
     emailAndPassword: {
       enabled: true,
+      // Intentionally disabled until an email provider (e.g. Resend) is configured.
+      // TODO: set to true and configure email sending before production.
       requireEmailVerification: false,
     },
     plugins: [convex({ authConfig })],

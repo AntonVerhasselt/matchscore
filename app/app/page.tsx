@@ -45,9 +45,17 @@ export default function AppPage() {
             Signed in as <span className="font-medium">{user.email}</span>
           </p>
         ) : (
-          <p className="text-slate-600 dark:text-slate-400">
-            You are authenticated.
-          </p>
+          <div className="flex flex-col gap-3">
+            <p className="text-slate-600 dark:text-slate-400">
+              You are not signed in.
+            </p>
+            <Link
+              href="/sign-in"
+              className="text-sm text-slate-700 dark:text-slate-300 underline"
+            >
+              Sign in again
+            </Link>
+          </div>
         )}
       </div>
     </main>
