@@ -7,11 +7,13 @@ import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -27,7 +29,11 @@ import { authClient } from "@/lib/auth-client";
 import { getUserDisplayName, getUserInitials } from "@/lib/user-display";
 import { cn } from "@/lib/utils";
 
-export function AppNavUser() {
+type AppUserMenuProps = {
+  variant?: "sidebar" | "header";
+};
+
+export function AppUserMenu({ variant = "sidebar" }: AppUserMenuProps) {
   const t = useTranslations("app.shell.user");
   const user = useQuery(api.auth.getCurrentUser);
   const router = useRouter();
@@ -41,7 +47,15 @@ export function AppNavUser() {
     router.refresh();
   };
 
+  if (variant === "sidebar" && isMobile) {
+    return null;
+  }
+
   if (user === undefined) {
+    if (variant === "header") {
+      return <Skeleton className="size-8 rounded-full" />;
+    }
+
     return (
       <SidebarMenu>
         <SidebarMenuItem>
@@ -62,6 +76,66 @@ export function AppNavUser() {
 
   const displayName = getUserDisplayName(user);
   const initials = getUserInitials(user);
+
+  const menuItems = (
+    <>
+      {variant === "header" ? (
+        <>
+          <DropdownMenuLabel className="truncate font-normal">
+            {displayName}
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+        </>
+      ) : null}
+      <DropdownMenuGroup>
+        <DropdownMenuItem asChild>
+          <Link
+            href="/app/settings"
+            className={cn(isSettingsActive && "bg-accent font-medium")}
+          >
+            <Settings />
+            {t("settings")}
+          </Link>
+        </DropdownMenuItem>
+      </DropdownMenuGroup>
+      <DropdownMenuSeparator />
+      <DropdownMenuGroup>
+        <DropdownMenuItem onClick={() => void handleSignOut()}>
+          <LogOut />
+          {t("signOut")}
+        </DropdownMenuItem>
+      </DropdownMenuGroup>
+    </>
+  );
+
+  if (variant === "header") {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-9 shrink-0 rounded-full text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          >
+            <Avatar className="size-8">
+              <AvatarFallback className="bg-sidebar-primary text-xs text-sidebar-primary-foreground">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+            <span className="sr-only">{displayName}</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          side="bottom"
+          sideOffset={8}
+          className="w-48"
+        >
+          {menuItems}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
 
   return (
     <SidebarMenu>
@@ -85,31 +159,17 @@ export function AppNavUser() {
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-56 rounded-lg"
-            side={isMobile ? "bottom" : "top"}
+            side="top"
             align="end"
             sideOffset={4}
           >
-            <DropdownMenuGroup>
-              <DropdownMenuItem asChild>
-                <Link
-                  href="/app/settings"
-                  className={cn(isSettingsActive && "bg-accent font-medium")}
-                >
-                  <Settings />
-                  {t("settings")}
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem onClick={() => void handleSignOut()}>
-                <LogOut />
-                {t("signOut")}
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
+            {menuItems}
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
   );
 }
+
+/** @deprecated Use AppUserMenu instead */
+export const AppNavUser = AppUserMenu;

@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type { ComponentProps } from "react";
 
-import { AppNavUser } from "@/components/app-nav-user";
+import { AppUserMenu } from "@/components/app-nav-user";
 import {
   Sidebar,
   SidebarContent,
@@ -21,6 +21,7 @@ import {
   SidebarRail,
   SidebarSeparator,
   SidebarTrigger,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +50,13 @@ const navItems: NavItem[] = [
 export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const t = useTranslations("app.shell.nav");
   const pathname = usePathname();
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  const closeMobileSidebar = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -82,7 +90,11 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                           "bg-sidebar-accent text-sidebar-accent-foreground",
                       )}
                     >
-                      <Link href={item.href} aria-current={active ? "page" : undefined}>
+                      <Link
+                        href={item.href}
+                        aria-current={active ? "page" : undefined}
+                        onClick={closeMobileSidebar}
+                      >
                         <item.icon />
                         <span>{label}</span>
                       </Link>
@@ -94,10 +106,14 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarSeparator className="bg-sidebar-border" />
-      <SidebarFooter>
-        <AppNavUser />
-      </SidebarFooter>
+      {!isMobile ? (
+        <>
+          <SidebarSeparator className="bg-sidebar-border" />
+          <SidebarFooter>
+            <AppUserMenu variant="sidebar" />
+          </SidebarFooter>
+        </>
+      ) : null}
       <SidebarRail />
     </Sidebar>
   );
