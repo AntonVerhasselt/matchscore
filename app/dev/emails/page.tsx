@@ -1,4 +1,13 @@
 import { listEmailTemplates } from "@/emails/registry";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -12,24 +21,33 @@ export default function DevEmailsIndexPage() {
   const templates = listEmailTemplates();
 
   return (
-    <main className="min-h-screen bg-slate-100 p-8">
-      <div className="mx-auto max-w-lg">
-        <h1 className="text-2xl font-bold text-slate-800">Email templates</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Development-only previews for transactional emails.
-        </p>
-        <ul className="mt-8 flex flex-col gap-3">
-          {templates.map((template) => (
-            <li key={template.slug}>
-              <Link
-                href={`/dev/emails/${template.slug}`}
-                className="block rounded-lg border border-slate-200 bg-white px-4 py-3 text-slate-800 hover:bg-slate-50"
+    <main className="min-h-screen bg-background p-8">
+      <div className="mx-auto max-w-lg space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <CardTitle>Email templates</CardTitle>
+              <Badge variant="secondary">Dev only</Badge>
+            </div>
+            <CardDescription>
+              Development-only previews for transactional emails.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {templates.map((template) => (
+              <Button
+                key={template.slug}
+                variant="outline"
+                className="h-auto w-full justify-start px-4 py-3"
+                asChild
               >
-                {template.name}
-              </Link>
-            </li>
-          ))}
-        </ul>
+                <Link href={`/dev/emails/${template.slug}`}>
+                  {template.name}
+                </Link>
+              </Button>
+            ))}
+          </CardContent>
+        </Card>
       </div>
     </main>
   );

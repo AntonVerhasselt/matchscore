@@ -11,6 +11,8 @@
 import type * as auth from "../auth.js";
 import type * as emailActions from "../emailActions.js";
 import type * as http from "../http.js";
+import type * as locales from "../locales.js";
+import type * as userSettings from "../userSettings.js";
 
 import type {
   ApiFromModules,
@@ -22,6 +24,8 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   emailActions: typeof emailActions;
   http: typeof http;
+  locales: typeof locales;
+  userSettings: typeof userSettings;
 }>;
 
 /**

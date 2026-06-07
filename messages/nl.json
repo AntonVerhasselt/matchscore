@@ -1,0 +1,63 @@
+{
+  "common": {
+    "nav": {
+      "home": "Home",
+      "signIn": "Inloggen",
+      "settings": "Instellingen"
+    },
+    "metadata": {
+      "title": "Matchscore",
+      "description": "Matchscore powered by Convex en Next.js"
+    },
+    "loading": "Laden...",
+    "language": "Taal"
+  },
+  "landing": {
+    "title": "Matchscore",
+    "subtitle": "Jouw wedstrijdscore-app. Log in om de app te gebruiken.",
+    "cta": "Naar de app"
+  },
+  "signIn": {
+    "title": "Inloggen bij Matchscore",
+    "emailStep": "Vul je e-mail in om een inlogcode te ontvangen",
+    "otpStep": "Vul de code in die naar {email} is gestuurd",
+    "email": "E-mail",
+    "otp": "Inlogcode",
+    "pleaseWait": "Even geduld...",
+    "continue": "Doorgaan",
+    "verify": "Verifiëren en inloggen",
+    "sending": "Verzenden...",
+    "resendCode": "Code opnieuw versturen",
+    "changeEmail": "E-mail wijzigen",
+    "backToHome": "Terug naar home",
+    "otpSent": "We hebben een inlogcode naar je e-mail gestuurd.",
+    "otpResent": "Er is een nieuwe inlogcode verstuurd.",
+    "couldNotSend": "Kon inlogcode niet versturen",
+    "couldNotResend": "Kon inlogcode niet opnieuw versturen",
+    "invalidCode": "Ongeldige of verlopen code",
+    "somethingWrong": "Er ging iets mis. Probeer het opnieuw."
+  },
+  "app": {
+    "title": "Matchscore",
+    "home": "Home",
+    "settings": "Instellingen",
+    "signOut": "Uitloggen",
+    "loading": "Laden...",
+    "signedInAs": "Ingelogd als",
+    "accountLoadFailed": "We konden je account niet laden. Probeer het opnieuw.",
+    "retry": "Opnieuw proberen"
+  },
+  "settings": {
+    "title": "Instellingen",
+    "language": "Taal",
+    "languageDescription": "Kies de taal voor de interface.",
+    "localeChangeFailed": "Taal wijzigen mislukt. Probeer het opnieuw."
+  },
+  "email": {
+    "preview": "Je Matchscore-inlogcode is {otp}",
+    "body": "Gebruik de onderstaande code om in te loggen op je account.",
+    "expiresIn": "Deze code verloopt over {minutes} minuten.",
+    "footer": "Als je deze code niet hebt aangevraagd, kun je deze e-mail negeren.",
+    "subject": "{otp} is je Matchscore-inlogcode"
+  }
+}

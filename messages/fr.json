@@ -1,0 +1,63 @@
+{
+  "common": {
+    "nav": {
+      "home": "Accueil",
+      "signIn": "Se connecter",
+      "settings": "Paramètres"
+    },
+    "metadata": {
+      "title": "Matchscore",
+      "description": "Application de score de match propulsée par Convex et Next.js"
+    },
+    "loading": "Chargement...",
+    "language": "Langue"
+  },
+  "landing": {
+    "title": "Matchscore",
+    "subtitle": "Votre application de score de match. Connectez-vous pour accéder à l'application.",
+    "cta": "Aller à l'app"
+  },
+  "signIn": {
+    "title": "Se connecter à Matchscore",
+    "emailStep": "Saisissez votre e-mail pour recevoir un code de connexion",
+    "otpStep": "Saisissez le code envoyé à {email}",
+    "email": "E-mail",
+    "otp": "Code de connexion",
+    "pleaseWait": "Veuillez patienter...",
+    "continue": "Continuer",
+    "verify": "Vérifier et se connecter",
+    "sending": "Envoi...",
+    "resendCode": "Renvoyer le code",
+    "changeEmail": "Changer l'e-mail",
+    "backToHome": "Retour à l'accueil",
+    "otpSent": "Nous avons envoyé un code de connexion à votre e-mail.",
+    "otpResent": "Un nouveau code de connexion a été envoyé.",
+    "couldNotSend": "Impossible d'envoyer le code de connexion",
+    "couldNotResend": "Impossible de renvoyer le code de connexion",
+    "invalidCode": "Code invalide ou expiré",
+    "somethingWrong": "Une erreur s'est produite. Veuillez réessayer."
+  },
+  "app": {
+    "title": "Matchscore App",
+    "home": "Accueil",
+    "settings": "Paramètres",
+    "signOut": "Se déconnecter",
+    "loading": "Chargement...",
+    "signedInAs": "Connecté en tant que",
+    "accountLoadFailed": "Impossible de charger votre compte. Veuillez réessayer.",
+    "retry": "Réessayer"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "language": "Langue",
+    "languageDescription": "Choisissez la langue de l'interface.",
+    "localeChangeFailed": "Impossible de changer la langue. Veuillez réessayer."
+  },
+  "email": {
+    "preview": "Votre code de connexion Matchscore est {otp}",
+    "body": "Utilisez le code ci-dessous pour vous connecter à votre compte.",
+    "expiresIn": "Ce code expire dans {minutes} minutes.",
+    "footer": "Si vous n'avez pas demandé ce code, vous pouvez ignorer cet e-mail.",
+    "subject": "{otp} est votre code de connexion Matchscore"
+  }
+}

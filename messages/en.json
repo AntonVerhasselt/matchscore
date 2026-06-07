@@ -1,0 +1,63 @@
+{
+  "common": {
+    "nav": {
+      "home": "Home",
+      "signIn": "Sign in",
+      "settings": "Settings"
+    },
+    "metadata": {
+      "title": "Matchscore",
+      "description": "Match scoring app powered by Convex and Next.js"
+    },
+    "loading": "Loading...",
+    "language": "Language"
+  },
+  "landing": {
+    "title": "Matchscore",
+    "subtitle": "Your match scoring app. Sign in to access the app.",
+    "cta": "Go to App"
+  },
+  "signIn": {
+    "title": "Sign in to Matchscore",
+    "emailStep": "Enter your email to receive a sign-in code",
+    "otpStep": "Enter the code sent to {email}",
+    "email": "Email",
+    "otp": "Sign-in code",
+    "pleaseWait": "Please wait...",
+    "continue": "Continue",
+    "verify": "Verify and sign in",
+    "sending": "Sending...",
+    "resendCode": "Resend code",
+    "changeEmail": "Change email",
+    "backToHome": "Back to home",
+    "otpSent": "We sent a sign-in code to your email.",
+    "otpResent": "A new sign-in code has been sent.",
+    "couldNotSend": "Could not send sign-in code",
+    "couldNotResend": "Could not resend sign-in code",
+    "invalidCode": "Invalid or expired code",
+    "somethingWrong": "Something went wrong. Please try again."
+  },
+  "app": {
+    "title": "Matchscore App",
+    "home": "Home",
+    "settings": "Settings",
+    "signOut": "Sign out",
+    "loading": "Loading...",
+    "signedInAs": "Signed in as",
+    "accountLoadFailed": "We couldn't load your account. Please try again.",
+    "retry": "Try again"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "languageDescription": "Choose the language for the interface.",
+    "localeChangeFailed": "Couldn't change language. Please try again."
+  },
+  "email": {
+    "preview": "Your Matchscore sign-in code is {otp}",
+    "body": "Use the code below to sign in to your account.",
+    "expiresIn": "This code expires in {minutes} minutes.",
+    "footer": "If you didn't request this code, you can safely ignore this email.",
+    "subject": "{otp} is your Matchscore sign-in code"
+  }
+}

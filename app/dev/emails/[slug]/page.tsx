@@ -3,6 +3,25 @@ import {
   renderEmailPreview,
   type EmailTemplateSlug,
 } from "@/emails/registry";
+import {
+  defaultLocale,
+  isValidLocale,
+  LOCALE_COOKIE_NAME,
+  localeLabels,
+} from "@/i18n/config";
+import { loadEmailMessages } from "@/lib/i18n/load-email-messages";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { cookies } from "next/headers";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
@@ -23,51 +42,73 @@ export default async function EmailPreviewPage({ params }: PageProps) {
     notFound();
   }
 
+  const cookieStore = await cookies();
+  const cookieLocale = cookieStore.get(LOCALE_COOKIE_NAME)?.value;
+  const locale = isValidLocale(cookieLocale) ? cookieLocale : defaultLocale;
+  const messages = loadEmailMessages(locale);
+
   const { html, subject } = await renderEmailPreview(
     slug as EmailTemplateSlug,
+    locale,
   );
-  const variables = Object.entries(template.previewProps);
 
   return (
-    <main className="min-h-screen bg-slate-100 p-8">
-      <div className="mx-auto max-w-2xl">
-        <h1 className="mb-2 text-lg font-semibold text-slate-800">
-          Email preview: {template.name}
-        </h1>
-        <p className="mb-6 text-sm text-slate-600">
-          Preview uses placeholder values. Production sends real data via the
-          same template.
-        </p>
-
-        <div className="mb-4 rounded-lg border border-slate-200 bg-white px-4 py-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-            Subject
-          </p>
-          <p className="mt-1 font-mono text-sm text-slate-800">{subject}</p>
+    <main className="min-h-screen bg-background p-8">
+      <div className="mx-auto max-w-2xl space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-semibold text-foreground">
+                {template.name}
+              </h1>
+              <Badge variant="secondary">Dev only</Badge>
+              <Badge variant="outline">{localeLabels[locale]}</Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Uses the same message loader as production.
+            </p>
+          </div>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/dev/emails">Back</Link>
+          </Button>
         </div>
 
-        <div className="mb-4 rounded-lg border border-slate-200 bg-white px-4 py-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-            Variables
-          </p>
-          <dl className="mt-2 space-y-1">
-            {variables.map(([name, value]) => (
-              <div key={name} className="flex gap-2 font-mono text-sm">
-                <dt className="text-slate-500">{name}</dt>
-                <dd className="text-slate-800">{String(value)}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Subject</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="font-mono text-sm text-foreground">{subject}</p>
+          </CardContent>
+        </Card>
 
-        <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium">Messages</CardTitle>
+            <CardDescription>Locale: {locale}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <dl className="space-y-2">
+              {Object.entries(messages).map(([key, value]) => (
+                <div key={key} className="flex gap-2 font-mono text-sm">
+                  <dt className="text-muted-foreground">{key}</dt>
+                  <dd className="text-foreground">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </CardContent>
+        </Card>
+
+        <Separator />
+
+        <Card className="overflow-hidden p-0">
           <iframe
             title={`${template.name} email preview`}
             srcDoc={html}
             sandbox="allow-same-origin"
             className="h-[640px] w-full border-0"
           />
-        </div>
+        </Card>
       </div>
     </main>
   );

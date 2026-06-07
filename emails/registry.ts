@@ -1,4 +1,7 @@
+import { OTP_EXPIRES_IN_MINUTES } from "./OtpSignInEmail";
 import { renderEmailTemplate } from "../lib/emails/render";
+import { loadEmailMessages } from "../lib/i18n/load-email-messages";
+import { defaultLocale, isValidLocale } from "../i18n/config";
 import type { EmailTemplateDefinition } from "../lib/emails/types";
 import { otpSignInEmail } from "./OtpSignInEmail";
 
@@ -47,7 +50,19 @@ export async function renderEmail<Slug extends EmailTemplateSlug>(
 
 export async function renderEmailPreview<Slug extends EmailTemplateSlug>(
   slug: Slug,
+  locale: string = defaultLocale,
 ) {
   const template = emailTemplates[slug];
-  return renderForTemplate(template, template.previewProps);
+  const resolvedLocale = isValidLocale(locale) ? locale : defaultLocale;
+
+  const props =
+    slug === "otp-sign-in"
+      ? {
+          otp: "123456",
+          expiresInMinutes: OTP_EXPIRES_IN_MINUTES,
+          messages: loadEmailMessages(resolvedLocale),
+        }
+      : template.previewProps;
+
+  return renderForTemplate(template, props as EmailTemplatePropsMap[Slug]);
 }
