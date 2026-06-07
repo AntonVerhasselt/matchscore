@@ -3,7 +3,12 @@
     "nav": {
       "home": "Accueil",
       "signIn": "Se connecter",
-      "settings": "Paramètres"
+      "settings": "Paramètres",
+      "pricing": "Tarifs",
+      "faq": "FAQ",
+      "cta": "Commencer",
+      "goToDashboard": "Aller au tableau de bord",
+      "menu": "Menu"
     },
     "metadata": {
       "title": "Matchscore",
@@ -15,7 +20,23 @@
   "landing": {
     "title": "Matchscore",
     "subtitle": "Votre application de score de match. Connectez-vous pour accéder à l'application.",
-    "cta": "Aller à l'app"
+    "cta": "Commencer",
+    "pricing": {
+      "title": "Tarifs",
+      "description": "Des tarifs simples pour les équipes de toute taille.",
+      "planTitle": "Starter",
+      "planDescription": "Tout ce dont vous avez besoin pour commencer.",
+      "price": "Gratuit",
+      "placeholder": "Les détails tarifaires seront bientôt disponibles."
+    },
+    "faq": {
+      "title": "FAQ",
+      "description": "Réponses aux questions fréquentes sur Matchscore.",
+      "q1": "Comment se connecter ?",
+      "a1": "Saisissez votre e-mail sur la page de connexion et nous vous enverrons un code à usage unique.",
+      "q2": "Puis-je utiliser Matchscore sur mobile ?",
+      "a2": "Oui. Matchscore fonctionne dans votre navigateur sur ordinateur et mobile."
+    }
   },
   "signIn": {
     "title": "Se connecter à Matchscore",

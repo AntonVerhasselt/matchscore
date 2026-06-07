@@ -3,7 +3,12 @@
     "nav": {
       "home": "Home",
       "signIn": "Inloggen",
-      "settings": "Instellingen"
+      "settings": "Instellingen",
+      "pricing": "Prijzen",
+      "faq": "FAQ",
+      "cta": "Aan de slag",
+      "goToDashboard": "Naar dashboard",
+      "menu": "Menu"
     },
     "metadata": {
       "title": "Matchscore",
@@ -15,7 +20,23 @@
   "landing": {
     "title": "Matchscore",
     "subtitle": "Jouw wedstrijdscore-app. Log in om de app te gebruiken.",
-    "cta": "Naar de app"
+    "cta": "Aan de slag",
+    "pricing": {
+      "title": "Prijzen",
+      "description": "Eenvoudige prijzen voor teams van elke omvang.",
+      "planTitle": "Starter",
+      "planDescription": "Alles wat je nodig hebt om te beginnen.",
+      "price": "Gratis",
+      "placeholder": "Prijsdetails volgen binnenkort."
+    },
+    "faq": {
+      "title": "FAQ",
+      "description": "Antwoorden op veelgestelde vragen over Matchscore.",
+      "q1": "Hoe log ik in?",
+      "a1": "Vul je e-mail in op de inlogpagina en we sturen je een eenmalige code.",
+      "q2": "Kan ik Matchscore op mobiel gebruiken?",
+      "a2": "Ja. Matchscore werkt in je browser op desktop en mobiel."
+    }
   },
   "signIn": {
     "title": "Inloggen bij Matchscore",

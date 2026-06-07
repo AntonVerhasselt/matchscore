@@ -3,7 +3,12 @@
     "nav": {
       "home": "Startseite",
       "signIn": "Anmelden",
-      "settings": "Einstellungen"
+      "settings": "Einstellungen",
+      "pricing": "Preise",
+      "faq": "FAQ",
+      "cta": "Loslegen",
+      "goToDashboard": "Zum Dashboard",
+      "menu": "Menü"
     },
     "metadata": {
       "title": "Matchscore",
@@ -15,7 +20,23 @@
   "landing": {
     "title": "Matchscore",
     "subtitle": "Deine Spielstand-App. Melde dich an, um die App zu nutzen.",
-    "cta": "Zur App"
+    "cta": "Loslegen",
+    "pricing": {
+      "title": "Preise",
+      "description": "Einfache Preise für Teams jeder Größe.",
+      "planTitle": "Starter",
+      "planDescription": "Alles, was du zum Starten brauchst.",
+      "price": "Kostenlos",
+      "placeholder": "Preisdetails folgen in Kürze."
+    },
+    "faq": {
+      "title": "FAQ",
+      "description": "Antworten auf häufige Fragen zu Matchscore.",
+      "q1": "Wie melde ich mich an?",
+      "a1": "Gib deine E-Mail auf der Anmeldeseite ein und wir senden dir einen Einmalcode.",
+      "q2": "Kann ich Matchscore auf dem Handy nutzen?",
+      "a2": "Ja. Matchscore funktioniert in deinem Browser auf Desktop und Mobilgeräten."
+    }
   },
   "signIn": {
     "title": "Bei Matchscore anmelden",
