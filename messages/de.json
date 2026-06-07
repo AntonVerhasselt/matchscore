@@ -1,0 +1,63 @@
+{
+  "common": {
+    "nav": {
+      "home": "Startseite",
+      "signIn": "Anmelden",
+      "settings": "Einstellungen"
+    },
+    "metadata": {
+      "title": "Matchscore",
+      "description": "Spielstand-App powered by Convex und Next.js"
+    },
+    "loading": "Laden...",
+    "language": "Sprache"
+  },
+  "landing": {
+    "title": "Matchscore",
+    "subtitle": "Deine Spielstand-App. Melde dich an, um die App zu nutzen.",
+    "cta": "Zur App"
+  },
+  "signIn": {
+    "title": "Bei Matchscore anmelden",
+    "emailStep": "Gib deine E-Mail ein, um einen Anmeldecode zu erhalten",
+    "otpStep": "Gib den Code ein, der an {email} gesendet wurde",
+    "email": "E-Mail",
+    "otp": "Anmeldecode",
+    "pleaseWait": "Bitte warten...",
+    "continue": "Weiter",
+    "verify": "Verifizieren und anmelden",
+    "sending": "Senden...",
+    "resendCode": "Code erneut senden",
+    "changeEmail": "E-Mail ändern",
+    "backToHome": "Zurück zur Startseite",
+    "otpSent": "Wir haben einen Anmeldecode an deine E-Mail gesendet.",
+    "otpResent": "Ein neuer Anmeldecode wurde gesendet.",
+    "couldNotSend": "Anmeldecode konnte nicht gesendet werden",
+    "couldNotResend": "Anmeldecode konnte nicht erneut gesendet werden",
+    "invalidCode": "Ungültiger oder abgelaufener Code",
+    "somethingWrong": "Etwas ist schiefgelaufen. Bitte versuche es erneut."
+  },
+  "app": {
+    "title": "Matchscore App",
+    "home": "Startseite",
+    "settings": "Einstellungen",
+    "signOut": "Abmelden",
+    "loading": "Laden...",
+    "signedInAs": "Angemeldet als",
+    "accountLoadFailed": "Dein Konto konnte nicht geladen werden. Bitte versuche es erneut.",
+    "retry": "Erneut versuchen"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "language": "Sprache",
+    "languageDescription": "Wähle die Sprache für die Oberfläche.",
+    "localeChangeFailed": "Sprache konnte nicht geändert werden. Bitte versuche es erneut."
+  },
+  "email": {
+    "preview": "Dein Matchscore-Anmeldecode ist {otp}",
+    "body": "Verwende den Code unten, um dich bei deinem Konto anzumelden.",
+    "expiresIn": "Dieser Code läuft in {minutes} Minuten ab.",
+    "footer": "Wenn du diesen Code nicht angefordert hast, kannst du diese E-Mail ignorieren.",
+    "subject": "{otp} ist dein Matchscore-Anmeldecode"
+  }
+}

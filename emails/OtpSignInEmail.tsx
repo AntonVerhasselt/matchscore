@@ -9,11 +9,14 @@ import {
   Section,
   Text,
 } from "@react-email/components";
+import { formatMessage } from "../lib/i18n/format-message";
+import type { EmailMessages } from "../lib/i18n/load-email-messages";
 import { defineEmailTemplate } from "../lib/emails/types";
 
 export type OtpSignInEmailProps = {
   otp: string;
   expiresInMinutes: number;
+  messages: EmailMessages;
 };
 
 export const OTP_EXPIRES_IN_MINUTES = 5;
@@ -21,28 +24,26 @@ export const OTP_EXPIRES_IN_MINUTES = 5;
 export function OtpSignInEmail({
   otp,
   expiresInMinutes,
+  messages,
 }: OtpSignInEmailProps) {
   return (
     <Html>
       <Head />
-      <Preview>Your Matchscore sign-in code is {otp}</Preview>
+      <Preview>{formatMessage(messages.preview, { otp })}</Preview>
       <Body style={body}>
         <Container style={container}>
           <Heading style={heading}>Matchscore</Heading>
-          <Text style={paragraph}>
-            Use the code below to sign in to your account.
-          </Text>
+          <Text style={paragraph}>{messages.body}</Text>
           <Section style={otpSection}>
             <Text style={otpCode}>{otp}</Text>
           </Section>
           <Text style={paragraph}>
-            This code expires in {expiresInMinutes} minutes.
+            {formatMessage(messages.expiresIn, {
+              minutes: expiresInMinutes,
+            })}
           </Text>
           <Hr style={hr} />
-          <Text style={footer}>
-            If you didn&apos;t request this code, you can safely ignore this
-            email.
-          </Text>
+          <Text style={footer}>{messages.footer}</Text>
         </Container>
       </Body>
     </Html>
@@ -53,10 +54,18 @@ export const otpSignInEmail = defineEmailTemplate({
   slug: "otp-sign-in",
   name: "OTP sign-in",
   previewProps: {
-    otp: "{{otp}}",
+    otp: "123456",
     expiresInMinutes: OTP_EXPIRES_IN_MINUTES,
+    messages: {
+      preview: "Your Matchscore sign-in code is {otp}",
+      body: "Use the code below to sign in to your account.",
+      expiresIn: "This code expires in {minutes} minutes.",
+      footer:
+        "If you didn't request this code, you can safely ignore this email.",
+      subject: "{otp} is your Matchscore sign-in code",
+    },
   },
-  subject: ({ otp }) => `${otp} is your Matchscore sign-in code`,
+  subject: ({ otp, messages }) => formatMessage(messages.subject, { otp }),
   Component: OtpSignInEmail,
 });
 

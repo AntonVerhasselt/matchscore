@@ -1,5 +1,5 @@
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
-import { requireActionCtx } from "@convex-dev/better-auth/utils";
+import { requireActionCtx, requireRunMutationCtx } from "@convex-dev/better-auth/utils";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { components, internal } from "./_generated/api";
 import { DataModel } from "./_generated/dataModel";
@@ -24,11 +24,17 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
             return;
           }
 
+          const locale = await requireRunMutationCtx(ctx).runQuery(
+            internal.userSettings.getLocaleForEmail,
+            { email },
+          );
+
           await requireActionCtx(ctx).runAction(
             internal.emailActions.sendOtpEmail,
             {
               to: email,
               otp,
+              locale,
             },
           );
         },
