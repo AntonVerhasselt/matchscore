@@ -9,7 +9,14 @@ import {
   Section,
   Text,
 } from "@react-email/components";
-import type { OtpSignInEmailProps } from "./types";
+import { defineEmailTemplate } from "../lib/emails/types";
+
+export type OtpSignInEmailProps = {
+  otp: string;
+  expiresInMinutes: number;
+};
+
+export const OTP_EXPIRES_IN_MINUTES = 5;
 
 export function OtpSignInEmail({
   otp,
@@ -41,6 +48,17 @@ export function OtpSignInEmail({
     </Html>
   );
 }
+
+export const otpSignInEmail = defineEmailTemplate({
+  slug: "otp-sign-in",
+  name: "OTP sign-in",
+  previewProps: {
+    otp: "{{otp}}",
+    expiresInMinutes: OTP_EXPIRES_IN_MINUTES,
+  },
+  subject: ({ otp }) => `${otp} is your Matchscore sign-in code`,
+  Component: OtpSignInEmail,
+});
 
 const body = {
   backgroundColor: "#f8fafc",

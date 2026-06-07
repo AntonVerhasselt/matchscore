@@ -1,17 +1,13 @@
+import { listEmailTemplates } from "@/emails/registry";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-
-const templates = [
-  {
-    href: "/dev/emails/otp-sign-in",
-    name: "OTP sign-in",
-  },
-];
 
 export default function DevEmailsIndexPage() {
   if (process.env.NODE_ENV !== "development") {
     notFound();
   }
+
+  const templates = listEmailTemplates();
 
   return (
     <main className="min-h-screen bg-slate-100 p-8">
@@ -22,9 +18,9 @@ export default function DevEmailsIndexPage() {
         </p>
         <ul className="mt-8 flex flex-col gap-3">
           {templates.map((template) => (
-            <li key={template.href}>
+            <li key={template.slug}>
               <Link
-                href={template.href}
+                href={`/dev/emails/${template.slug}`}
                 className="block rounded-lg border border-slate-200 bg-white px-4 py-3 text-slate-800 hover:bg-slate-50"
               >
                 {template.name}

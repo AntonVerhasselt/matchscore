@@ -2,10 +2,8 @@
 
 import { Resend } from "@convex-dev/resend";
 import { v } from "convex/values";
-import {
-  OTP_EXPIRES_IN_MINUTES,
-  renderOtpSignInEmail,
-} from "../lib/emails/render-otp-sign-in";
+import { OTP_EXPIRES_IN_MINUTES } from "../emails/OtpSignInEmail";
+import { renderEmail } from "../emails/registry";
 import { components } from "./_generated/api";
 import { internalAction } from "./_generated/server";
 
@@ -24,7 +22,7 @@ export const sendOtpEmail = internalAction({
   returns: v.null(),
   handler: async (ctx, args) => {
     try {
-      const { html, subject } = await renderOtpSignInEmail({
+      const { html, subject } = await renderEmail("otp-sign-in", {
         otp: args.otp,
         expiresInMinutes: OTP_EXPIRES_IN_MINUTES,
       });

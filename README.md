@@ -55,14 +55,16 @@ npx convex env set AUTH_FROM_EMAIL "Matchscore <noreply@yourdomain.com>"
 
 The `AUTH_FROM_EMAIL` address must use a domain verified in your [Resend dashboard](https://resend.com/domains).
 
-OTP emails are rendered from React Email templates in the `emails/` folder and sent as inline HTML via `convex/emailActions.ts`.
+OTP emails are React Email components in `emails/`, registered in `emails/registry.ts`, rendered to HTML via `lib/emails/render.ts`, and sent via `convex/emailActions.ts`.
+
+To add a new email: create a component in `emails/`, export it with `defineEmailTemplate()` (subject + `{{variable}}` preview props), and add it to `emails/registry.ts`. Preview routes are automatic at `/dev/emails/[slug]`.
 
 ### Email template previews (dev only)
 
 While the dev server is running, preview templates in the browser:
 
 - [http://localhost:3000/dev/emails](http://localhost:3000/dev/emails) — template index
-- [http://localhost:3000/dev/emails/otp-sign-in](http://localhost:3000/dev/emails/otp-sign-in) — OTP sign-in email
+- [http://localhost:3000/dev/emails/otp-sign-in](http://localhost:3000/dev/emails/otp-sign-in) — OTP sign-in email (uses `{{otp}}` placeholders)
 
 ## Production build
 
