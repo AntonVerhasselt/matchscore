@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import { ChevronDownIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -26,11 +27,13 @@ import { useState, useTransition } from "react";
 type LanguageSwitcherProps = {
   variant: "compact" | "full";
   triggerAriaLabelledBy?: string;
+  tone?: "default" | "inverse";
 };
 
 export default function LanguageSwitcher({
   variant,
   triggerAriaLabelledBy,
+  tone = "default",
 }: LanguageSwitcherProps) {
   const currentLocale = useLocale() as Locale;
   const router = useRouter();
@@ -79,11 +82,21 @@ export default function LanguageSwitcher({
               size="sm"
               disabled={isPending}
               aria-label={tCommon("language")}
-              className="gap-1 px-2 font-medium uppercase hover:bg-transparent"
+              className={cn(
+                "gap-1 px-2 font-bold uppercase",
+                tone === "inverse"
+                  ? "text-sidebar-foreground hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground"
+                  : "hover:bg-transparent",
+              )}
             >
               {currentLocale}
               <ChevronDownIcon
-                className="size-3.5 text-muted-foreground"
+                className={cn(
+                  "size-3.5",
+                  tone === "inverse"
+                    ? "text-sidebar-foreground/70"
+                    : "text-muted-foreground",
+                )}
                 aria-hidden="true"
               />
             </Button>

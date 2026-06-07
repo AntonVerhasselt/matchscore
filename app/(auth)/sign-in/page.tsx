@@ -125,10 +125,10 @@ export default function SignInPage() {
   };
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center p-8">
-      <Card className="w-full max-w-sm">
+    <main className="flex flex-1 flex-col items-center justify-center p-6 sm:p-10">
+      <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">{t("title")}</CardTitle>
+          <CardTitle className="text-3xl">{t("title")}</CardTitle>
           <CardDescription>
             {step === "email" ? t("emailStep") : t("otpStep", { email })}
           </CardDescription>

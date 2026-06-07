@@ -6,6 +6,8 @@
       "settings": "Settings",
       "pricing": "Pricing",
       "faq": "FAQ",
+      "features": "Features",
+      "howItWorks": "How it works",
       "cta": "Get started",
       "goToDashboard": "Go to dashboard",
       "menu": "Menu"
@@ -18,24 +20,196 @@
     "language": "Language"
   },
   "landing": {
-    "title": "Matchscore",
-    "subtitle": "Your match scoring app. Sign in to access the app.",
-    "cta": "Get started",
+    "hero": {
+      "badge": "Automated social media for amateur football clubs",
+      "title": "Stay active on <highlight>social media</highlight> — without the extra work",
+      "subtitle": "Matchscore automatically posts match announcements and results to Facebook and Instagram, using your own club templates. More visibility for your team and sponsors, zero hassle.",
+      "searchPlaceholder": "Search your club",
+      "cta": "Try it out",
+      "hint": "Find your club and set up automated posts in minutes.",
+      "scrollLabel": "Scroll"
+    },
+    "problem": {
+      "badge": "The challenge",
+      "title": "Social media is essential — but who has the time?",
+      "p1": "Amateur football clubs in Belgium need a strong presence on social media. It builds a positive brand image, keeps supporters engaged, and shows sponsors their investment matters.",
+      "p2": "But it takes real effort: someone dedicated to taking photos, writing captions, and posting at the right moments — often after a long match day. Most clubs simply don't have that capacity.",
+      "imageAlt": "Amateur football match on a grass field"
+    },
+    "solution": {
+      "badge": "Our solution",
+      "title": "Automated posts that look like you made them",
+      "p1": "Matchscore creates and publishes professional match visuals automatically — announcements before kick-off and results right after the final whistle. Your club's colours, your templates, your style.",
+      "p2": "Connect your calendar once, design a few templates, and turn on the automation. We handle the timing, the content, and the posting to Facebook and Instagram.",
+      "cta": "Get started for your club",
+      "imageAlt": "Football team celebrating together"
+    },
+    "howItWorks": {
+      "badge": "How it works",
+      "title": "Three steps. Then it runs itself.",
+      "description": "No technical skills needed. If you can upload an image and fill in a form, you're ready.",
+      "steps": [
+        {
+          "title": "Select your club",
+          "description": "Search for your club and we automatically import the first team's match calendar from the Belgian federation."
+        },
+        {
+          "title": "Create your templates",
+          "description": "Upload a background image, add your text layout, and include sponsor logos. We fill in the opponent, score, location, and team logos for each post."
+        },
+        {
+          "title": "Set it live",
+          "description": "Activate your automations and posts go out at the right moments — two days before a match and instantly when results are published."
+        }
+      ]
+    },
+    "features": {
+      "badge": "Why clubs choose Matchscore",
+      "title": "Everything your social media volunteer wishes they had",
+      "description": "Built specifically for amateur football associations in Belgium.",
+      "items": [
+        {
+          "title": "Match announcements",
+          "description": "Automatic posts two days before each game: opponent, location, and a call for supporters to show up and cheer on the team."
+        },
+        {
+          "title": "Instant result posts",
+          "description": "When the Belgian federation publishes results, we pick them up and post a polished result visual to your social channels immediately."
+        },
+        {
+          "title": "Your own templates",
+          "description": "Upload custom backgrounds and design your layout. Every post uses your club's visual identity — not generic stock graphics."
+        },
+        {
+          "title": "Sponsor visibility",
+          "description": "Include sponsor logos in your templates effortlessly. Deliver the extra visibility sponsors pay for, without manual work each week."
+        },
+        {
+          "title": "Facebook & Instagram",
+          "description": "Connect your club's Facebook page and Instagram account. Posts are published directly — no copying, no scheduling apps."
+        },
+        {
+          "title": "Set and forget",
+          "description": "Once your automations are live, Matchscore runs in the background. Your social channels stay active all season long."
+        }
+      ]
+    },
+    "showcase": {
+      "title": "Your supporters are already on social media",
+      "description": "Give them something to share, celebrate, and talk about — every single match week.",
+      "imageAlt": "Football supporters in a stadium"
+    },
     "pricing": {
-      "title": "Pricing",
-      "description": "Simple pricing for teams of any size.",
-      "planTitle": "Starter",
-      "planDescription": "Everything you need to get started.",
-      "price": "Free",
-      "placeholder": "Pricing details will be available soon."
+      "badge": "Pricing",
+      "title": "Affordable for every amateur club",
+      "description": "All plans include every feature. No hidden limits, no per-post fees.",
+      "vatNote": "All prices exclude VAT. Subscriptions are billed annually.",
+      "perMonth": "/month",
+      "oneTime": "one-time",
+      "cta": "Get started",
+      "starter": {
+        "title": "Starter",
+        "description": "Full access with a small Matchscore watermark.",
+        "price": "€2",
+        "billingNote": "€24 billed yearly",
+        "features": [
+          "All features included",
+          "Unlimited automated posts",
+          "Small Matchscore watermark on posts"
+        ],
+        "compactFeatures": [
+          "All features, unlimited posts",
+          "Small Matchscore watermark on posts"
+        ]
+      },
+      "pro": {
+        "title": "Pro",
+        "description": "Full access, no watermark.",
+        "price": "€5",
+        "billingNote": "€60 billed yearly",
+        "features": [
+          "All features included",
+          "Unlimited automated posts",
+          "No watermark"
+        ],
+        "compactFeatures": [
+          "All features, unlimited posts",
+          "No watermark"
+        ]
+      },
+      "lifetime": {
+        "badge": "Best value",
+        "headline": "Pay once. Post forever.",
+        "title": "Lifetime",
+        "description": "Pay once, use forever.",
+        "price": "€150",
+        "note": "One-time payment, no renewal",
+        "features": [
+          "All features included",
+          "Unlimited automated posts",
+          "No watermark — forever",
+          "Keep using it forever"
+        ]
+      }
     },
     "faq": {
-      "title": "FAQ",
-      "description": "Answers to common questions about Matchscore.",
-      "q1": "How do I sign in?",
-      "a1": "Enter your email on the sign-in page and we will send you a one-time code.",
-      "q2": "Can I use Matchscore on mobile?",
-      "a2": "Yes. Matchscore works in your browser on desktop and mobile devices."
+      "badge": "FAQ",
+      "title": "Questions from club boards and social volunteers",
+      "description": "Honest answers to what amateur football associations typically want to know.",
+      "items": [
+        {
+          "question": "Do I need technical knowledge to use Matchscore?",
+          "answer": "No. If you can upload an image and connect a social media account, you can use Matchscore. The setup wizard guides you through selecting your club, creating templates, and linking Facebook and Instagram."
+        },
+        {
+          "question": "How does the match calendar get imported?",
+          "answer": "When you select your club, we automatically pull the first team's fixture list from the Belgian football federation. Based on that calendar, we know exactly when to post announcements and when to look for results."
+        },
+        {
+          "question": "Which social media platforms are supported?",
+          "answer": "Matchscore currently supports Facebook and Instagram. You connect your club's accounts once during setup, and all automated posts are published directly to those channels."
+        },
+        {
+          "question": "Can I customise the visuals for my club?",
+          "answer": "Absolutely. You create your own templates: upload a background image, position text fields, and add sponsor logos. For each post, we automatically fill in variables like the opponent name, score, match location, and team logos."
+        },
+        {
+          "question": "How are match results posted so quickly?",
+          "answer": "We monitor the Belgian federation's results feed. As soon as your match result is published, Matchscore generates a result visual from your template and posts it to your connected social channels — no manual checking required."
+        },
+        {
+          "question": "Can I include our sponsors in posts?",
+          "answer": "Yes. Add sponsor logos to your templates once, and they appear on every automated post. It's an easy way to deliver the social media visibility sponsors expect, without extra work each match week."
+        },
+        {
+          "question": "What if I want to pause or stop automations?",
+          "answer": "You're always in control. You can turn individual automations on or off at any time from your dashboard. Pausing doesn't affect your templates or calendar — everything is ready when you want to resume."
+        },
+        {
+          "question": "Is the price per club or per team?",
+          "answer": "Pricing is per club. One subscription covers your club's automations for the first team. All features are included in every plan — the only difference is the watermark on the Starter plan."
+        },
+        {
+          "question": "What happens after my yearly subscription ends?",
+          "answer": "Your subscription renews annually. If you choose not to renew, automations stop but your templates and settings are saved. You can reactivate anytime by renewing your subscription."
+        },
+        {
+          "question": "Does our club need approval from the federation?",
+          "answer": "Matchscore uses publicly available match data from the Belgian federation — the same information on their website. You're simply automating posts about your own club's matches using data that's already public."
+        }
+      ]
+    },
+    "finalCta": {
+      "title": "Ready to put your club on autopilot?",
+      "description": "Create your templates, connect your social accounts, and let Matchscore keep your club visible all season — while you focus on what happens on the pitch.",
+      "cta": "Start for your club",
+      "hint": "Set up takes less than 15 minutes"
+    },
+    "footer": {
+      "rights": "All rights reserved.",
+      "pricing": "Pricing",
+      "faq": "FAQ",
+      "signIn": "Sign in"
     }
   },
   "signIn": {

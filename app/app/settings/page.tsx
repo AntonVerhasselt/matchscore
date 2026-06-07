@@ -15,7 +15,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <h1 className="mb-6 text-2xl font-semibold tracking-tight text-foreground">
+      <h1 className="mb-8 text-3xl tracking-tight text-foreground">
         {t("title")}
       </h1>
 

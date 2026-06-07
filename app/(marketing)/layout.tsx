@@ -6,8 +6,8 @@ export default function MarketingLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-svh flex-col">
-      <PublicHeader />
+    <div className="flex min-h-svh flex-col overflow-x-hidden">
+      <PublicHeader theme="brand" />
       {children}
     </div>
   );

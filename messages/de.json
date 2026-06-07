@@ -6,6 +6,8 @@
       "settings": "Einstellungen",
       "pricing": "Preise",
       "faq": "FAQ",
+      "features": "Vorteile",
+      "howItWorks": "So funktioniert's",
       "cta": "Loslegen",
       "goToDashboard": "Zum Dashboard",
       "menu": "Menü"
@@ -18,24 +20,196 @@
     "language": "Sprache"
   },
   "landing": {
-    "title": "Matchscore",
-    "subtitle": "Deine Spielstand-App. Melde dich an, um die App zu nutzen.",
-    "cta": "Loslegen",
+    "hero": {
+      "badge": "Automatisierte Social Media für Amateurfußballvereine",
+      "title": "Aktiv auf <highlight>Social Media</highlight> — ohne extra Aufwand",
+      "subtitle": "Matchscore veröffentlicht automatisch Spielankündigungen und -ergebnisse auf Facebook und Instagram, mit euren eigenen Vereinsvorlagen. Mehr Sichtbarkeit für euer Team und Sponsoren, ohne Stress.",
+      "searchPlaceholder": "Suche deinen Verein",
+      "cta": "Ausprobieren",
+      "hint": "Finde deinen Verein und richte automatisierte Posts in wenigen Minuten ein.",
+      "scrollLabel": "Scrollen"
+    },
+    "problem": {
+      "badge": "Die Herausforderung",
+      "title": "Social Media ist wichtig — aber wer hat die Zeit?",
+      "p1": "Amateurfußballvereine in Belgien brauchen eine starke Präsenz in den sozialen Medien. Das stärkt das Image, hält Fans engagiert und zeigt Sponsoren, dass ihre Investition zählt.",
+      "p2": "Aber es erfordert echten Aufwand: jemand, der Fotos macht, Texte schreibt und zum richtigen Zeitpunkt postet — oft nach einem langen Spieltag. Die meisten Vereine haben diese Kapazität einfach nicht.",
+      "imageAlt": "Amateurfußballspiel auf einem Rasenplatz"
+    },
+    "solution": {
+      "badge": "Unsere Lösung",
+      "title": "Automatisierte Posts, die aussehen, als hättet ihr sie gemacht",
+      "p1": "Matchscore erstellt und veröffentlicht automatisch professionelle Spielvisuals — Ankündigungen vor dem Anpfiff und Ergebnisse direkt nach dem Abpfiff. Die Farben eures Vereins, eure Vorlagen, euer Stil.",
+      "p2": "Verbindet euren Kalender einmal, erstellt ein paar Vorlagen und schaltet die Automatisierung ein. Wir kümmern uns um Timing, Inhalt und Veröffentlichung auf Facebook und Instagram.",
+      "cta": "Für deinen Verein starten",
+      "imageAlt": "Fußballteam feiert zusammen"
+    },
+    "howItWorks": {
+      "badge": "So funktioniert's",
+      "title": "Drei Schritte. Dann läuft es von allein.",
+      "description": "Keine technischen Kenntnisse nötig. Wenn du ein Bild hochladen und ein Formular ausfüllen kannst, bist du bereit.",
+      "steps": [
+        {
+          "title": "Wähle deinen Verein",
+          "description": "Suche deinen Verein und wir importieren automatisch den Spielplan der ersten Mannschaft über den belgischen Fußballverband."
+        },
+        {
+          "title": "Erstelle deine Vorlagen",
+          "description": "Lade ein Hintergrundbild hoch, füge dein Textlayout hinzu und integriere Sponsorenlogos. Wir füllen Gegner, Ergebnis, Ort und Teamlogos für jeden Post aus."
+        },
+        {
+          "title": "Schalte es live",
+          "description": "Aktiviere deine Automatisierungen und Posts gehen zum richtigen Zeitpunkt raus — zwei Tage vor einem Spiel und sofort, wenn Ergebnisse veröffentlicht werden."
+        }
+      ]
+    },
+    "features": {
+      "badge": "Warum Vereine Matchscore wählen",
+      "title": "Alles, was dein Social-Media-Verantwortlicher sich wünscht",
+      "description": "Speziell für Amateurfußballvereine in Belgien entwickelt.",
+      "items": [
+        {
+          "title": "Spielankündigungen",
+          "description": "Automatische Posts zwei Tage vor jedem Spiel: Gegner, Ort und ein Aufruf an Fans, vorbeizukommen und die Mannschaft anzufeuern."
+        },
+        {
+          "title": "Sofortige Ergebnis-Posts",
+          "description": "Wenn der belgische Verband Ergebnisse veröffentlicht, holen wir sie ab und posten sofort ein professionelles Ergebnisvisual auf euren Social-Media-Kanälen."
+        },
+        {
+          "title": "Eigene Vorlagen",
+          "description": "Lade eigene Hintergründe hoch und gestalte dein Layout. Jeder Post nutzt die visuelle Identität eures Vereins — keine generischen Stockbilder."
+        },
+        {
+          "title": "Sponsoren-Sichtbarkeit",
+          "description": "Integriere Sponsorenlogos mühelos in deine Vorlagen. Liefere die extra Sichtbarkeit, für die Sponsoren bezahlen, ohne wöchentliche Handarbeit."
+        },
+        {
+          "title": "Facebook & Instagram",
+          "description": "Verbinde die Facebook-Seite und das Instagram-Konto eures Vereins. Posts werden direkt veröffentlicht — kein Kopieren, keine Planungs-Apps."
+        },
+        {
+          "title": "Einrichten und vergessen",
+          "description": "Sobald eure Automatisierungen live sind, läuft Matchscore im Hintergrund. Eure Social-Media-Kanäle bleiben die ganze Saison aktiv."
+        }
+      ]
+    },
+    "showcase": {
+      "title": "Eure Fans sind schon auf Social Media",
+      "description": "Gebt ihnen etwas zum Teilen, Feiern und Diskutieren — jede Spielwoche aufs Neue.",
+      "imageAlt": "Fußballfans in einem Stadion"
+    },
     "pricing": {
-      "title": "Preise",
-      "description": "Einfache Preise für Teams jeder Größe.",
-      "planTitle": "Starter",
-      "planDescription": "Alles, was du zum Starten brauchst.",
-      "price": "Kostenlos",
-      "placeholder": "Preisdetails folgen in Kürze."
+      "badge": "Preise",
+      "title": "Erschwinglich für jeden Amateurverein",
+      "description": "Alle Pläne beinhalten alle Funktionen. Keine versteckten Limits, keine Gebühren pro Post.",
+      "vatNote": "Alle Preise zzgl. MwSt. Abonnements werden jährlich abgerechnet.",
+      "perMonth": "/Monat",
+      "oneTime": "einmalig",
+      "cta": "Loslegen",
+      "starter": {
+        "title": "Starter",
+        "description": "Voller Zugang mit kleinem Matchscore-Wasserzeichen.",
+        "price": "€2",
+        "billingNote": "€24 jährlich abgerechnet",
+        "features": [
+          "Alle Funktionen inklusive",
+          "Unbegrenzte automatisierte Posts",
+          "Kleines Matchscore-Wasserzeichen auf Posts"
+        ],
+        "compactFeatures": [
+          "Alle Funktionen, unbegrenzte Posts",
+          "Kleines Matchscore-Wasserzeichen auf Posts"
+        ]
+      },
+      "pro": {
+        "title": "Pro",
+        "description": "Voller Zugang, ohne Wasserzeichen.",
+        "price": "€5",
+        "billingNote": "€60 jährlich abgerechnet",
+        "features": [
+          "Alle Funktionen inklusive",
+          "Unbegrenzte automatisierte Posts",
+          "Kein Wasserzeichen"
+        ],
+        "compactFeatures": [
+          "Alle Funktionen, unbegrenzte Posts",
+          "Kein Wasserzeichen"
+        ]
+      },
+      "lifetime": {
+        "badge": "Bestes Angebot",
+        "headline": "Einmal zahlen. Für immer posten.",
+        "title": "Lifetime",
+        "description": "Einmal zahlen, für immer nutzen.",
+        "price": "€150",
+        "note": "Einmalige Zahlung, keine Verlängerung",
+        "features": [
+          "Alle Funktionen inklusive",
+          "Unbegrenzte automatisierte Posts",
+          "Kein Wasserzeichen — für immer",
+          "Für immer weiter nutzen"
+        ]
+      }
     },
     "faq": {
-      "title": "FAQ",
-      "description": "Antworten auf häufige Fragen zu Matchscore.",
-      "q1": "Wie melde ich mich an?",
-      "a1": "Gib deine E-Mail auf der Anmeldeseite ein und wir senden dir einen Einmalcode.",
-      "q2": "Kann ich Matchscore auf dem Handy nutzen?",
-      "a2": "Ja. Matchscore funktioniert in deinem Browser auf Desktop und Mobilgeräten."
+      "badge": "FAQ",
+      "title": "Fragen von Vorständen und Social-Media-Verantwortlichen",
+      "description": "Ehrliche Antworten auf das, was Amateurfußballvereine typischerweise wissen wollen.",
+      "items": [
+        {
+          "question": "Brauche ich technisches Wissen, um Matchscore zu nutzen?",
+          "answer": "Nein. Wenn du ein Bild hochladen und ein Social-Media-Konto verbinden kannst, kannst du Matchscore nutzen. Der Einrichtungsassistent führt dich durch die Vereinsauswahl, Vorlagenerstellung und die Verbindung von Facebook und Instagram."
+        },
+        {
+          "question": "Wie wird der Spielkalender importiert?",
+          "answer": "Wenn du deinen Verein auswählst, holen wir automatisch die Spielpläne der ersten Mannschaft vom belgischen Fußballverband. Auf dieser Basis wissen wir genau, wann Ankündigungen gepostet und wann nach Ergebnissen gesucht werden muss."
+        },
+        {
+          "question": "Welche Social-Media-Plattformen werden unterstützt?",
+          "answer": "Matchscore unterstützt derzeit Facebook und Instagram. Du verbindest die Konten deines Vereins einmal bei der Einrichtung, und alle automatisierten Posts werden direkt auf diesen Kanälen veröffentlicht."
+        },
+        {
+          "question": "Kann ich die Visuals für meinen Verein anpassen?",
+          "answer": "Absolut. Du erstellst eigene Vorlagen: lade ein Hintergrundbild hoch, positioniere Textfelder und füge Sponsorenlogos hinzu. Für jeden Post füllen wir automatisch Variablen wie Gegner, Ergebnis, Spielort und Teamlogos aus."
+        },
+        {
+          "question": "Wie werden Spielergebnisse so schnell gepostet?",
+          "answer": "Wir überwachen den Ergebnis-Feed des belgischen Verbands. Sobald euer Spielergebnis veröffentlicht ist, generiert Matchscore ein Ergebnisvisual aus eurer Vorlage und postet es auf euren verbundenen Kanälen — ohne manuelle Prüfung."
+        },
+        {
+          "question": "Können wir unsere Sponsoren in Posts einbinden?",
+          "answer": "Ja. Füge Sponsorenlogos einmal zu deinen Vorlagen hinzu, und sie erscheinen auf jedem automatisierten Post. So lieferst du die Social-Media-Sichtbarkeit, die Sponsoren erwarten, ohne extra Arbeit jede Spielwoche."
+        },
+        {
+          "question": "Was, wenn ich Automatisierungen pausieren oder stoppen möchte?",
+          "answer": "Du behältst immer die Kontrolle. Du kannst einzelne Automatisierungen jederzeit in deinem Dashboard ein- oder ausschalten. Pausieren beeinflusst deine Vorlagen oder deinen Kalender nicht."
+        },
+        {
+          "question": "Ist der Preis pro Verein oder pro Team?",
+          "answer": "Der Preis gilt pro Verein. Ein Abonnement deckt die Automatisierungen deines Vereins für die erste Mannschaft ab. Alle Funktionen sind in jedem Plan enthalten — der einzige Unterschied ist das Wasserzeichen beim Starter-Plan."
+        },
+        {
+          "question": "Was passiert nach Ablauf meines Jahresabonnements?",
+          "answer": "Dein Abonnement verlängert sich jährlich. Wenn du nicht verlängerst, stoppen die Automatisierungen, aber deine Vorlagen und Einstellungen bleiben gespeichert. Du kannst jederzeit durch Verlängerung reaktivieren."
+        },
+        {
+          "question": "Braucht unser Verein die Genehmigung des Verbands?",
+          "answer": "Matchscore nutzt öffentlich verfügbare Spieldaten des belgischen Verbands — dieselben Informationen wie auf deren Website. Ihr automatisiert einfach Posts über die Spiele eures eigenen Vereins mit bereits öffentlichen Daten."
+        }
+      ]
+    },
+    "finalCta": {
+      "title": "Bereit, euren Verein auf Autopilot zu stellen?",
+      "description": "Erstellt eure Vorlagen, verbindet eure Social-Media-Konten und lasst Matchscore euren Verein die ganze Saison sichtbar halten — während ihr euch auf das Spielfeld konzentriert.",
+      "cta": "Für deinen Verein starten",
+      "hint": "Die Einrichtung dauert weniger als 15 Minuten"
+    },
+    "footer": {
+      "rights": "Alle Rechte vorbehalten.",
+      "pricing": "Preise",
+      "faq": "FAQ",
+      "signIn": "Anmelden"
     }
   },
   "signIn": {
