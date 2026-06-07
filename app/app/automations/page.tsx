@@ -4,7 +4,6 @@ import {
   Card,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { useTranslations } from "next-intl";
 
@@ -18,7 +17,6 @@ export default function AutomationsPage() {
       </h1>
       <Card>
         <CardHeader>
-          <CardTitle>{t("title")}</CardTitle>
           <CardDescription>{t("description")}</CardDescription>
         </CardHeader>
       </Card>

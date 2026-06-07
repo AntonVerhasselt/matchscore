@@ -42,9 +42,17 @@ export function AppUserMenu({ variant = "sidebar" }: AppUserMenuProps) {
   const isSettingsActive = pathname.startsWith("/app/settings");
 
   const handleSignOut = async () => {
-    await authClient.signOut();
-    router.push("/");
-    router.refresh();
+    try {
+      const result = await authClient.signOut();
+      if (result.error) {
+        console.error("Sign out failed:", result.error);
+        return;
+      }
+      router.push("/");
+      router.refresh();
+    } catch (error) {
+      console.error("Sign out failed:", error);
+    }
   };
 
   if (variant === "sidebar" && isMobile) {
