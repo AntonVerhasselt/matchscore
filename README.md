@@ -5,8 +5,9 @@ A [Convex](https://convex.dev/) + [Next.js](https://nextjs.org/) App Router star
 ## Stack
 
 - Convex backend (database, queries, mutations)
-- Better Auth (email/password sign-up and sign-in)
-- Resend component (transactional email, password reset)
+- Better Auth (passwordless email OTP sign-in)
+- Resend component (transactional email delivery)
+- React Email (email templates in-repo)
 - Next.js App Router frontend
 - Tailwind CSS
 - pnpm package manager
@@ -38,9 +39,11 @@ npx convex env set SITE_URL http://localhost:3000
 
 5. Open [http://localhost:3000](http://localhost:3000).
 
-### Password reset emails
+### Sign-in with email OTP
 
-Password reset is wired up end-to-end. By default, Resend runs in **test mode** — emails are only delivered to [Resend test addresses](https://resend.com/docs/dashboard/emails/send-test-emails) (e.g. `delivered@resend.dev`).
+Sign-in is passwordless. Enter your email on `/sign-in`, receive a 6-digit code, and enter it to sign in. New users are created automatically on first sign-in.
+
+By default, Resend runs in **test mode** — emails are only delivered to [Resend test addresses](https://resend.com/docs/dashboard/emails/send-test-emails) (e.g. `delivered@resend.dev`).
 
 To send to real addresses, add a Resend API key and disable test mode:
 
@@ -52,9 +55,16 @@ npx convex env set AUTH_FROM_EMAIL "Matchscore <noreply@yourdomain.com>"
 
 The `AUTH_FROM_EMAIL` address must use a domain verified in your [Resend dashboard](https://resend.com/domains).
 
-Transactional emails use **published** Resend templates defined in `convex/emails.ts`. Template variables: `name` + `password_reset_link` (reset), `name` + `verification_link` (verification).
+OTP emails are React Email components in `emails/`, registered in `emails/registry.ts`, rendered to HTML via `lib/emails/render.ts`, and sent via `convex/emailActions.ts`.
 
-New users must verify their email before signing in. After sign-up, check your inbox for the verification link.
+To add a new email: create a component in `emails/`, export it with `defineEmailTemplate()` (subject + `{{variable}}` preview props), and add it to `emails/registry.ts`. Preview routes are automatic at `/dev/emails/[slug]`.
+
+### Email template previews (dev only)
+
+While the dev server is running, preview templates in the browser:
+
+- [http://localhost:3000/dev/emails](http://localhost:3000/dev/emails) — template index
+- [http://localhost:3000/dev/emails/otp-sign-in](http://localhost:3000/dev/emails/otp-sign-in) — OTP sign-in email (uses `{{otp}}` placeholders)
 
 ## Production build
 
@@ -87,7 +97,7 @@ See [`.env.example`](.env.example) for a copy-paste template.
 | `CONVEX_DEPLOYMENT` | Dev only | Convex deployment name (set by `npx convex dev`) |
 | `NEXT_PUBLIC_CONVEX_URL` | Yes | Convex deployment URL for the frontend |
 | `NEXT_PUBLIC_CONVEX_SITE_URL` | Yes | Convex site URL (`.convex.site`) for auth HTTP routes |
-| `NEXT_PUBLIC_SITE_URL` | Yes | Public app URL for password-reset redirects |
+| `NEXT_PUBLIC_SITE_URL` | Yes | Public app URL for auth redirects |
 | `CONVEX_DEPLOY_KEY` | Prod/CI only | Deploy Convex functions during production builds |
 
 ### Convex deployment (`npx convex env set`)
@@ -95,7 +105,7 @@ See [`.env.example`](.env.example) for a copy-paste template.
 | Variable | Required | Purpose |
 |----------|----------|---------|
 | `BETTER_AUTH_SECRET` | Yes | Secret for Better Auth sessions (`openssl rand -base64 32`) |
-| `SITE_URL` | Yes | Base URL for auth callbacks and reset-password links |
+| `SITE_URL` | Yes | Base URL for auth callbacks |
 | `RESEND_API_KEY` | For real emails | Resend API key |
 | `RESEND_TEST_MODE` | No | Set to `false` to send to real addresses (default: test mode) |
 | `AUTH_FROM_EMAIL` | No | Sender address for transactional email |
