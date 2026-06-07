@@ -74,7 +74,7 @@ await authClient.emailOtp.sendVerificationOtp({ email, type: "sign-in" });
 
 ### Invitation email locale
 
-Organisation invitation emails use the **inviter's** saved locale from `userSettings` (set in `organizations/mutations.ts` → `inviteMember`). The invitee's UI locale before sign-in does not affect the invitation email.
+Organization invitation emails use the **inviter's** saved locale from `userSettings` (set in `organizations/mutations.ts` → `inviteMember`). The invitee's UI locale before sign-in does not affect the invitation email.
 
 The same `setEmailLocale` call runs on resend, so the email matches the language shown in the UI at that moment.
 

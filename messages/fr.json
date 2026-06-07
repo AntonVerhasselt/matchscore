@@ -17,6 +17,7 @@
       "description": "Application de score de match propulsée par Convex et Next.js"
     },
     "loading": "Chargement...",
+    "close": "Fermer",
     "language": "Langue"
   },
   "landing": {
@@ -289,6 +290,7 @@
       "inviteFailed": "Impossible d'envoyer l'invitation. Veuillez réessayer.",
       "deleteSuccess": "{member} a été retiré de votre club.",
       "deleteFailed": "Impossible de supprimer le membre. Veuillez réessayer.",
+      "signOutFailed": "Membre retiré, mais la déconnexion a échoué. Veuillez vous déconnecter manuellement.",
       "cancelInviteSuccess": "Invitation annulée.",
       "cancelFailed": "Impossible d'annuler l'invitation. Veuillez réessayer.",
       "joinedOn": "Membre depuis le {date}"

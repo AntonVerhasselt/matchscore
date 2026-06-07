@@ -17,6 +17,7 @@
       "description": "Spielstand-App powered by Convex und Next.js"
     },
     "loading": "Laden...",
+    "close": "Schließen",
     "language": "Sprache"
   },
   "landing": {
@@ -289,6 +290,7 @@
       "inviteFailed": "Einladung konnte nicht gesendet werden. Bitte versuche es erneut.",
       "deleteSuccess": "{member} wurde aus deinem Club entfernt.",
       "deleteFailed": "Mitglied konnte nicht gelöscht werden. Bitte versuche es erneut.",
+      "signOutFailed": "Mitglied entfernt, aber Abmeldung fehlgeschlagen. Bitte melde dich manuell ab.",
       "cancelInviteSuccess": "Einladung abgebrochen.",
       "cancelFailed": "Einladung konnte nicht abgebrochen werden. Bitte versuche es erneut.",
       "joinedOn": "Beigetreten am {date}"

@@ -17,6 +17,7 @@
       "description": "Match scoring app powered by Convex and Next.js"
     },
     "loading": "Loading...",
+    "close": "Close",
     "language": "Language"
   },
   "landing": {
@@ -289,6 +290,7 @@
       "inviteFailed": "Could not send invitation. Please try again.",
       "deleteSuccess": "{member} was removed from your club.",
       "deleteFailed": "Could not delete member. Please try again.",
+      "signOutFailed": "Member was removed but sign-out failed. Please sign out manually.",
       "cancelInviteSuccess": "Invitation cancelled.",
       "cancelFailed": "Could not cancel invitation. Please try again.",
       "joinedOn": "Joined {date}"

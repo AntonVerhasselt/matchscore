@@ -14,7 +14,11 @@ export async function completeSignInAfterOtp(
   invitationToken?: string,
 ): Promise<never> {
   if (isValidLocale(currentLocale)) {
-    await syncLocaleOnSignIn(currentLocale);
+    try {
+      await syncLocaleOnSignIn(currentLocale);
+    } catch (error) {
+      console.error("Failed to sync locale on sign-in:", error);
+    }
   }
 
   const redirectPath = await resolvePostSignInRedirect(invitationToken);

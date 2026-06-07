@@ -24,7 +24,7 @@ export function OrganizationAvatar({
         <AvatarImage
           src={logoImageUrl!}
           alt={name}
-          className={cn("rounded-[inherit]", className)}
+          className="rounded-[inherit]"
         />
       ) : null}
       <AvatarFallback

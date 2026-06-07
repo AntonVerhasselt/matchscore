@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { Dialog as DialogPrimitive } from "radix-ui"
+import { useTranslations } from "next-intl"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -47,6 +48,23 @@ function DialogOverlay({
   )
 }
 
+function DialogContentCloseButton() {
+  const t = useTranslations("common")
+
+  return (
+    <DialogPrimitive.Close data-slot="dialog-close" asChild>
+      <Button
+        variant="ghost"
+        className="absolute top-2 right-2"
+        size="icon-sm"
+      >
+        <XIcon aria-hidden="true" />
+        <span className="sr-only">{t("close")}</span>
+      </Button>
+    </DialogPrimitive.Close>
+  )
+}
+
 function DialogContent({
   className,
   children,
@@ -67,19 +85,7 @@ function DialogContent({
         {...props}
       >
         {children}
-        {showCloseButton && (
-          <DialogPrimitive.Close data-slot="dialog-close" asChild>
-            <Button
-              variant="ghost"
-              className="absolute top-2 right-2"
-              size="icon-sm"
-            >
-              <XIcon
-              />
-              <span className="sr-only">Close</span>
-            </Button>
-          </DialogPrimitive.Close>
-        )}
+        {showCloseButton ? <DialogContentCloseButton /> : null}
       </DialogPrimitive.Content>
     </DialogPortal>
   )
@@ -103,6 +109,8 @@ function DialogFooter({
 }: React.ComponentProps<"div"> & {
   showCloseButton?: boolean
 }) {
+  const t = useTranslations("common")
+
   return (
     <div
       data-slot="dialog-footer"
@@ -113,11 +121,11 @@ function DialogFooter({
       {...props}
     >
       {children}
-      {showCloseButton && (
+      {showCloseButton ? (
         <DialogPrimitive.Close asChild>
-          <Button variant="outline">Close</Button>
+          <Button variant="outline">{t("close")}</Button>
         </DialogPrimitive.Close>
-      )}
+      ) : null}
     </div>
   )
 }

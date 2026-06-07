@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { components } from "../_generated/api";
 import { internalMutation, type MutationCtx } from "../_generated/server";
 
@@ -67,6 +67,15 @@ export const clearAll = internalMutation({
     authModels: v.record(v.string(), v.number()),
   }),
   handler: async (ctx) => {
+    const deployment = process.env.CONVEX_DEPLOYMENT ?? "";
+    const isDevDeployment =
+      deployment.startsWith("dev:") || deployment.includes(":dev");
+    if (!isDevDeployment) {
+      throw new ConvexError(
+        "clearAll is blocked outside development deployments",
+      );
+    }
+
     const appCounts: Record<string, number> = {};
     for (const table of appTables) {
       appCounts[table] = await deleteAllFromTable(ctx, table);

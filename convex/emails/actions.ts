@@ -73,7 +73,7 @@ export const sendOrganizationInvitationEmail = internalAction({
         organizationName: args.organizationName,
         acceptUrl: args.acceptUrl,
         expiresInDays: ORG_INVITATION_EXPIRES_IN_DAYS,
-        messages,
+        messages: messages.orgInvitation,
       });
 
       await resend.sendEmail(ctx, {

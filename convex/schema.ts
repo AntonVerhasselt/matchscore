@@ -24,9 +24,11 @@ export default defineSchema({
   organizationMembers: defineTable({
     organizationId: v.id("organizations"),
     userId: v.string(),
+    email: v.optional(v.string()),
     joinedAt: v.number(),
   })
     .index("by_userId", ["userId"])
+    .index("by_email", ["email"])
     .index("by_organizationId", ["organizationId"]),
 
   organizationInvitations: defineTable({

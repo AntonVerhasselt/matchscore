@@ -57,6 +57,7 @@ async function acceptInvitationForUser(
   await ctx.db.insert("organizationMembers", {
     organizationId: invitation.organizationId,
     userId: user._id,
+    email: normalizeEmail(user.email),
     joinedAt: Date.now(),
   });
 
@@ -79,16 +80,10 @@ async function acceptInvitationForUser(
 
 async function findMemberByEmail(ctx: MutationCtx, email: string) {
   const normalizedEmail = normalizeEmail(email);
-  const members = await ctx.db.query("organizationMembers").collect();
-
-  for (const member of members) {
-    const authUser = await authComponent.getAnyUserById(ctx, member.userId);
-    if (authUser && normalizeEmail(authUser.email) === normalizedEmail) {
-      return member;
-    }
-  }
-
-  return null;
+  return await ctx.db
+    .query("organizationMembers")
+    .withIndex("by_email", (q) => q.eq("email", normalizedEmail))
+    .unique();
 }
 
 export const createOrganization = mutation({
@@ -120,6 +115,7 @@ export const createOrganization = mutation({
     await ctx.db.insert("organizationMembers", {
       organizationId,
       userId: user._id,
+      email: normalizeEmail(user.email),
       joinedAt: Date.now(),
     });
 

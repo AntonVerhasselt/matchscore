@@ -19,6 +19,7 @@ import { useEffect } from "react";
 
 export default function AcceptInvitationPage() {
   const t = useTranslations("acceptInvitation");
+  const tCommon = useTranslations("common");
   const params = useParams<{ token: string }>();
   const token = params.token;
 
@@ -35,7 +36,7 @@ export default function AcceptInvitationPage() {
   if (invitation === undefined) {
     return (
       <main className="flex min-h-svh flex-col items-center justify-center p-6">
-        <p className="text-muted-foreground">{t("continueToSignIn")}</p>
+        <p className="text-muted-foreground">{tCommon("loading")}</p>
       </main>
     );
   }

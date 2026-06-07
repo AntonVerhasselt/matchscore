@@ -4,6 +4,7 @@ import { loadEmailMessages } from "../lib/i18n/load-email-messages";
 import { defaultLocale, isValidLocale } from "../i18n/config";
 import type { EmailTemplateDefinition } from "../lib/emails/types";
 import {
+  ORG_INVITATION_EXPIRES_IN_DAYS,
   organizationInvitationEmail,
   type OrganizationInvitationEmailProps,
 } from "./OrganizationInvitationEmail";
@@ -89,7 +90,7 @@ export async function renderEmailPreview(
     inviterName: "Alex",
     organizationName: "FC Example",
     acceptUrl: "https://matchscore.be/accept-invitation/example-token",
-    expiresInDays: 7,
-    messages,
+    expiresInDays: ORG_INVITATION_EXPIRES_IN_DAYS,
+    messages: messages.orgInvitation,
   });
 }

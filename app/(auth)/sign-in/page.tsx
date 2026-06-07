@@ -21,8 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { isRedirectError } from "next/dist/client/components/redirect-error";
-import { useSearchParams } from "next/navigation";
+import { unstable_rethrow, useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useEffect, useState } from "react";
 
 type Step = "email" | "otp";
@@ -120,9 +119,7 @@ function SignInPageContent() {
       const invitationToken = consumeInvitationToken() ?? undefined;
       await completeSignInAfterOtp(currentLocale, invitationToken);
     } catch (error) {
-      if (isRedirectError(error)) {
-        throw error;
-      }
+      unstable_rethrow(error);
       const message =
         error instanceof Error ? error.message : t("somethingWrong");
       setError(message);

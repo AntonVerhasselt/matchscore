@@ -11,16 +11,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { api } from "@/convex/_generated/api";
-import { useMutation } from "convex/react";
+import { completeOnboarding } from "@/lib/onboarding/complete-onboarding-server";
 import { useTranslations } from "next-intl";
+import { unstable_rethrow } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 export default function OnboardingPage() {
   const t = useTranslations("onboarding");
-  const createOrganization = useMutation(
-    api.organizations.mutations.createOrganization,
-  );
   const [clubName, setClubName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -31,10 +28,16 @@ export default function OnboardingPage() {
     setLoading(true);
 
     try {
-      await createOrganization({ name: clubName });
-      window.location.assign("/app");
-    } catch {
-      setError(t("createFailed"));
+      await completeOnboarding(clubName.trim());
+    } catch (err) {
+      unstable_rethrow(err);
+      const message =
+        err instanceof Error
+          ? err.message
+          : typeof err === "string"
+            ? err
+            : t("createFailed");
+      setError(message || t("createFailed"));
     } finally {
       setLoading(false);
     }

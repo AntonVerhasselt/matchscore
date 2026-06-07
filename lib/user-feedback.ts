@@ -23,7 +23,8 @@ export async function withUserFeedback<T>(
       showSuccessToast(successMessage);
     }
     return result;
-  } catch {
+  } catch (error) {
+    console.error("User action failed:", errorMessage, error);
     showErrorToast(errorMessage);
     return undefined;
   }

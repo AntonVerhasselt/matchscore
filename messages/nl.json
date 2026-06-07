@@ -17,6 +17,7 @@
       "description": "Matchscore, mogelijk gemaakt door Convex en Next.js"
     },
     "loading": "Laden...",
+    "close": "Sluiten",
     "language": "Taal"
   },
   "landing": {
@@ -289,6 +290,7 @@
       "inviteFailed": "Uitnodiging versturen mislukt. Probeer het opnieuw.",
       "deleteSuccess": "{member} is uit je club verwijderd.",
       "deleteFailed": "Lid verwijderen mislukt. Probeer het opnieuw.",
+      "signOutFailed": "Lid verwijderd, maar afmelden mislukt. Meld je handmatig af.",
       "cancelInviteSuccess": "Uitnodiging geannuleerd.",
       "cancelFailed": "Uitnodiging annuleren mislukt. Probeer het opnieuw.",
       "joinedOn": "Lid sinds {date}"

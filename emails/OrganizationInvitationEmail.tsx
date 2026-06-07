@@ -11,7 +11,7 @@ import {
   Text,
 } from "@react-email/components";
 import { formatMessage } from "../lib/i18n/format-message";
-import type { EmailMessages } from "../lib/i18n/load-email-messages";
+import type { OrgInvitationEmailMessages } from "../lib/i18n/load-email-messages";
 import { defineEmailTemplate } from "../lib/emails/types";
 
 export type OrganizationInvitationEmailProps = {
@@ -19,7 +19,7 @@ export type OrganizationInvitationEmailProps = {
   organizationName: string;
   acceptUrl: string;
   expiresInDays: number;
-  messages: EmailMessages;
+  messages: OrgInvitationEmailMessages;
 };
 
 export const ORG_INVITATION_EXPIRES_IN_DAYS = 7;
@@ -31,13 +31,11 @@ export function OrganizationInvitationEmail({
   expiresInDays,
   messages,
 }: OrganizationInvitationEmailProps) {
-  const orgMessages = messages.orgInvitation;
-
   return (
     <Html>
       <Head />
       <Preview>
-        {formatMessage(orgMessages.preview, {
+        {formatMessage(messages.preview, {
           inviterName,
           organizationName,
         })}
@@ -46,23 +44,23 @@ export function OrganizationInvitationEmail({
         <Container style={container}>
           <Heading style={heading}>Matchscore</Heading>
           <Text style={paragraph}>
-            {formatMessage(orgMessages.body, {
+            {formatMessage(messages.body, {
               inviterName,
               organizationName,
             })}
           </Text>
           <Section style={buttonSection}>
             <Button href={acceptUrl} style={button}>
-              {orgMessages.cta}
+              {messages.cta}
             </Button>
           </Section>
           <Text style={paragraph}>
-            {formatMessage(orgMessages.expiresIn, {
+            {formatMessage(messages.expiresIn, {
               days: expiresInDays,
             })}
           </Text>
           <Hr style={hr} />
-          <Text style={footer}>{orgMessages.footer}</Text>
+          <Text style={footer}>{messages.footer}</Text>
         </Container>
       </Body>
     </Html>
@@ -78,25 +76,17 @@ export const organizationInvitationEmail = defineEmailTemplate({
     acceptUrl: "https://matchscore.be/accept-invitation/example-token",
     expiresInDays: ORG_INVITATION_EXPIRES_IN_DAYS,
     messages: {
-      preview: "Your Matchscore sign-in code is {otp}",
-      body: "Use the code below to sign in to your account.",
-      expiresIn: "This code expires in {minutes} minutes.",
+      preview: "{inviterName} invited you to join {organizationName}",
+      body: "{inviterName} invited you to join {organizationName} on Matchscore.",
+      cta: "Accept invitation",
+      expiresIn: "This invitation expires in {days} days.",
       footer:
-        "If you didn't request this code, you can safely ignore this email.",
-      subject: "{otp} is your Matchscore sign-in code",
-      orgInvitation: {
-        preview: "{inviterName} invited you to join {organizationName}",
-        body: "{inviterName} invited you to join {organizationName} on Matchscore.",
-        cta: "Accept invitation",
-        expiresIn: "This invitation expires in {days} days.",
-        footer:
-          "If you were not expecting this invitation, you can safely ignore this email.",
-        subject: "Join {organizationName} on Matchscore",
-      },
+        "If you were not expecting this invitation, you can safely ignore this email.",
+      subject: "Join {organizationName} on Matchscore",
     },
   },
   subject: ({ organizationName, messages }) =>
-    formatMessage(messages.orgInvitation.subject, { organizationName }),
+    formatMessage(messages.subject, { organizationName }),
   Component: OrganizationInvitationEmail,
 });
 

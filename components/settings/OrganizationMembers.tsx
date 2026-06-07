@@ -95,15 +95,26 @@ export function OrganizationMembers() {
 
     try {
       await deleteMember({ memberId });
-      setPendingDelete(null);
 
       if (isCurrentUser) {
-        await authClient.signOut();
+        try {
+          const result = await authClient.signOut();
+          if (result.error) {
+            showErrorToast(t("signOutFailed"));
+            return;
+          }
+        } catch {
+          showErrorToast(t("signOutFailed"));
+          return;
+        }
+
+        setPendingDelete(null);
         router.push("/");
         router.refresh();
         return;
       }
 
+      setPendingDelete(null);
       showSuccessToast(t("deleteSuccess", { member: displayName }));
     } catch {
       showErrorToast(t("deleteFailed"));

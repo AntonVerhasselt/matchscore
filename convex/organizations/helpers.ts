@@ -1,3 +1,4 @@
+import { ConvexError } from "convex/values";
 import type { GenericDatabaseReader, GenericMutationCtx } from "convex/server";
 import type { DataModel, Id } from "../_generated/dataModel";
 
@@ -51,7 +52,7 @@ export async function requireMembership(
 ) {
   const membership = await getMembershipForUser(ctx, userId);
   if (!membership) {
-    throw new Error("You are not a member of an organisation");
+    throw new ConvexError("You are not a member of an organisation");
   }
   return membership;
 }
