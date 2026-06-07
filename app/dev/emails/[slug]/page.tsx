@@ -5,6 +5,8 @@ import {
 } from "@/emails/registry";
 import { notFound } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
@@ -21,7 +23,9 @@ export default async function EmailPreviewPage({ params }: PageProps) {
     notFound();
   }
 
-  const { html, subject } = await renderEmailPreview(slug as EmailTemplateSlug);
+  const { html, subject } = await renderEmailPreview(
+    slug as EmailTemplateSlug,
+  );
   const variables = Object.entries(template.previewProps);
 
   return (
@@ -60,6 +64,7 @@ export default async function EmailPreviewPage({ params }: PageProps) {
           <iframe
             title={`${template.name} email preview`}
             srcDoc={html}
+            sandbox="allow-same-origin"
             className="h-[640px] w-full border-0"
           />
         </div>

@@ -38,6 +38,7 @@ export const sendOtpEmail = internalAction({
         to: args.to,
         error,
       });
+      throw error;
     }
 
     return null;

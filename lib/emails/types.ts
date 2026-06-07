@@ -15,3 +15,6 @@ export function defineEmailTemplate<
 >(definition: EmailTemplateDefinition<TProps>) {
   return definition;
 }
+
+export type PropsOf<T extends EmailTemplateDefinition> =
+  T extends EmailTemplateDefinition<infer TProps> ? TProps : never;

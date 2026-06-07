@@ -2,6 +2,8 @@ import { listEmailTemplates } from "@/emails/registry";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+export const dynamic = "force-dynamic";
+
 export default function DevEmailsIndexPage() {
   if (process.env.NODE_ENV !== "development") {
     notFound();
