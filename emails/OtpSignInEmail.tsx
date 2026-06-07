@@ -10,13 +10,13 @@ import {
   Text,
 } from "@react-email/components";
 import { formatMessage } from "../lib/i18n/format-message";
-import type { EmailMessages } from "../lib/i18n/load-email-messages";
+import type { OtpEmailMessages } from "../lib/i18n/load-email-messages";
 import { defineEmailTemplate } from "../lib/emails/types";
 
 export type OtpSignInEmailProps = {
   otp: string;
   expiresInMinutes: number;
-  messages: EmailMessages;
+  messages: OtpEmailMessages;
 };
 
 export const OTP_EXPIRES_IN_MINUTES = 5;

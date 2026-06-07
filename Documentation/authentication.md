@@ -14,48 +14,57 @@ Browser (Next.js)
         │
         ▼
 Convex
-  ├─ HTTP routes (convex/http.ts)               ← Better Auth backend endpoints
-  ├─ auth.ts                                    ← Better Auth instance + getCurrentUser
-  └─ emailActions.ts                            ← sends OTP emails via Resend
+  ├─ HTTP routes (convex/http.ts)                    ← Better Auth backend endpoints
+  ├─ auth/instance.ts                                ← Better Auth instance
+  ├─ auth/queries.ts                                 ← getCurrentUser
+  ├─ users/emailLocales.ts                           ← pre-auth email locale
+  └─ emails/actions.ts                               ← OTP and invitation emails
 ```
 
-Better Auth stores session and user data through the Convex Better Auth component (`components.betterAuth`). App-specific settings (like locale) live in separate tables defined in `convex/schema.ts`.
+Better Auth stores session and user data through the Convex Better Auth component (`components.betterAuth`). App-specific data (locale, organisations) lives in separate tables in `convex/schema.ts`.
+
+See also [Organisations](organisations.md) and [Convex structure](convex-structure.md).
 
 ## Sign-in flow
 
-The sign-in page (`app/(public)/sign-in/page.tsx`) is a two-step flow:
+The sign-in page (`app/(auth)/sign-in/page.tsx`) is a two-step flow:
 
 ### Step 1 — Request OTP
 
 1. User enters their email address
-2. The app saves the current UI locale for that email (`setEmailLocaleForAddress`) so the OTP email is localized
+2. The app saves the current UI locale for that email (`api.users.emailLocales.setEmailLocaleForAddress`)
 3. `authClient.emailOtp.sendVerificationOtp({ email, type: "sign-in" })` is called
-4. Better Auth generates a 6-digit OTP and calls the `sendVerificationOTP` hook in `convex/auth.ts`
-5. That hook looks up the email locale and runs `sendOtpEmail`, which renders and sends the email through Resend
+4. Better Auth generates a 6-digit OTP and calls the `sendVerificationOTP` hook in `convex/auth/instance.ts`
+5. That hook looks up the email locale and runs `internal.emails.actions.sendOtpEmail`
 
 ### Step 2 — Verify OTP
 
 1. User enters the 6-digit code
 2. `authClient.signIn.emailOtp({ email, otp })` verifies the code and creates a session
-3. `syncLocaleOnSignIn` reconciles the UI locale cookie with the user’s saved preference in Convex
-4. User is redirected to `/app`
+3. `syncLocaleOnSignIn` reconciles the UI locale cookie with the user's saved preference
+4. Post-sign-in redirect (`lib/auth/post-sign-in-redirect-server.ts`):
+   - If invitation token stored → `acceptInvitation` → `/app`
+   - Else if pending invite for email → auto-accept → `/app`
+   - Else if no organisation → `/onboarding`
+   - Else → `/app`
 
-Resend and “change email” actions repeat step 1’s locale + send logic.
+### Invitation sign-in
+
+When signing in from an invitation:
+
+1. User opens `/accept-invitation/{token}` (token stored in `sessionStorage`)
+2. User continues to `/sign-in` and completes OTP with the invited email
+3. After OTP, `resolvePostSignInRedirect` accepts the invitation and sends the user to `/app`
 
 ## Protecting routes
 
-Routes under `/app` are protected by a server layout (`app/app/layout.tsx`):
+| Route | Guard |
+|-------|-------|
+| `/app/*` | Authenticated + has organisation → else `/sign-in` or `/onboarding` |
+| `/onboarding` | Authenticated + no organisation → else `/sign-in` or `/app` |
+| `/sign-in`, `/`, `/accept-invitation/*` | Public |
 
-```ts
-const authenticated = await isAuthenticated();
-if (!authenticated) {
-  redirect("/sign-in");
-}
-```
-
-`isAuthenticated` comes from `convexBetterAuthNextJs` in `lib/auth-server.ts`. There is no Next.js middleware; protection is layout-based.
-
-Public routes live under `app/(public)/` (home, sign-in) and are accessible without a session.
+`isAuthenticated` and `fetchAuthQuery` come from `convexBetterAuthNextJs` in `lib/auth-server.ts`. There is no Next.js middleware; protection is layout-based.
 
 ## Client setup
 
@@ -67,74 +76,10 @@ createAuthClient({
 });
 ```
 
-**Convex provider** (`components/ConvexClientProvider.tsx`):
-
-- Creates a `ConvexReactClient`
-- Wraps children in `ConvexBetterAuthProvider` with `authClient` and an optional `initialToken` from the server
-
-The root layout fetches `initialToken` via `getToken()` so the Convex client is authenticated on first render without a client-side round trip.
-
-## Server setup
-
-**Auth server helpers** (`lib/auth-server.ts`):
-
-Exports from `convexBetterAuthNextJs`:
-
-| Helper | Purpose |
-|--------|---------|
-| `handler` | Next.js route handler for `/api/auth/*` |
-| `isAuthenticated` | Check if the current request has a valid session |
-| `getToken` | Get the Convex auth token for SSR |
-| `fetchAuthQuery` / `fetchAuthMutation` / `fetchAuthAction` | Run Convex functions with the user’s session |
-| `preloadAuthQuery` | Preload authenticated queries in RSC |
-
-**API route** (`app/api/auth/[...all]/route.ts`) re-exports `GET` and `POST` from the handler.
-
-Required environment variables (see `.env.example`):
-
-| Variable | Where | Purpose |
-|----------|-------|---------|
-| `NEXT_PUBLIC_CONVEX_URL` | Next.js | Convex deployment URL |
-| `NEXT_PUBLIC_CONVEX_SITE_URL` | Next.js | Convex `.convex.site` URL for auth HTTP |
-| `NEXT_PUBLIC_SITE_URL` | Next.js | Public app URL for redirects |
-| `BETTER_AUTH_SECRET` | Convex | Secret for signing sessions (`openssl rand -base64 32`) |
-| `SITE_URL` | Convex | Base URL for Better Auth callbacks |
-| `RESEND_API_KEY` | Convex | API key for sending emails |
-| `RESEND_TEST_MODE` | Convex | `"false"` to deliver to real addresses |
-| `AUTH_FROM_EMAIL` | Convex | Sender address (verified domain in Resend) |
-
-## Convex backend
-
-**HTTP router** (`convex/http.ts`):
-
-```ts
-authComponent.registerRoutes(http, createAuth);
-```
-
-Registers Better Auth’s HTTP endpoints on the Convex deployment.
-
-**Auth instance** (`convex/auth.ts`):
-
-- `createAuth(ctx)` — builds the Better Auth instance with the Convex adapter and plugins:
-  - `convex({ authConfig })` — Convex integration
-  - `emailOTP({ sendVerificationOTP })` — custom OTP delivery via Resend
-- `getCurrentUser` — public query returning the authenticated user or `null` (uses `safeGetAuthUser`, so it never throws for unauthenticated callers)
-
-**Auth config** (`convex/auth.config.ts`):
-
-```ts
-{ providers: [getAuthConfigProvider()] }
-```
-
-This connects Better Auth’s JWT validation to Convex’s auth system.
-
-## Using auth in the app
-
 **Check current user (client):**
 
 ```ts
-const user = useQuery(api.auth.getCurrentUser);
-// user.email, etc.
+const user = useQuery(api.auth.queries.getCurrentUser);
 ```
 
 **Sign out:**
@@ -145,22 +90,35 @@ router.push("/");
 router.refresh();
 ```
 
+## Server setup
+
+**Auth server helpers** (`lib/auth-server.ts`):
+
+| Helper | Purpose |
+|--------|---------|
+| `handler` | Next.js route handler for `/api/auth/*` |
+| `isAuthenticated` | Check if the current request has a valid session |
+| `getToken` | Get the Convex auth token for SSR |
+| `fetchAuthQuery` / `fetchAuthMutation` / `fetchAuthAction` | Run Convex functions with the user's session |
+
 **Run authenticated server actions:**
 
 ```ts
-import { fetchAuthMutation } from "@/lib/auth-server";
-
-await fetchAuthMutation(api.userSettings.updateUserLocale, { locale: "en" });
+await fetchAuthMutation(api.users.settings.updateUserLocale, { locale: "en" });
 ```
 
-Convex mutations that require auth (e.g. `updateUserLocale`) use `authComponent.getAuthUser(ctx)`, which throws if unauthenticated.
+## Environment variables
 
-## Email delivery details
-
-- OTP codes expire after 5 minutes (`OTP_EXPIRES_IN_MINUTES` in `emails/OtpSignInEmail.tsx`)
-- Only `type: "sign-in"` OTPs trigger email delivery; other OTP types are ignored
-- Emails are sent through `@convex-dev/resend` in test mode by default (`RESEND_TEST_MODE !== "false"`), which restricts delivery to Resend test addresses
-- Failures in `sendOtpEmail` are logged and re-thrown
+| Variable | Where | Purpose |
+|----------|-------|---------|
+| `NEXT_PUBLIC_CONVEX_URL` | Next.js | Convex deployment URL |
+| `NEXT_PUBLIC_CONVEX_SITE_URL` | Next.js | Convex `.convex.site` URL for auth HTTP |
+| `NEXT_PUBLIC_SITE_URL` | Next.js | Public app URL for redirects |
+| `BETTER_AUTH_SECRET` | Convex | Secret for signing sessions |
+| `SITE_URL` | Convex | Base URL for Better Auth callbacks and invitation links |
+| `RESEND_API_KEY` | Convex | API key for sending emails |
+| `RESEND_TEST_MODE` | Convex | `"false"` to deliver to real addresses |
+| `AUTH_FROM_EMAIL` | Convex | Sender address (verified domain in Resend) |
 
 ## Key files
 
@@ -168,12 +126,15 @@ Convex mutations that require auth (e.g. `updateUserLocale`) use `authComponent.
 |------|------|
 | `lib/auth-client.ts` | Browser-side Better Auth client |
 | `lib/auth-server.ts` | Next.js ↔ Convex auth bridge |
+| `lib/auth/post-sign-in-redirect-server.ts` | Post-sign-in routing logic |
+| `lib/auth/invitation-token.ts` | Invitation token sessionStorage helpers |
 | `app/api/auth/[...all]/route.ts` | Auth HTTP API route |
 | `components/ConvexClientProvider.tsx` | Convex + auth React context |
-| `convex/auth.ts` | Better Auth config, OTP hook, `getCurrentUser` |
-| `convex/auth.config.ts` | Convex auth provider config |
+| `convex/auth/instance.ts` | Better Auth config and OTP hook |
+| `convex/auth/queries.ts` | `getCurrentUser` |
+| `convex/auth/deleteUserAccount.ts` | Internal user account deletion |
 | `convex/http.ts` | Registers auth HTTP routes |
-| `convex/emailActions.ts` | Sends OTP emails |
-| `app/(public)/sign-in/page.tsx` | Sign-in UI |
-| `app/app/layout.tsx` | Route protection |
-| `app/app/page.tsx` | Example authenticated page with sign-out |
+| `convex/emails/actions.ts` | Sends OTP and invitation emails |
+| `app/(auth)/sign-in/page.tsx` | Sign-in UI |
+| `app/onboarding/page.tsx` | Club setup for new users |
+| `app/app/layout.tsx` | Auth + organisation route protection |

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { OrganizationAvatar } from "@/components/organization-avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -26,7 +26,6 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
-import { getUserDisplayName, getUserInitials } from "@/lib/user-display";
 import { cn } from "@/lib/utils";
 
 type AppUserMenuProps = {
@@ -35,7 +34,7 @@ type AppUserMenuProps = {
 
 export function AppUserMenu({ variant = "sidebar" }: AppUserMenuProps) {
   const t = useTranslations("app.shell.user");
-  const user = useQuery(api.auth.getCurrentUser);
+  const membership = useQuery(api.organizations.queries.getCurrentMembership);
   const router = useRouter();
   const pathname = usePathname();
   const { isMobile } = useSidebar();
@@ -59,7 +58,7 @@ export function AppUserMenu({ variant = "sidebar" }: AppUserMenuProps) {
     return null;
   }
 
-  if (user === undefined) {
+  if (membership === undefined) {
     if (variant === "header") {
       return <Skeleton className="size-8 rounded-full" />;
     }
@@ -78,19 +77,19 @@ export function AppUserMenu({ variant = "sidebar" }: AppUserMenuProps) {
     );
   }
 
-  if (!user) {
+  if (!membership) {
     return null;
   }
 
-  const displayName = getUserDisplayName(user);
-  const initials = getUserInitials(user);
+  const { organization } = membership;
+  const organizationName = organization.name;
 
   const menuItems = (
     <>
       {variant === "header" ? (
         <>
           <DropdownMenuLabel className="truncate font-normal">
-            {displayName}
+            {organizationName}
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
         </>
@@ -125,12 +124,13 @@ export function AppUserMenu({ variant = "sidebar" }: AppUserMenuProps) {
             size="icon"
             className="size-9 shrink-0 rounded-full text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           >
-            <Avatar className="size-8">
-              <AvatarFallback className="bg-sidebar-primary text-xs text-sidebar-primary-foreground">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <span className="sr-only">{displayName}</span>
+            <OrganizationAvatar
+              name={organizationName}
+              logoImageUrl={organization.logoImageUrl}
+              className="size-8"
+              fallbackClassName="text-xs"
+            />
+            <span className="sr-only">{organizationName}</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -154,13 +154,13 @@ export function AppUserMenu({ variant = "sidebar" }: AppUserMenuProps) {
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <Avatar className="size-8 rounded-lg">
-                <AvatarFallback className="rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
+              <OrganizationAvatar
+                name={organizationName}
+                logoImageUrl={organization.logoImageUrl}
+                className="size-8 rounded-lg"
+              />
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{displayName}</span>
+                <span className="truncate font-medium">{organizationName}</span>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
             </SidebarMenuButton>

@@ -6,7 +6,9 @@ import { api } from "@/convex/_generated/api";
 import type { Locale } from "@/i18n/config";
 
 export function useSetEmailLocaleForAddress() {
-  const setEmailLocale = useMutation(api.userSettings.setEmailLocaleForAddress);
+  const setEmailLocale = useMutation(
+    api.users.emailLocales.setEmailLocaleForAddress,
+  );
   const locale = useLocale() as Locale;
 
   return async (email: string) => {

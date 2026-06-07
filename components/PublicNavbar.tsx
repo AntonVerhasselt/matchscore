@@ -28,7 +28,7 @@ type PublicNavbarProps = {
 
 function PublicNavbarDashboardLink() {
   const t = useTranslations("common.nav");
-  const user = useQuery(api.auth.getCurrentUser);
+  const user = useQuery(api.auth.queries.getCurrentUser);
 
   if (user === undefined) {
     return (

@@ -59,7 +59,7 @@ export default async function Home() {
         className="relative -mt-14 scroll-mt-16 bg-background sm:-mt-24 sm:scroll-mt-20"
       >
         <div
-          className="h-14 border-t-2 border-sidebar-primary/40 bg-card shadow-[0_-24px_60px_-28px_rgba(0,0,0,0.3)] sm:h-28 dark:shadow-[0_-24px_60px_-28px_rgba(0,0,0,0.65)]"
+          className="h-14 border-t-2 border-sidebar-primary/40 bg-background shadow-[0_-24px_60px_-28px_rgba(0,0,0,0.3)] sm:h-28 dark:shadow-[0_-24px_60px_-28px_rgba(0,0,0,0.65)]"
           aria-hidden
         />
         <div className="mx-auto max-w-6xl px-4 pb-12 sm:px-8 sm:pb-20 lg:px-10 lg:pb-24">

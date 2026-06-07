@@ -17,6 +17,18 @@ Better Auth sends OTP  ──►  getLocaleForEmail  ──►  locale (default:
 sendOtpEmail  ──►  loadEmailMessages(locale)  ──►  OtpSignInEmail  ──►  Resend
 ```
 
+### Organisation invitation emails
+
+```text
+Member invites email (Settings)
+        │
+        ▼
+inviteMember  ──►  inviter's userSettings.locale
+        │
+        ▼
+sendOrganizationInvitationEmail  ──►  OrganizationInvitationEmail  ──►  Resend
+```
+
 ## Translation files
 
 Email copy lives under the `email` namespace in each locale file:
@@ -28,7 +40,15 @@ Email copy lives under the `email` namespace in each locale file:
     "body": "Use the code below to sign in to your account.",
     "expiresIn": "This code expires in {minutes} minutes.",
     "footer": "If you didn't request this code, you can safely ignore this email.",
-    "subject": "{otp} is your Matchscore sign-in code"
+    "subject": "{otp} is your Matchscore sign-in code",
+    "orgInvitation": {
+      "preview": "{inviterName} invited you to join {organizationName}",
+      "body": "...",
+      "cta": "Accept invitation",
+      "expiresIn": "This invitation expires in {days} days.",
+      "footer": "...",
+      "subject": "Join {organizationName} on Matchscore"
+    }
   }
 }
 ```
@@ -48,9 +68,13 @@ await setEmailLocale(email);
 await authClient.emailOtp.sendVerificationOtp({ email, type: "sign-in" });
 ```
 
-2. **When Better Auth sends the email**, `convex/auth.ts` looks up `pendingEmailLocales` by email. If no row exists, it uses `nl`.
+2. **When Better Auth sends the email**, `convex/auth/instance.ts` looks up `pendingEmailLocales` via `internal.users.emailLocales.getLocaleForEmail`. If no row exists, it uses `nl`.
 
-3. **`sendOtpEmail`** loads the messages and renders the template.
+3. **`internal.emails.actions.sendOtpEmail`** loads the messages and renders the template.
+
+### Invitation email locale
+
+Organisation invitation emails use the **inviter's** saved locale from `userSettings` (set in `organizations/mutations.ts` → `inviteMember`). The invitee's UI locale before sign-in does not affect the invitation email.
 
 The same `setEmailLocale` call runs on resend, so the email matches the language shown in the UI at that moment.
 

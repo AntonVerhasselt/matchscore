@@ -1,0 +1,34 @@
+---
+description: Show toast feedback after completed user actions in the UI
+globs: components/**/*.tsx,app/**/*.tsx
+alwaysApply: false
+---
+
+# User action feedback
+
+After a user-initiated action completes (save, delete, invite, settings change, etc.), always give clear feedback with Sonner toasts.
+
+## Standard
+
+- Use `showSuccessToast` and `showErrorToast` from `@/lib/user-feedback` (or `withUserFeedback` for async handlers).
+- Do **not** use `window.alert`, `window.confirm` for outcomes, or inline `StatusAlert` for action results. Confirmation dialogs (e.g. delete) stay as modals; their **result** is shown via toast.
+- Success toasts: green styling via Sonner `success` type.
+- Error toasts: red/destructive styling via Sonner `error` type.
+- Copy must be translated with `next-intl` — add `*Success` and `*Failed` keys alongside existing error messages.
+- Show a success toast only when the action fully succeeds. Show an error toast on failure; do not silently fail.
+- Skip success toasts when the user is immediately redirected away (e.g. self-delete + sign-out).
+
+## Example
+
+```tsx
+import { showErrorToast, showSuccessToast } from "@/lib/user-feedback";
+
+try {
+  await saveSettings({ locale });
+  showSuccessToast(t("localeChangeSuccess"));
+} catch {
+  showErrorToast(t("localeChangeFailed"));
+}
+```
+
+`Toaster` is mounted in `app/layout.tsx`. Do not add additional toaster instances.

@@ -3,9 +3,13 @@ import { renderEmailTemplate } from "../lib/emails/render";
 import { loadEmailMessages } from "../lib/i18n/load-email-messages";
 import { defaultLocale, isValidLocale } from "../i18n/config";
 import type { EmailTemplateDefinition } from "../lib/emails/types";
-import { otpSignInEmail } from "./OtpSignInEmail";
+import {
+  organizationInvitationEmail,
+  type OrganizationInvitationEmailProps,
+} from "./OrganizationInvitationEmail";
+import { otpSignInEmail, type OtpSignInEmailProps } from "./OtpSignInEmail";
 
-const templateList = [otpSignInEmail] as const;
+const templateList = [otpSignInEmail, organizationInvitationEmail] as const;
 
 export const emailTemplates = Object.fromEntries(
   templateList.map((template) => [template.slug, template]),
@@ -17,9 +21,8 @@ export const emailTemplates = Object.fromEntries(
 export type EmailTemplateSlug = keyof typeof emailTemplates;
 
 export type EmailTemplatePropsMap = {
-  [K in EmailTemplateSlug]: Parameters<
-    (typeof emailTemplates)[K]["subject"]
-  >[0];
+  "otp-sign-in": OtpSignInEmailProps;
+  "org-invitation": OrganizationInvitationEmailProps;
 };
 
 function renderForTemplate<TProps extends Record<string, unknown>>(
@@ -40,29 +43,53 @@ export function getEmailTemplate(slug: string) {
   return emailTemplates[slug as EmailTemplateSlug] ?? null;
 }
 
-export async function renderEmail<Slug extends EmailTemplateSlug>(
-  slug: Slug,
-  props: EmailTemplatePropsMap[Slug],
+export async function renderEmail(
+  slug: "otp-sign-in",
+  props: OtpSignInEmailProps,
+): Promise<{ html: string; subject: string }>;
+export async function renderEmail(
+  slug: "org-invitation",
+  props: OrganizationInvitationEmailProps,
+): Promise<{ html: string; subject: string }>;
+export async function renderEmail(
+  slug: EmailTemplateSlug,
+  props: OtpSignInEmailProps | OrganizationInvitationEmailProps,
 ) {
-  const template = emailTemplates[slug];
-  return renderForTemplate(template, props);
+  if (slug === "otp-sign-in") {
+    const otpProps = props as OtpSignInEmailProps;
+    return renderEmailTemplate(
+      otpSignInEmail.Component(otpProps),
+      otpSignInEmail.subject(otpProps),
+    );
+  }
+
+  const invitationProps = props as OrganizationInvitationEmailProps;
+  return renderEmailTemplate(
+    organizationInvitationEmail.Component(invitationProps),
+    organizationInvitationEmail.subject(invitationProps),
+  );
 }
 
-export async function renderEmailPreview<Slug extends EmailTemplateSlug>(
-  slug: Slug,
+export async function renderEmailPreview(
+  slug: EmailTemplateSlug,
   locale: string = defaultLocale,
 ) {
-  const template = emailTemplates[slug];
   const resolvedLocale = isValidLocale(locale) ? locale : defaultLocale;
+  const messages = loadEmailMessages(resolvedLocale);
 
-  const props =
-    slug === "otp-sign-in"
-      ? {
-          otp: "123456",
-          expiresInMinutes: OTP_EXPIRES_IN_MINUTES,
-          messages: loadEmailMessages(resolvedLocale),
-        }
-      : template.previewProps;
+  if (slug === "otp-sign-in") {
+    return renderForTemplate(otpSignInEmail, {
+      otp: "123456",
+      expiresInMinutes: OTP_EXPIRES_IN_MINUTES,
+      messages,
+    });
+  }
 
-  return renderForTemplate(template, props as EmailTemplatePropsMap[Slug]);
+  return renderForTemplate(organizationInvitationEmail, {
+    inviterName: "Alex",
+    organizationName: "FC Example",
+    acceptUrl: "https://matchscore.be/accept-invitation/example-token",
+    expiresInDays: 7,
+    messages,
+  });
 }

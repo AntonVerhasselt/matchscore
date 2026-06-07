@@ -264,13 +264,66 @@
     "title": "Einstellungen",
     "language": "Sprache",
     "languageDescription": "Wähle die Sprache für die Oberfläche.",
-    "localeChangeFailed": "Sprache konnte nicht geändert werden. Bitte versuche es erneut."
+    "localeChangeSuccess": "Sprache aktualisiert.",
+    "localeChangeFailed": "Sprache konnte nicht geändert werden. Bitte versuche es erneut.",
+    "members": {
+      "title": "Clubmitglieder",
+      "description": "Lade Kolleginnen und Kollegen ein und verwalte den Zugang zu deinem Club.",
+      "inviteEmail": "E-Mail-Adresse",
+      "invitePlaceholder": "kollege@beispiel.de",
+      "inviteButton": "Einladung senden",
+      "inviting": "Senden...",
+      "membersHeading": "Mitglieder",
+      "pendingHeading": "Ausstehende Einladungen",
+      "noPending": "Keine ausstehenden Einladungen.",
+      "deleteButton": "Löschen",
+      "cancelInvite": "Abbrechen",
+      "confirmDeleteTitle": "Mitglied löschen?",
+      "confirmDeleteSelfTitle": "Dein Konto löschen?",
+      "confirmDeleteDescription": "{member} wird dauerhaft aus deinem Club entfernt. Die Person kann sich danach nicht mehr anmelden.",
+      "confirmDeleteSelfDescription": "Dein Konto wird dauerhaft gelöscht. Du kannst dich danach nicht mehr anmelden.",
+      "confirmDeleteCancel": "Abbrechen",
+      "confirmDeleteConfirm": "Dauerhaft löschen",
+      "confirmDeleteDeleting": "Löschen...",
+      "inviteSuccess": "Einladung an {email} gesendet.",
+      "inviteFailed": "Einladung konnte nicht gesendet werden. Bitte versuche es erneut.",
+      "deleteSuccess": "{member} wurde aus deinem Club entfernt.",
+      "deleteFailed": "Mitglied konnte nicht gelöscht werden. Bitte versuche es erneut.",
+      "cancelInviteSuccess": "Einladung abgebrochen.",
+      "cancelFailed": "Einladung konnte nicht abgebrochen werden. Bitte versuche es erneut.",
+      "joinedOn": "Beigetreten am {date}"
+    }
+  },
+  "acceptInvitation": {
+    "title": "{organizationName} beitreten",
+    "description": "Melde dich mit {email} an, um diese Einladung anzunehmen.",
+    "expired": "Diese Einladung ist abgelaufen. Bitte deinen Club um eine neue Einladung.",
+    "invalid": "Dieser Einladungslink ist ungültig.",
+    "alreadyAccepted": "Diese Einladung wurde bereits angenommen.",
+    "continueToSignIn": "Weiter zur Anmeldung"
   },
   "email": {
     "preview": "Dein Matchscore-Anmeldecode ist {otp}",
     "body": "Verwende den Code unten, um dich bei deinem Konto anzumelden.",
     "expiresIn": "Dieser Code läuft in {minutes} Minuten ab.",
     "footer": "Wenn du diesen Code nicht angefordert hast, kannst du diese E-Mail ignorieren.",
-    "subject": "{otp} ist dein Matchscore-Anmeldecode"
+    "subject": "{otp} ist dein Matchscore-Anmeldecode",
+    "orgInvitation": {
+      "preview": "{inviterName} hat dich eingeladen, {organizationName} beizutreten",
+      "body": "{inviterName} hat dich eingeladen, {organizationName} auf Matchscore beizutreten.",
+      "cta": "Einladung annehmen",
+      "expiresIn": "Diese Einladung läuft in {days} Tagen ab.",
+      "footer": "Wenn du diese Einladung nicht erwartet hast, kannst du diese E-Mail ignorieren.",
+      "subject": "Tritt {organizationName} auf Matchscore bei"
+    }
+  },
+  "onboarding": {
+    "title": "Richte deinen Club ein",
+    "description": "Wähle einen Namen für deinen Club, um zu starten.",
+    "clubName": "Clubname",
+    "clubNamePlaceholder": "z. B. FC Beispiel",
+    "submit": "Weiter",
+    "pleaseWait": "Bitte warten...",
+    "createFailed": "Dein Club konnte nicht erstellt werden. Bitte versuche es erneut."
   }
 }

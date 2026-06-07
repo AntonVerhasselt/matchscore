@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/app-shell";
-import { isAuthenticated } from "@/lib/auth-server";
+import { api } from "@/convex/_generated/api";
+import { fetchAuthQuery, isAuthenticated } from "@/lib/auth-server";
 import { redirect } from "next/navigation";
 
 export default async function AppLayout({
@@ -10,6 +11,14 @@ export default async function AppLayout({
   const authenticated = await isAuthenticated();
   if (!authenticated) {
     redirect("/sign-in");
+  }
+
+  const hasOrganization = await fetchAuthQuery(
+    api.organizations.queries.hasOrganization,
+    {},
+  );
+  if (!hasOrganization) {
+    redirect("/onboarding");
   }
 
   return <AppShell>{children}</AppShell>;

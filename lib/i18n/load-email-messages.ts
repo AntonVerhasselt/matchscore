@@ -4,12 +4,25 @@ import en from "../../messages/en.json";
 import fr from "../../messages/fr.json";
 import nl from "../../messages/nl.json";
 
-export type EmailMessages = {
+export type OrgInvitationEmailMessages = {
+  preview: string;
+  body: string;
+  cta: string;
+  expiresIn: string;
+  footer: string;
+  subject: string;
+};
+
+export type OtpEmailMessages = {
   preview: string;
   body: string;
   expiresIn: string;
   footer: string;
   subject: string;
+};
+
+export type EmailMessages = OtpEmailMessages & {
+  orgInvitation: OrgInvitationEmailMessages;
 };
 
 const emailMessagesByLocale: Record<Locale, EmailMessages> = {
