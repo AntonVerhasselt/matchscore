@@ -23,7 +23,7 @@ Configuration lives in `i18n/config.ts`:
 
 All UI strings are stored as JSON in the `messages/` directory:
 
-```
+```text
 messages/
   nl.json
   fr.json

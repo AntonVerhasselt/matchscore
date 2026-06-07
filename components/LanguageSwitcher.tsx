@@ -48,51 +48,64 @@ export default function LanguageSwitcher({
 
     startTransition(() => {
       void (async () => {
-        const result = await setLocale(locale);
-        if (!result.ok) {
-          setError(tSettings("localeChangeFailed"));
-          return;
+        try {
+          const result = await setLocale(locale);
+          if (!result.ok) {
+            setError(tSettings("localeChangeFailed"));
+            return;
+          }
+          router.refresh();
+        } catch (caught) {
+          const message =
+            caught instanceof Error ? caught.message : tSettings("localeChangeFailed");
+          setError(message);
         }
-        router.refresh();
       })();
     });
   };
 
   if (variant === "compact") {
     return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={isPending}
-            aria-label={tCommon("language")}
-            className="gap-1 px-2 font-medium uppercase hover:bg-transparent"
-          >
-            {currentLocale}
-            <ChevronDownIcon
-              className="size-3.5 text-muted-foreground"
-              aria-hidden="true"
-            />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-16">
-          <DropdownMenuRadioGroup
-            value={currentLocale}
-            onValueChange={(value) => handleChange(value as Locale)}
-          >
-            {locales.map((locale) => (
-              <DropdownMenuRadioItem
-                key={locale}
-                value={locale}
-                className="uppercase"
-              >
-                {locale}
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <div className="flex flex-col items-end gap-2">
+        {error && (
+          <div className="max-w-48 text-xs">
+            <StatusAlert variant="error">{error}</StatusAlert>
+          </div>
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              disabled={isPending}
+              aria-label={tCommon("language")}
+              className="gap-1 px-2 font-medium uppercase hover:bg-transparent"
+            >
+              {currentLocale}
+              <ChevronDownIcon
+                className="size-3.5 text-muted-foreground"
+                aria-hidden="true"
+              />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-16">
+            <DropdownMenuRadioGroup
+              value={currentLocale}
+              onValueChange={(value) => handleChange(value as Locale)}
+            >
+              {locales.map((locale) => (
+                <DropdownMenuRadioItem
+                  key={locale}
+                  value={locale}
+                  className="uppercase"
+                >
+                  {locale}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     );
   }
 

@@ -4,7 +4,7 @@ Emails are translated separately from the web UI. They do not use next-intl; the
 
 ## Flow
 
-```
+```text
 Sign-in page (current UI locale)
         │
         ▼

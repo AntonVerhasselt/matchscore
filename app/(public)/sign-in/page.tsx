@@ -105,7 +105,9 @@ export default function SignInPage() {
         return;
       }
 
-      await syncLocaleOnSignIn(currentLocale);
+      void syncLocaleOnSignIn(currentLocale).catch((error) => {
+        console.error("Failed to sync locale after sign-in:", error);
+      });
       router.push("/app");
       router.refresh();
     } catch {
@@ -193,7 +195,7 @@ export default function SignInPage() {
                 <Button
                   type="button"
                   variant="link"
-                  disabled={resending}
+                  disabled={resending || loading}
                   onClick={() => void handleResendOtp()}
                 >
                   {resending ? t("sending") : t("resendCode")}

@@ -7,11 +7,8 @@ import AppHeader, {
   AppHeaderAction,
   AppHeaderLink,
 } from "@/components/AppHeader";
-import StatusAlert from "@/components/StatusAlert";
-import { Button } from "@/components/ui/button";
 import {
   Card,
-  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -19,12 +16,19 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function AppPage() {
   const t = useTranslations("app");
   const tNav = useTranslations("common.nav");
   const user = useQuery(api.auth.getCurrentUser);
   const router = useRouter();
+
+  useEffect(() => {
+    if (user === null) {
+      router.replace("/sign-in");
+    }
+  }, [user, router]);
 
   const handleSignOut = async () => {
     await authClient.signOut();
@@ -57,12 +61,10 @@ export default function AppPage() {
               </CardDescription>
             </CardHeader>
           ) : (
-            <CardContent className="space-y-4">
-              <StatusAlert variant="error">{t("accountLoadFailed")}</StatusAlert>
-              <Button variant="outline" onClick={() => router.refresh()}>
-                {t("retry")}
-              </Button>
-            </CardContent>
+            <CardHeader className="space-y-3">
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-4 w-56" />
+            </CardHeader>
           )}
         </Card>
       </div>

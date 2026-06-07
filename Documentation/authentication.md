@@ -4,7 +4,7 @@ Matchscore uses [Better Auth](https://www.better-auth.com/) integrated with Conv
 
 ## Architecture
 
-```
+```text
 Browser (Next.js)
   │
   ├─ authClient (lib/auth-client.ts)          ← client-side auth calls

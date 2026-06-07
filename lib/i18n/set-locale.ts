@@ -18,18 +18,22 @@ export async function setLocale(locale: string): Promise<{ ok: boolean }> {
     return { ok: false };
   }
 
+  if (await isAuthenticated()) {
+    try {
+      await fetchAuthMutation(api.userSettings.updateUserLocale, {
+        locale: locale as Locale,
+      });
+    } catch {
+      return { ok: false };
+    }
+  }
+
   const cookieStore = await cookies();
   cookieStore.set(LOCALE_COOKIE_NAME, locale, {
     maxAge: LOCALE_COOKIE_MAX_AGE,
     path: "/",
     sameSite: "lax",
   });
-
-  if (await isAuthenticated()) {
-    await fetchAuthMutation(api.userSettings.updateUserLocale, {
-      locale: locale as Locale,
-    });
-  }
 
   return { ok: true };
 }
