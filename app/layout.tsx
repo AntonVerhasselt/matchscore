@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import "./globals.css";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
+import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/theme-provider";
 import { getToken } from "@/lib/auth-server";
 
@@ -67,6 +68,7 @@ export default async function RootLayout({
           <NextIntlClientProvider locale={locale} messages={messages}>
             <ConvexClientProvider initialToken={token}>
               {children}
+              <Toaster position="top-right" closeButton />
             </ConvexClientProvider>
           </NextIntlClientProvider>
         </ThemeProvider>

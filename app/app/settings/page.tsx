@@ -1,6 +1,7 @@
 "use client";
 
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { OrganizationMembers } from "@/components/settings/OrganizationMembers";
 import {
   Card,
   CardContent,
@@ -19,18 +20,22 @@ export default function SettingsPage() {
         {t("title")}
       </h1>
 
-      <Card>
-        <CardHeader>
-          <CardTitle id="language-settings-title">{t("language")}</CardTitle>
-          <CardDescription>{t("languageDescription")}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <LanguageSwitcher
-            variant="full"
-            triggerAriaLabelledBy="language-settings-title"
-          />
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <OrganizationMembers />
+
+        <Card>
+          <CardHeader>
+            <CardTitle id="language-settings-title">{t("language")}</CardTitle>
+            <CardDescription>{t("languageDescription")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <LanguageSwitcher
+              variant="full"
+              triggerAriaLabelledBy="language-settings-title"
+            />
+          </CardContent>
+        </Card>
+      </div>
     </>
   );
 }

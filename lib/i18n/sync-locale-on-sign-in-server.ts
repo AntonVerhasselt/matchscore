@@ -15,14 +15,14 @@ export async function syncLocaleOnSignIn(
     return;
   }
 
-  const dbLocale = await fetchAuthQuery(api.userSettings.getUserLocale, {});
+  const dbLocale = await fetchAuthQuery(api.users.settings.getUserLocale, {});
 
   if (dbLocale) {
     await setLocale(dbLocale);
     return;
   }
 
-  await fetchAuthMutation(api.userSettings.updateUserLocale, {
+  await fetchAuthMutation(api.users.settings.updateUserLocale, {
     locale: currentLocale as Locale,
   });
 }

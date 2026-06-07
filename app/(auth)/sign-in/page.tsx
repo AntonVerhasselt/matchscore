@@ -2,8 +2,12 @@
 
 import StatusAlert from "@/components/StatusAlert";
 import { authClient } from "@/lib/auth-client";
+import {
+  consumeInvitationToken,
+  storeInvitationToken,
+} from "@/lib/auth/invitation-token";
+import { completeSignInAfterOtp } from "@/lib/auth/complete-sign-in-server";
 import { useSetEmailLocaleForAddress } from "@/lib/i18n/set-email-locale";
-import { syncLocaleOnSignIn } from "@/lib/i18n/sync-locale-on-sign-in-server";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,15 +21,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { unstable_rethrow, useSearchParams } from "next/navigation";
+import { FormEvent, Suspense, useEffect, useState } from "react";
 
 type Step = "email" | "otp";
 
-export default function SignInPage() {
+function SignInPageContent() {
   const t = useTranslations("signIn");
-  const router = useRouter();
+  const searchParams = useSearchParams();
   const currentLocale = useLocale();
+
+  useEffect(() => {
+    const invitationFromUrl = searchParams.get("invitation");
+    if (invitationFromUrl) {
+      storeInvitationToken(invitationFromUrl);
+    }
+  }, [searchParams]);
   const setEmailLocale = useSetEmailLocaleForAddress();
   const [step, setStep] = useState<Step>("email");
   const [email, setEmail] = useState("");
@@ -105,13 +116,13 @@ export default function SignInPage() {
         return;
       }
 
-      void syncLocaleOnSignIn(currentLocale).catch((error) => {
-        console.error("Failed to sync locale after sign-in:", error);
-      });
-      router.push("/app");
-      router.refresh();
-    } catch {
-      setError(t("somethingWrong"));
+      const invitationToken = consumeInvitationToken() ?? undefined;
+      await completeSignInAfterOtp(currentLocale, invitationToken);
+    } catch (error) {
+      unstable_rethrow(error);
+      const message =
+        error instanceof Error ? error.message : t("somethingWrong");
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -219,5 +230,21 @@ export default function SignInPage() {
         </CardFooter>
       </Card>
     </main>
+  );
+}
+
+export default function SignInPage() {
+  const t = useTranslations("signIn");
+
+  return (
+    <Suspense
+      fallback={
+        <main className="flex flex-1 flex-col items-center justify-center p-6 sm:p-10">
+          <p className="text-muted-foreground">{t("pleaseWait")}</p>
+        </main>
+      }
+    >
+      <SignInPageContent />
+    </Suspense>
   );
 }

@@ -1,12 +1,11 @@
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
 import { requireActionCtx, requireRunMutationCtx } from "@convex-dev/better-auth/utils";
 import { convex } from "@convex-dev/better-auth/plugins";
-import { components, internal } from "./_generated/api";
-import { DataModel } from "./_generated/dataModel";
-import { query } from "./_generated/server";
+import { components, internal } from "../_generated/api";
+import { DataModel } from "../_generated/dataModel";
 import { betterAuth } from "better-auth/minimal";
 import { emailOTP } from "better-auth/plugins";
-import authConfig from "./auth.config";
+import authConfig from "../auth.config";
 
 const siteUrl = process.env.SITE_URL!;
 
@@ -25,12 +24,12 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
           }
 
           const locale = await requireRunMutationCtx(ctx).runQuery(
-            internal.userSettings.getLocaleForEmail,
+            internal.users.emailLocales.getLocaleForEmail,
             { email },
           );
 
           await requireActionCtx(ctx).runAction(
-            internal.emailActions.sendOtpEmail,
+            internal.emails.actions.sendOtpEmail,
             {
               to: email,
               otp,
@@ -42,10 +41,3 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     ],
   });
 };
-
-export const getCurrentUser = query({
-  args: {},
-  handler: async (ctx) => {
-    return (await authComponent.safeGetAuthUser(ctx)) ?? null;
-  },
-});

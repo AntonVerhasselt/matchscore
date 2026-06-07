@@ -17,6 +17,7 @@
       "description": "Matchscore, mogelijk gemaakt door Convex en Next.js"
     },
     "loading": "Laden...",
+    "close": "Sluiten",
     "language": "Taal"
   },
   "landing": {
@@ -264,13 +265,67 @@
     "title": "Instellingen",
     "language": "Taal",
     "languageDescription": "Kies de taal voor de interface.",
-    "localeChangeFailed": "Taal wijzigen mislukt. Probeer het opnieuw."
+    "localeChangeSuccess": "Taal bijgewerkt.",
+    "localeChangeFailed": "Taal wijzigen mislukt. Probeer het opnieuw.",
+    "members": {
+      "title": "Clubleden",
+      "description": "Nodig collega's uit en beheer wie toegang heeft tot je club.",
+      "inviteEmail": "E-mailadres",
+      "invitePlaceholder": "collega@voorbeeld.be",
+      "inviteButton": "Uitnodiging versturen",
+      "inviting": "Versturen...",
+      "membersHeading": "Leden",
+      "pendingHeading": "Openstaande uitnodigingen",
+      "noPending": "Geen openstaande uitnodigingen.",
+      "deleteButton": "Verwijderen",
+      "cancelInvite": "Annuleren",
+      "confirmDeleteTitle": "Lid verwijderen?",
+      "confirmDeleteSelfTitle": "Je account verwijderen?",
+      "confirmDeleteDescription": "{member} wordt permanent uit je club verwijderd. Ze kunnen daarna niet meer inloggen.",
+      "confirmDeleteSelfDescription": "Je account wordt permanent verwijderd. Je kunt daarna niet meer inloggen.",
+      "confirmDeleteCancel": "Annuleren",
+      "confirmDeleteConfirm": "Permanent verwijderen",
+      "confirmDeleteDeleting": "Verwijderen...",
+      "inviteSuccess": "Uitnodiging verstuurd naar {email}.",
+      "inviteFailed": "Uitnodiging versturen mislukt. Probeer het opnieuw.",
+      "deleteSuccess": "{member} is uit je club verwijderd.",
+      "deleteFailed": "Lid verwijderen mislukt. Probeer het opnieuw.",
+      "signOutFailed": "Lid verwijderd, maar afmelden mislukt. Meld je handmatig af.",
+      "cancelInviteSuccess": "Uitnodiging geannuleerd.",
+      "cancelFailed": "Uitnodiging annuleren mislukt. Probeer het opnieuw.",
+      "joinedOn": "Lid sinds {date}"
+    }
+  },
+  "acceptInvitation": {
+    "title": "Word lid van {organizationName}",
+    "description": "Log in met {email} om deze uitnodiging te accepteren.",
+    "expired": "Deze uitnodiging is verlopen. Vraag je club om een nieuwe te sturen.",
+    "invalid": "Deze uitnodigingslink is niet geldig.",
+    "alreadyAccepted": "Deze uitnodiging is al geaccepteerd.",
+    "continueToSignIn": "Doorgaan naar inloggen"
   },
   "email": {
     "preview": "Je Matchscore-inlogcode is {otp}",
     "body": "Gebruik de onderstaande code om in te loggen op je account.",
     "expiresIn": "Deze code verloopt over {minutes} minuten.",
     "footer": "Als je deze code niet hebt aangevraagd, kun je deze e-mail negeren.",
-    "subject": "{otp} is je Matchscore-inlogcode"
+    "subject": "{otp} is je Matchscore-inlogcode",
+    "orgInvitation": {
+      "preview": "{inviterName} nodigde je uit om lid te worden van {organizationName}",
+      "body": "{inviterName} nodigde je uit om lid te worden van {organizationName} op Matchscore.",
+      "cta": "Uitnodiging accepteren",
+      "expiresIn": "Deze uitnodiging verloopt over {days} dagen.",
+      "footer": "Als je deze uitnodiging niet verwachtte, kun je deze e-mail negeren.",
+      "subject": "Word lid van {organizationName} op Matchscore"
+    }
+  },
+  "onboarding": {
+    "title": "Stel je club in",
+    "description": "Kies een naam voor je club om te starten.",
+    "clubName": "Clubnaam",
+    "clubNamePlaceholder": "bv. FC Voorbeeld",
+    "submit": "Doorgaan",
+    "pleaseWait": "Even geduld...",
+    "createFailed": "Je club kon niet worden aangemaakt. Probeer het opnieuw."
   }
 }

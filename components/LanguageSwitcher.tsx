@@ -2,7 +2,7 @@
 
 import { localeLabels, locales, type Locale } from "@/i18n/config";
 import { setLocale } from "@/lib/i18n/set-locale";
-import StatusAlert from "@/components/StatusAlert";
+import { showErrorToast, showSuccessToast } from "@/lib/user-feedback";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -22,7 +22,7 @@ import { cn } from "@/lib/utils";
 import { ChevronDownIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 
 type LanguageSwitcherProps = {
   variant: "compact" | "full";
@@ -38,7 +38,6 @@ export default function LanguageSwitcher({
   const currentLocale = useLocale() as Locale;
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
   const tCommon = useTranslations("common");
   const tSettings = useTranslations("settings");
 
@@ -47,21 +46,20 @@ export default function LanguageSwitcher({
       return;
     }
 
-    setError(null);
-
     startTransition(() => {
       void (async () => {
         try {
           const result = await setLocale(locale);
           if (!result.ok) {
-            setError(tSettings("localeChangeFailed"));
+            showErrorToast(tSettings("localeChangeFailed"));
             return;
           }
+          showSuccessToast(tSettings("localeChangeSuccess"));
           router.refresh();
         } catch (caught) {
           const message =
             caught instanceof Error ? caught.message : tSettings("localeChangeFailed");
-          setError(message);
+          showErrorToast(message);
         }
       })();
     });
@@ -70,11 +68,6 @@ export default function LanguageSwitcher({
   if (variant === "compact") {
     return (
       <div className="flex flex-col items-end gap-2">
-        {error && (
-          <div className="max-w-48 text-xs">
-            <StatusAlert variant="error">{error}</StatusAlert>
-          </div>
-        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -124,7 +117,6 @@ export default function LanguageSwitcher({
 
   return (
     <div className="space-y-3">
-      {error && <StatusAlert variant="error">{error}</StatusAlert>}
       <Select
         value={currentLocale}
         onValueChange={(value) => handleChange(value as Locale)}

@@ -17,6 +17,7 @@
       "description": "Match scoring app powered by Convex and Next.js"
     },
     "loading": "Loading...",
+    "close": "Close",
     "language": "Language"
   },
   "landing": {
@@ -264,13 +265,67 @@
     "title": "Settings",
     "language": "Language",
     "languageDescription": "Choose the language for the interface.",
-    "localeChangeFailed": "Couldn't change language. Please try again."
+    "localeChangeSuccess": "Language updated.",
+    "localeChangeFailed": "Couldn't change language. Please try again.",
+    "members": {
+      "title": "Club members",
+      "description": "Invite colleagues and manage who has access to your club.",
+      "inviteEmail": "Email address",
+      "invitePlaceholder": "colleague@example.com",
+      "inviteButton": "Send invitation",
+      "inviting": "Sending...",
+      "membersHeading": "Members",
+      "pendingHeading": "Pending invitations",
+      "noPending": "No pending invitations.",
+      "deleteButton": "Delete",
+      "cancelInvite": "Cancel",
+      "confirmDeleteTitle": "Delete member?",
+      "confirmDeleteSelfTitle": "Delete your account?",
+      "confirmDeleteDescription": "{member} will be permanently removed from your club. They will no longer be able to sign in.",
+      "confirmDeleteSelfDescription": "Your account will be permanently deleted. You will no longer be able to sign in.",
+      "confirmDeleteCancel": "Cancel",
+      "confirmDeleteConfirm": "Delete permanently",
+      "confirmDeleteDeleting": "Deleting...",
+      "inviteSuccess": "Invitation sent to {email}.",
+      "inviteFailed": "Could not send invitation. Please try again.",
+      "deleteSuccess": "{member} was removed from your club.",
+      "deleteFailed": "Could not delete member. Please try again.",
+      "signOutFailed": "Member was removed but sign-out failed. Please sign out manually.",
+      "cancelInviteSuccess": "Invitation cancelled.",
+      "cancelFailed": "Could not cancel invitation. Please try again.",
+      "joinedOn": "Joined {date}"
+    }
+  },
+  "acceptInvitation": {
+    "title": "Join {organizationName}",
+    "description": "Sign in with {email} to accept this invitation.",
+    "expired": "This invitation has expired. Ask your club to send a new one.",
+    "invalid": "This invitation link is not valid.",
+    "alreadyAccepted": "This invitation has already been accepted.",
+    "continueToSignIn": "Continue to sign in"
   },
   "email": {
     "preview": "Your Matchscore sign-in code is {otp}",
     "body": "Use the code below to sign in to your account.",
     "expiresIn": "This code expires in {minutes} minutes.",
     "footer": "If you didn't request this code, you can safely ignore this email.",
-    "subject": "{otp} is your Matchscore sign-in code"
+    "subject": "{otp} is your Matchscore sign-in code",
+    "orgInvitation": {
+      "preview": "{inviterName} invited you to join {organizationName}",
+      "body": "{inviterName} invited you to join {organizationName} on Matchscore.",
+      "cta": "Accept invitation",
+      "expiresIn": "This invitation expires in {days} days.",
+      "footer": "If you were not expecting this invitation, you can safely ignore this email.",
+      "subject": "Join {organizationName} on Matchscore"
+    }
+  },
+  "onboarding": {
+    "title": "Set up your club",
+    "description": "Choose a name for your club to get started.",
+    "clubName": "Club name",
+    "clubNamePlaceholder": "e.g. FC Example",
+    "submit": "Continue",
+    "pleaseWait": "Please wait...",
+    "createFailed": "Could not create your club. Please try again."
   }
 }

@@ -20,7 +20,7 @@ export async function setLocale(locale: string): Promise<{ ok: boolean }> {
 
   if (await isAuthenticated()) {
     try {
-      await fetchAuthMutation(api.userSettings.updateUserLocale, {
+      await fetchAuthMutation(api.users.settings.updateUserLocale, {
         locale: locale as Locale,
       });
     } catch {

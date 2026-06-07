@@ -39,9 +39,23 @@ npx convex env set SITE_URL http://localhost:3000
 
 5. Open [http://localhost:3000](http://localhost:3000).
 
+### Reset dev database
+
+To wipe all users, organisations, and auth data from your **dev** deployment:
+
+```bash
+pnpm run db:clear-dev
+```
+
+This runs `internal.dev.clearDatabase.clearAll` — safe for local testing, not for production.
+
 ### Sign-in with email OTP
 
-Sign-in is passwordless. Enter your email on `/sign-in`, receive a 6-digit code, and enter it to sign in. New users are created automatically on first sign-in.
+Sign-in is passwordless. Enter your email on `/sign-in`, receive a 6-digit code, and enter it to sign in. New users are created automatically on first sign-in, then complete club setup on `/onboarding`.
+
+### Organisations
+
+Each user belongs to one club (organisation). New users create their club on onboarding. Existing members can invite colleagues from **Settings → Club members**. See [Documentation/organisations.md](Documentation/organisations.md).
 
 By default, Resend runs in **test mode** — emails are only delivered to [Resend test addresses](https://resend.com/docs/dashboard/emails/send-test-emails) (e.g. `delivered@resend.dev`).
 
@@ -55,7 +69,7 @@ npx convex env set AUTH_FROM_EMAIL "Matchscore <noreply@yourdomain.com>"
 
 The `AUTH_FROM_EMAIL` address must use a domain verified in your [Resend dashboard](https://resend.com/domains).
 
-OTP emails are React Email components in `emails/`, registered in `emails/registry.ts`, rendered to HTML via `lib/emails/render.ts`, and sent via `convex/emailActions.ts`.
+OTP and invitation emails are React Email components in `emails/`, registered in `emails/registry.ts`, rendered to HTML via `lib/emails/render.ts`, and sent via `convex/emails/actions.ts`.
 
 To add a new email: create a component in `emails/`, export it with `defineEmailTemplate()` (subject + `{{variable}}` preview props), and add it to `emails/registry.ts`. Preview routes are automatic at `/dev/emails/[slug]`.
 
@@ -64,7 +78,8 @@ To add a new email: create a component in `emails/`, export it with `defineEmail
 While the dev server is running, preview templates in the browser:
 
 - [http://localhost:3000/dev/emails](http://localhost:3000/dev/emails) — template index
-- [http://localhost:3000/dev/emails/otp-sign-in](http://localhost:3000/dev/emails/otp-sign-in) — OTP sign-in email (uses `{{otp}}` placeholders)
+- [http://localhost:3000/dev/emails/otp-sign-in](http://localhost:3000/dev/emails/otp-sign-in) — OTP sign-in email
+- [http://localhost:3000/dev/emails/org-invitation](http://localhost:3000/dev/emails/org-invitation) — club invitation email
 
 ## Production build
 

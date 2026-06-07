@@ -175,3 +175,31 @@
     color: var(--sidebar-primary);
   }
 }
+
+[data-sonner-toast][data-type="success"] {
+  border-color: color-mix(in oklch, var(--success) 40%, var(--border));
+  background: color-mix(in oklch, var(--success) 12%, var(--popover));
+  color: var(--popover-foreground);
+}
+
+[data-sonner-toast][data-type="success"] [data-title] {
+  color: var(--success);
+}
+
+[data-sonner-toast][data-type="success"] [data-icon] {
+  color: var(--success);
+}
+
+[data-sonner-toast][data-type="error"] {
+  border-color: color-mix(in oklch, var(--destructive) 40%, var(--border));
+  background: color-mix(in oklch, var(--destructive) 12%, var(--popover));
+  color: var(--popover-foreground);
+}
+
+[data-sonner-toast][data-type="error"] [data-title] {
+  color: var(--destructive);
+}
+
+[data-sonner-toast][data-type="error"] [data-icon] {
+  color: var(--destructive);
+}

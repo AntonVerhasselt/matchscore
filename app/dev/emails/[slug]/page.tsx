@@ -92,7 +92,11 @@ export default async function EmailPreviewPage({ params }: PageProps) {
               {Object.entries(messages).map(([key, value]) => (
                 <div key={key} className="flex gap-2 font-mono text-sm">
                   <dt className="text-muted-foreground">{key}</dt>
-                  <dd className="text-foreground">{value}</dd>
+                  <dd className="text-foreground">
+                    {typeof value === "string"
+                      ? value
+                      : JSON.stringify(value, null, 2)}
+                  </dd>
                 </div>
               ))}
             </dl>

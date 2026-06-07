@@ -17,6 +17,7 @@
       "description": "Application de score de match propulsée par Convex et Next.js"
     },
     "loading": "Chargement...",
+    "close": "Fermer",
     "language": "Langue"
   },
   "landing": {
@@ -264,13 +265,67 @@
     "title": "Paramètres",
     "language": "Langue",
     "languageDescription": "Choisissez la langue de l'interface.",
-    "localeChangeFailed": "Impossible de changer la langue. Veuillez réessayer."
+    "localeChangeSuccess": "Langue mise à jour.",
+    "localeChangeFailed": "Impossible de changer la langue. Veuillez réessayer.",
+    "members": {
+      "title": "Membres du club",
+      "description": "Invitez des collègues et gérez qui a accès à votre club.",
+      "inviteEmail": "Adresse e-mail",
+      "invitePlaceholder": "collegue@exemple.com",
+      "inviteButton": "Envoyer l'invitation",
+      "inviting": "Envoi...",
+      "membersHeading": "Membres",
+      "pendingHeading": "Invitations en attente",
+      "noPending": "Aucune invitation en attente.",
+      "deleteButton": "Supprimer",
+      "cancelInvite": "Annuler",
+      "confirmDeleteTitle": "Supprimer le membre ?",
+      "confirmDeleteSelfTitle": "Supprimer votre compte ?",
+      "confirmDeleteDescription": "{member} sera définitivement retiré de votre club. Cette personne ne pourra plus se connecter.",
+      "confirmDeleteSelfDescription": "Votre compte sera définitivement supprimé. Vous ne pourrez plus vous connecter.",
+      "confirmDeleteCancel": "Annuler",
+      "confirmDeleteConfirm": "Supprimer définitivement",
+      "confirmDeleteDeleting": "Suppression...",
+      "inviteSuccess": "Invitation envoyée à {email}.",
+      "inviteFailed": "Impossible d'envoyer l'invitation. Veuillez réessayer.",
+      "deleteSuccess": "{member} a été retiré de votre club.",
+      "deleteFailed": "Impossible de supprimer le membre. Veuillez réessayer.",
+      "signOutFailed": "Membre retiré, mais la déconnexion a échoué. Veuillez vous déconnecter manuellement.",
+      "cancelInviteSuccess": "Invitation annulée.",
+      "cancelFailed": "Impossible d'annuler l'invitation. Veuillez réessayer.",
+      "joinedOn": "Membre depuis le {date}"
+    }
+  },
+  "acceptInvitation": {
+    "title": "Rejoindre {organizationName}",
+    "description": "Connectez-vous avec {email} pour accepter cette invitation.",
+    "expired": "Cette invitation a expiré. Demandez à votre club d'en envoyer une nouvelle.",
+    "invalid": "Ce lien d'invitation n'est pas valide.",
+    "alreadyAccepted": "Cette invitation a déjà été acceptée.",
+    "continueToSignIn": "Continuer vers la connexion"
   },
   "email": {
     "preview": "Votre code de connexion Matchscore est {otp}",
     "body": "Utilisez le code ci-dessous pour vous connecter à votre compte.",
     "expiresIn": "Ce code expire dans {minutes} minutes.",
     "footer": "Si vous n'avez pas demandé ce code, vous pouvez ignorer cet e-mail.",
-    "subject": "{otp} est votre code de connexion Matchscore"
+    "subject": "{otp} est votre code de connexion Matchscore",
+    "orgInvitation": {
+      "preview": "{inviterName} vous a invité à rejoindre {organizationName}",
+      "body": "{inviterName} vous a invité à rejoindre {organizationName} sur Matchscore.",
+      "cta": "Accepter l'invitation",
+      "expiresIn": "Cette invitation expire dans {days} jours.",
+      "footer": "Si vous n'attendiez pas cette invitation, vous pouvez ignorer cet e-mail.",
+      "subject": "Rejoignez {organizationName} sur Matchscore"
+    }
+  },
+  "onboarding": {
+    "title": "Configurez votre club",
+    "description": "Choisissez un nom pour votre club pour commencer.",
+    "clubName": "Nom du club",
+    "clubNamePlaceholder": "ex. FC Exemple",
+    "submit": "Continuer",
+    "pleaseWait": "Veuillez patienter...",
+    "createFailed": "Impossible de créer votre club. Veuillez réessayer."
   }
 }
