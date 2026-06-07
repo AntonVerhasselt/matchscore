@@ -7,8 +7,8 @@ import {
 } from "@/components/ui/card";
 import { useTranslations } from "next-intl";
 
-export default function CalendarPage() {
-  const t = useTranslations("app.calendar");
+export default function AutomationsPage() {
+  const t = useTranslations("app.automations");
 
   return (
     <>

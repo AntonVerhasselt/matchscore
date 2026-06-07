@@ -3,7 +3,12 @@
     "nav": {
       "home": "Home",
       "signIn": "Sign in",
-      "settings": "Settings"
+      "settings": "Settings",
+      "pricing": "Pricing",
+      "faq": "FAQ",
+      "cta": "Get started",
+      "goToDashboard": "Go to dashboard",
+      "menu": "Menu"
     },
     "metadata": {
       "title": "Matchscore",
@@ -15,7 +20,23 @@
   "landing": {
     "title": "Matchscore",
     "subtitle": "Your match scoring app. Sign in to access the app.",
-    "cta": "Go to App"
+    "cta": "Get started",
+    "pricing": {
+      "title": "Pricing",
+      "description": "Simple pricing for teams of any size.",
+      "planTitle": "Starter",
+      "planDescription": "Everything you need to get started.",
+      "price": "Free",
+      "placeholder": "Pricing details will be available soon."
+    },
+    "faq": {
+      "title": "FAQ",
+      "description": "Answers to common questions about Matchscore.",
+      "q1": "How do I sign in?",
+      "a1": "Enter your email on the sign-in page and we will send you a one-time code.",
+      "q2": "Can I use Matchscore on mobile?",
+      "a2": "Yes. Matchscore works in your browser on desktop and mobile devices."
+    }
   },
   "signIn": {
     "title": "Sign in to Matchscore",
@@ -45,7 +66,25 @@
     "loading": "Loading...",
     "signedInAs": "Signed in as",
     "accountLoadFailed": "We couldn't load your account. Please try again.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "shell": {
+      "nav": {
+        "calendar": "Calendar",
+        "automations": "Automations"
+      },
+      "user": {
+        "settings": "Settings",
+        "signOut": "Sign out"
+      }
+    },
+    "calendar": {
+      "title": "Calendar",
+      "description": "Your calendar will appear here."
+    },
+    "automations": {
+      "title": "Automations",
+      "description": "Your automations will appear here."
+    }
   },
   "settings": {
     "title": "Settings",
