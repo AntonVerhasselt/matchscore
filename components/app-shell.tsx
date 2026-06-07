@@ -21,7 +21,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <SidebarTrigger className="size-9 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
             <AppUserMenu variant="header" />
           </header>
-          <main className="flex flex-1 flex-col p-4 md:p-8">
+          <main className="flex flex-1 flex-col p-5 md:p-10">
             <div className="mx-auto w-full max-w-4xl">{children}</div>
           </main>
         </SidebarInset>

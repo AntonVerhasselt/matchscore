@@ -6,6 +6,8 @@
       "settings": "Instellingen",
       "pricing": "Prijzen",
       "faq": "FAQ",
+      "features": "Voordelen",
+      "howItWorks": "Hoe het werkt",
       "cta": "Aan de slag",
       "goToDashboard": "Naar dashboard",
       "menu": "Menu"
@@ -18,24 +20,196 @@
     "language": "Taal"
   },
   "landing": {
-    "title": "Matchscore",
-    "subtitle": "Jouw wedstrijdscore-app. Log in om de app te gebruiken.",
-    "cta": "Aan de slag",
+    "hero": {
+      "badge": "Geautomatiseerde social media voor amateurvoetbalclubs",
+      "title": "Actief op <highlight>social media</highlight> — zonder extra werk",
+      "subtitle": "Matchscore plaatst automatisch wedstrijdaankondigingen en -resultaten op Facebook en Instagram, met jullie eigen clubtemplates. Meer zichtbaarheid voor je team en sponsors, zonder gedoe.",
+      "searchPlaceholder": "Zoek je club",
+      "cta": "Probeer het uit",
+      "hint": "Vind je club en stel geautomatiseerde posts in binnen enkele minuten.",
+      "scrollLabel": "Scroll"
+    },
+    "problem": {
+      "badge": "De uitdaging",
+      "title": "Social media is essentieel — maar wie heeft er tijd voor?",
+      "p1": "Amateurvoetbalverenigingen in België hebben een sterke aanwezigheid op social media nodig. Het bouwt een positief imago op, houdt supporters betrokken en toont sponsors dat hun investering ertoe doet.",
+      "p2": "Maar het vraagt echt werk: iemand die foto's neemt, bijschriften schrijft en op het juiste moment post — vaak na een lange wedstrijddag. De meeste clubs hebben die capaciteit simpelweg niet.",
+      "imageAlt": "Amateurvoetbalwedstrijd op een grasveld"
+    },
+    "solution": {
+      "badge": "Onze oplossing",
+      "title": "Geautomatiseerde posts die eruitzien alsof jij ze maakte",
+      "p1": "Matchscore maakt en publiceert professionele wedstrijdvisuals automatisch — aankondigingen vóór de aftrap en resultaten direct na het laatste fluitsignaal. De kleuren van je club, jouw templates, jouw stijl.",
+      "p2": "Koppel je kalender eenmalig, ontwerp een paar templates en zet de automatisering aan. Wij regelen het timing, de inhoud en het plaatsen op Facebook en Instagram.",
+      "cta": "Start voor je club",
+      "imageAlt": "Voetbalteam viert samen"
+    },
+    "howItWorks": {
+      "badge": "Hoe het werkt",
+      "title": "Drie stappen. Daarna loopt het vanzelf.",
+      "description": "Geen technische kennis nodig. Als je een afbeelding kunt uploaden en een formulier kunt invullen, ben je klaar.",
+      "steps": [
+        {
+          "title": "Selecteer je club",
+          "description": "Zoek je club en we importeren automatisch de wedstrijdkalender van het eerste elftal via de Belgische voetbalbond."
+        },
+        {
+          "title": "Maak je templates",
+          "description": "Upload een achtergrondafbeelding, voeg je tekstlay-out toe en neem sponsorlogo's op. Wij vullen de tegenstander, score, locatie en teamlogo's in voor elke post."
+        },
+        {
+          "title": "Zet het live",
+          "description": "Activeer je automatiseringen en posts gaan op het juiste moment live — twee dagen vóór een wedstrijd en direct wanneer resultaten gepubliceerd worden."
+        }
+      ]
+    },
+    "features": {
+      "badge": "Waarom clubs kiezen voor Matchscore",
+      "title": "Alles wat je social media-verantwoordelijke zich wenst",
+      "description": "Specifiek gebouwd voor amateurvoetbalverenigingen in België.",
+      "items": [
+        {
+          "title": "Wedstrijdaankondigingen",
+          "description": "Automatische posts twee dagen vóór elke wedstrijd: tegenstander, locatie en een oproep aan supporters om te komen supporteren."
+        },
+        {
+          "title": "Directe resultaatposts",
+          "description": "Wanneer de Belgische voetbalbond resultaten publiceert, halen we die op en plaatsen we direct een gepolijste resultaatvisual op je social kanalen."
+        },
+        {
+          "title": "Je eigen templates",
+          "description": "Upload eigen achtergronden en ontwerp je lay-out. Elke post gebruikt de visuele identiteit van je club — geen generieke stockafbeeldingen."
+        },
+        {
+          "title": "Zichtbaarheid voor sponsors",
+          "description": "Neem sponsorlogo's moeiteloos op in je templates. Lever de extra zichtbaarheid waar sponsors voor betalen, zonder handmatig werk elke week."
+        },
+        {
+          "title": "Facebook & Instagram",
+          "description": "Koppel de Facebookpagina en het Instagram-account van je club. Posts worden rechtstreeks gepubliceerd — geen kopiëren, geen aparte planningapps."
+        },
+        {
+          "title": "Instellen en vergeten",
+          "description": "Zodra je automatiseringen live staan, draait Matchscore op de achtergrond. Je social kanalen blijven het hele seizoen actief."
+        }
+      ]
+    },
+    "showcase": {
+      "title": "Je supporters zitten al op social media",
+      "description": "Geef ze iets om te delen, te vieren en over te praten — elke wedstrijdweek opnieuw.",
+      "imageAlt": "Voetbalsupporters in een stadion"
+    },
     "pricing": {
-      "title": "Prijzen",
-      "description": "Eenvoudige prijzen voor teams van elke omvang.",
-      "planTitle": "Starter",
-      "planDescription": "Alles wat je nodig hebt om te beginnen.",
-      "price": "Gratis",
-      "placeholder": "Prijsdetails volgen binnenkort."
+      "badge": "Prijzen",
+      "title": "Betaalbaar voor elke amateurclub",
+      "description": "Alle plannen bevatten alle functies. Geen verborgen limieten, geen kosten per post.",
+      "vatNote": "Alle prijzen zijn exclusief btw. Abonnementen worden jaarlijks gefactureerd.",
+      "perMonth": "/maand",
+      "oneTime": "eenmalig",
+      "cta": "Aan de slag",
+      "starter": {
+        "title": "Starter",
+        "description": "Volledige toegang met een klein Matchscore-watermerk.",
+        "price": "€2",
+        "billingNote": "€24 jaarlijks gefactureerd",
+        "features": [
+          "Alle functies inbegrepen",
+          "Onbeperkt geautomatiseerde posts",
+          "Klein Matchscore-watermerk op posts"
+        ],
+        "compactFeatures": [
+          "Alle functies, onbeperkt posten",
+          "Klein Matchscore-watermerk op posts"
+        ]
+      },
+      "pro": {
+        "title": "Pro",
+        "description": "Volledige toegang, zonder watermerk.",
+        "price": "€5",
+        "billingNote": "€60 jaarlijks gefactureerd",
+        "features": [
+          "Alle functies inbegrepen",
+          "Onbeperkt geautomatiseerde posts",
+          "Geen watermerk"
+        ],
+        "compactFeatures": [
+          "Alle functies, onbeperkt posten",
+          "Geen watermerk"
+        ]
+      },
+      "lifetime": {
+        "badge": "Beste deal",
+        "headline": "Eén keer betalen. Voor altijd posten.",
+        "title": "Lifetime",
+        "description": "Eén keer betalen, voor altijd gebruiken.",
+        "price": "€150",
+        "note": "Eenmalige betaling, geen verlenging",
+        "features": [
+          "Alle functies inbegrepen",
+          "Onbeperkt geautomatiseerde posts",
+          "Geen watermerk — voor altijd",
+          "Blijf het voor altijd gebruiken"
+        ]
+      }
     },
     "faq": {
-      "title": "FAQ",
-      "description": "Antwoorden op veelgestelde vragen over Matchscore.",
-      "q1": "Hoe log ik in?",
-      "a1": "Vul je e-mail in op de inlogpagina en we sturen je een eenmalige code.",
-      "q2": "Kan ik Matchscore op mobiel gebruiken?",
-      "a2": "Ja. Matchscore werkt in je browser op desktop en mobiel."
+      "badge": "FAQ",
+      "title": "Vragen van besturen en social media-verantwoordelijken",
+      "description": "Eerlijke antwoorden op wat amateurvoetbalverenigingen typisch willen weten.",
+      "items": [
+        {
+          "question": "Heb ik technische kennis nodig om Matchscore te gebruiken?",
+          "answer": "Nee. Als je een afbeelding kunt uploaden en een social media-account kunt koppelen, kun je Matchscore gebruiken. De installatiewizard begeleidt je bij het selecteren van je club, het maken van templates en het koppelen van Facebook en Instagram."
+        },
+        {
+          "question": "Hoe wordt de wedstrijdkalender geïmporteerd?",
+          "answer": "Wanneer je je club selecteert, halen we automatisch de wedstrijdlijst van het eerste elftal op bij de Belgische voetbalbond. Op basis van die kalender weten we precies wanneer we aankondigingen moeten plaatsen en wanneer we naar resultaten moeten zoeken."
+        },
+        {
+          "question": "Welke social mediaplatformen worden ondersteund?",
+          "answer": "Matchscore ondersteunt momenteel Facebook en Instagram. Je koppelt de accounts van je club eenmalig tijdens de installatie, en alle geautomatiseerde posts worden rechtstreeks op die kanalen gepubliceerd."
+        },
+        {
+          "question": "Kan ik de visuals aanpassen voor mijn club?",
+          "answer": "Absoluut. Je maakt je eigen templates: upload een achtergrondafbeelding, positioneer tekstvelden en voeg sponsorlogo's toe. Voor elke post vullen we automatisch variabelen in zoals de tegenstander, score, wedstrijdlocatie en teamlogo's."
+        },
+        {
+          "question": "Hoe worden wedstrijdresultaten zo snel gepost?",
+          "answer": "We monitoren de resultatenfeed van de Belgische voetbalbond. Zodra het resultaat van jullie wedstrijd gepubliceerd is, genereert Matchscore een resultaatvisual vanuit je template en plaatst die op je gekoppelde social kanalen — zonder handmatig controleren."
+        },
+        {
+          "question": "Kunnen we onze sponsors opnemen in posts?",
+          "answer": "Ja. Voeg sponsorlogo's eenmalig toe aan je templates en ze verschijnen op elke geautomatiseerde post. Zo lever je de social media-zichtbaarheid die sponsors verwachten, zonder extra werk elke wedstrijdweek."
+        },
+        {
+          "question": "Wat als ik automatiseringen wil pauzeren of stoppen?",
+          "answer": "Jij hebt altijd de controle. Je kunt individuele automatiseringen op elk moment aan- of uitzetten vanuit je dashboard. Pauzeren heeft geen invloed op je templates of kalender — alles staat klaar wanneer je wilt hervatten."
+        },
+        {
+          "question": "Is de prijs per club of per team?",
+          "answer": "De prijs is per club. Eén abonnement dekt de automatiseringen van je club voor het eerste elftal. Alle functies zijn inbegrepen in elk plan — het enige verschil is het watermerk op het Starter-plan."
+        },
+        {
+          "question": "Wat gebeurt er na afloop van mijn jaarabonnement?",
+          "answer": "Je abonnement wordt jaarlijks verlengd. Als je ervoor kiest niet te verlengen, stoppen de automatiseringen maar je templates en instellingen blijven bewaard. Je kunt op elk moment opnieuw activeren door je abonnement te verlengen."
+        },
+        {
+          "question": "Heeft onze club goedkeuring van de bond nodig?",
+          "answer": "Matchscore gebruikt publiek beschikbare wedstrijdgegevens van de Belgische voetbalbond — dezelfde informatie als op hun website. Je automatiseert simpelweg posts over de wedstrijden van je eigen club met data die al publiek is."
+        }
+      ]
+    },
+    "finalCta": {
+      "title": "Klaar om je club op autopilot te zetten?",
+      "description": "Maak je templates, koppel je social accounts en laat Matchscore je club het hele seizoen zichtbaar houden — terwijl jij je focust op wat er op het veld gebeurt.",
+      "cta": "Start voor je club",
+      "hint": "Installatie duurt minder dan 15 minuten"
+    },
+    "footer": {
+      "rights": "Alle rechten voorbehouden.",
+      "pricing": "Prijzen",
+      "faq": "FAQ",
+      "signIn": "Inloggen"
     }
   },
   "signIn": {
