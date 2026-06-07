@@ -45,7 +45,25 @@
     "loading": "Loading...",
     "signedInAs": "Signed in as",
     "accountLoadFailed": "We couldn't load your account. Please try again.",
-    "retry": "Try again"
+    "retry": "Try again",
+    "shell": {
+      "nav": {
+        "calendar": "Calendar",
+        "automations": "Automations"
+      },
+      "user": {
+        "settings": "Settings",
+        "signOut": "Sign out"
+      }
+    },
+    "calendar": {
+      "title": "Calendar",
+      "description": "Your calendar will appear here."
+    },
+    "automations": {
+      "title": "Automations",
+      "description": "Your automations will appear here."
+    }
   },
   "settings": {
     "title": "Settings",

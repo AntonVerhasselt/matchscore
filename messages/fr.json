@@ -45,7 +45,25 @@
     "loading": "Chargement...",
     "signedInAs": "Connecté en tant que",
     "accountLoadFailed": "Impossible de charger votre compte. Veuillez réessayer.",
-    "retry": "Réessayer"
+    "retry": "Réessayer",
+    "shell": {
+      "nav": {
+        "calendar": "Calendrier",
+        "automations": "Automatisations"
+      },
+      "user": {
+        "settings": "Paramètres",
+        "signOut": "Se déconnecter"
+      }
+    },
+    "calendar": {
+      "title": "Calendrier",
+      "description": "Votre calendrier apparaîtra ici."
+    },
+    "automations": {
+      "title": "Automatisations",
+      "description": "Vos automatisations apparaîtront ici."
+    }
   },
   "settings": {
     "title": "Paramètres",

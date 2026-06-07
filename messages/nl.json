@@ -45,7 +45,25 @@
     "loading": "Laden...",
     "signedInAs": "Ingelogd als",
     "accountLoadFailed": "We konden je account niet laden. Probeer het opnieuw.",
-    "retry": "Opnieuw proberen"
+    "retry": "Opnieuw proberen",
+    "shell": {
+      "nav": {
+        "calendar": "Kalender",
+        "automations": "Automatiseringen"
+      },
+      "user": {
+        "settings": "Instellingen",
+        "signOut": "Uitloggen"
+      }
+    },
+    "calendar": {
+      "title": "Kalender",
+      "description": "Je kalender verschijnt hier."
+    },
+    "automations": {
+      "title": "Automatiseringen",
+      "description": "Je automatiseringen verschijnen hier."
+    }
   },
   "settings": {
     "title": "Instellingen",

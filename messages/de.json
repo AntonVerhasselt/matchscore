@@ -45,7 +45,25 @@
     "loading": "Laden...",
     "signedInAs": "Angemeldet als",
     "accountLoadFailed": "Dein Konto konnte nicht geladen werden. Bitte versuche es erneut.",
-    "retry": "Erneut versuchen"
+    "retry": "Erneut versuchen",
+    "shell": {
+      "nav": {
+        "calendar": "Kalender",
+        "automations": "Automatisierungen"
+      },
+      "user": {
+        "settings": "Einstellungen",
+        "signOut": "Abmelden"
+      }
+    },
+    "calendar": {
+      "title": "Kalender",
+      "description": "Dein Kalender erscheint hier."
+    },
+    "automations": {
+      "title": "Automatisierungen",
+      "description": "Deine Automatisierungen erscheinen hier."
+    }
   },
   "settings": {
     "title": "Einstellungen",
