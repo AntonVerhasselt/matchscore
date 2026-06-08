@@ -4,6 +4,7 @@ import { internal } from "../_generated/api";
 import { mutation } from "../_generated/server";
 import { authComponent } from "../auth/instance";
 import { normalizeEmail } from "../lib/email";
+import { ensureOrganizationAutomations } from "../automations/helpers";
 import { getUserDisplayName } from "../../lib/user-display";
 import {
   generateInvitationToken,
@@ -118,6 +119,8 @@ export const createOrganization = mutation({
       email: normalizeEmail(user.email),
       joinedAt: Date.now(),
     });
+
+    await ensureOrganizationAutomations(ctx, organizationId, user._id);
 
     return organizationId;
   },

@@ -2,14 +2,18 @@
 
 import { useTranslations } from "next-intl";
 
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { AppPageBackLink } from "@/components/app-page";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   automationTemplatesPath,
   isAutomationTypeSlug,
+  toBackendAutomationType,
   type AutomationTypeSlug,
 } from "@/lib/automations/types";
-import { showSuccessToast } from "@/lib/user-feedback";
+import { CANVAS_PRESET_LABELS } from "@/lib/automations/canvas-presets";
+import { useQuery } from "convex/react";
 
 type TemplateEditorRootProps = {
   automationType: string;
@@ -22,16 +26,22 @@ export default function TemplateEditorRoot({
 }: TemplateEditorRootProps) {
   const t = useTranslations("app.automations");
   const isNew = templateId === "new";
+  const template = useQuery(
+    api.automations.queries.getTemplate,
+    isNew
+      ? "skip"
+      : { templateId: templateId as Id<"automationTemplates"> },
+  );
 
   if (!isAutomationTypeSlug(automationType)) {
     return null;
   }
 
   const slug = automationType as AutomationTypeSlug;
-
-  const handleSave = () => {
-    showSuccessToast(t("editor.saveSuccess"));
-  };
+  const isMatchingRoute =
+    template === undefined ||
+    template === null ||
+    template.automationType === toBackendAutomationType(slug);
 
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col md:h-screen">
@@ -40,26 +50,30 @@ export default function TemplateEditorRoot({
           {t("backToTemplates")}
         </AppPageBackLink>
         <h1 className="truncate text-sm font-medium">
-          {isNew
-            ? t("editor.newTemplate")
-            : t("editor.editTemplate", { id: templateId })}
+          {template?.name ?? (isNew ? t("editor.newTemplate") : t("editor.loading"))}
         </h1>
-        <div className="ml-auto">
-          <Button size="sm" onClick={handleSave}>
-            {t("editor.save")}
-          </Button>
-        </div>
       </header>
 
       <div className="flex flex-1 flex-col items-center justify-center bg-muted/30 p-8 text-center">
-        <p className="text-lg font-medium">{t("editor.placeholderTitle")}</p>
-        <p className="mt-2 max-w-md text-sm text-muted-foreground">
-          {t("editor.placeholderDescription")}
-        </p>
-        <p className="mt-4 text-xs text-muted-foreground">
-          {t(`types.${slug}.title`)} ·{" "}
-          {isNew ? t("editor.newTemplate") : templateId}
-        </p>
+        {template === undefined ? (
+          <p className="text-sm text-muted-foreground">{t("editor.loading")}</p>
+        ) : template === null || !isMatchingRoute ? (
+          <p className="text-sm text-muted-foreground">{t("editor.notFound")}</p>
+        ) : (
+          <>
+            <p className="text-lg font-medium">{t("editor.placeholderTitle")}</p>
+            <p className="mt-2 max-w-md text-sm text-muted-foreground">
+              {t("editor.placeholderDescription")}
+            </p>
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
+              <Badge variant="secondary">{template.name}</Badge>
+              <Badge variant="outline">{t(`types.${slug}.title`)}</Badge>
+              <Badge variant="outline">
+                {CANVAS_PRESET_LABELS[template.canvasPreset]}
+              </Badge>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

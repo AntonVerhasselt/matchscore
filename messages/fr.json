@@ -280,6 +280,13 @@
       "backToTemplates": "Retour aux modèles",
       "manageTemplates": "Gérer les modèles",
       "connectedAccounts": "Comptes connectés",
+      "enabled": "Active",
+      "disabled": "En pause",
+      "toggleAutomation": "Activer ou désactiver {type}",
+      "toggleSuccess": "Automatisation mise à jour.",
+      "toggleFailed": "Impossible de mettre à jour l'automatisation. Veuillez réessayer.",
+      "channelToggleSuccess": "Canal de publication mis à jour.",
+      "channelToggleFailed": "Impossible de mettre à jour le canal de publication. Veuillez réessayer.",
       "types": {
         "result": {
           "title": "Résultat du match",
@@ -302,14 +309,21 @@
       },
       "templates": {
         "create": "Nouveau modèle",
+        "creating": "Création du modèle...",
+        "defaultName": "Nouveau modèle",
+        "createSuccess": "Modèle créé.",
+        "createFailed": "Impossible de créer le modèle. Veuillez réessayer.",
+        "shortCount": "{count, plural, =0 {Aucun modèle} one {# modèle} other {# modèles}}",
         "meta": "{count, plural, =0 {Aucun modèle} one {# modèle} other {# modèles}} · {status}",
         "statusActive": "Automatisation active",
+        "statusInactive": "Automatisation en pause",
         "empty": {
           "title": "Pas encore de modèles",
           "description": "Créez votre premier modèle pour commencer à publier automatiquement."
         },
         "edit": "Modifier",
         "delete": "Supprimer",
+        "deleting": "Suppression...",
         "cancel": "Annuler",
         "deleteConfirmTitle": "Supprimer le modèle ?",
         "deleteConfirmDescription": "« {name} » sera définitivement supprimé. Cette action est irréversible.",
@@ -324,7 +338,8 @@
         "newTemplate": "Nouveau modèle",
         "editTemplate": "Modifier le modèle ({id})",
         "placeholderTitle": "Éditeur de modèles bientôt disponible",
-        "placeholderDescription": "L'éditeur visuel react-konva apparaîtra ici. Vous pouvez déjà naviguer et enregistrer des modèles provisoires."
+        "placeholderDescription": "L'éditeur visuel react-konva apparaîtra ici en phase 2. Ce modèle est déjà enregistré dans la base de données.",
+        "notFound": "Modèle introuvable."
       }
     }
   },

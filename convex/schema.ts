@@ -1,5 +1,10 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import {
+  automationTypeValidator,
+  canvasPresetValidator,
+  postingChannelStatusesValidator,
+} from "./automations/validators";
 import { localeValidator } from "./locales";
 
 export default defineSchema({
@@ -47,4 +52,46 @@ export default defineSchema({
     .index("by_token", ["token"])
     .index("by_email_and_status", ["email", "status"])
     .index("by_organizationId_and_status", ["organizationId", "status"]),
+
+  organizationAutomations: defineTable({
+    organizationId: v.id("organizations"),
+    automationType: automationTypeValidator,
+    isGloballyEnabled: v.boolean(),
+    postingChannels: postingChannelStatusesValidator,
+    updatedAt: v.number(),
+    updatedByUserId: v.optional(v.string()),
+  })
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_and_automationType", [
+      "organizationId",
+      "automationType",
+    ]),
+
+  automationTemplates: defineTable({
+    organizationId: v.id("organizations"),
+    automationType: automationTypeValidator,
+    name: v.string(),
+    sceneDocument: v.any(),
+    canvasPreset: canvasPresetValidator,
+    schemaVersion: v.number(),
+    thumbnailStorageId: v.optional(v.id("_storage")),
+    createdByUserId: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_and_automationType", [
+      "organizationId",
+      "automationType",
+    ]),
+
+  templateAssets: defineTable({
+    organizationId: v.id("organizations"),
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+    mimeType: v.string(),
+    byteSize: v.number(),
+    uploadedByUserId: v.string(),
+    createdAt: v.number(),
+  }).index("by_organizationId", ["organizationId"]),
 });

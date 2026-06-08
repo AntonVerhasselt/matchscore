@@ -6,20 +6,24 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
-import { MOCK_SOCIAL_ACCOUNTS } from "@/lib/automations/mock-data";
 import { SOCIAL_PLATFORM_FAVICONS } from "@/lib/automations/social-platforms";
 import {
   automationTemplatesPath,
+  toPostingChannel,
+  toBackendAutomationType,
+  type AutomationSummary,
   type AutomationTypeSlug,
-  type MockSocialAccount,
+  type PostingChannel,
   type SocialChannel,
   type SocialPlatform,
 } from "@/lib/automations/types";
+import { showErrorToast, showSuccessToast } from "@/lib/user-feedback";
+import { useMutation } from "convex/react";
 
 const TYPE_ICONS: Record<
   AutomationTypeSlug,
@@ -30,124 +34,97 @@ const TYPE_ICONS: Record<
 };
 
 const CHANNELS: SocialChannel[] = ["posts", "story"];
+const PLATFORMS: SocialPlatform[] = ["facebook", "instagram"];
 
-function cloneMockAccounts(): MockSocialAccount[] {
-  return MOCK_SOCIAL_ACCOUNTS.map((account) => ({
-    ...account,
-    channels: { ...account.channels },
-  }));
-}
-
-function PlatformHeader({ account }: { account: MockSocialAccount }) {
+function PlatformHeader({ platform }: { platform: SocialPlatform }) {
   const tSocial = useTranslations("app.automations.social");
 
   return (
     <div className="flex items-center gap-2">
       <Image
-        src={SOCIAL_PLATFORM_FAVICONS[account.platform]}
+        src={SOCIAL_PLATFORM_FAVICONS[platform]}
         alt=""
         width={16}
         height={16}
         className="size-4 shrink-0"
         unoptimized
       />
-      <p className="text-sm font-medium">{tSocial(account.platform)}</p>
+      <p className="text-sm font-medium">{tSocial(platform)}</p>
     </div>
   );
 }
 
 type PlatformBlockProps = {
-  account: MockSocialAccount;
+  platform: SocialPlatform;
   automationType: AutomationTypeSlug;
-  onChannelChange: (
-    platform: SocialPlatform,
-    channel: SocialChannel,
-    active: boolean,
+  automation?: AutomationSummary;
+  savingPostingChannel: PostingChannel | null;
+  onPostingChannelChange: (
+    postingChannel: PostingChannel,
+    isEnabled: boolean,
   ) => void;
-  onConnect: (platform: SocialPlatform) => void;
 };
 
 function PlatformBlock({
-  account,
+  platform,
   automationType,
-  onChannelChange,
-  onConnect,
+  automation,
+  savingPostingChannel,
+  onPostingChannelChange,
 }: PlatformBlockProps) {
   const tSocial = useTranslations("app.automations.social");
-
-  if (account.connected) {
-    return (
-      <div>
-        <PlatformHeader account={account} />
-        <div className="mt-2 space-y-1.5 pl-6">
-          {CHANNELS.map((channel) => {
-            const channelSwitchId = `${automationType}-${account.platform}-${channel}`;
-
-            return (
-              <div
-                key={channel}
-                className="flex items-center justify-between gap-6"
-              >
-                <span className="text-xs text-muted-foreground">
-                  {tSocial(channel)}
-                </span>
-                {/*
-                 * Backend (future): per-channel toggle.
-                 * mutation setSocialChannelActive({ automationType, platform, channel, active })
-                 */}
-                <Label htmlFor={channelSwitchId} className="sr-only">
-                  {tSocial("toggleChannel", {
-                    platform: tSocial(account.platform),
-                    channel: tSocial(channel),
-                  })}
-                </Label>
-                <Switch
-                  id={channelSwitchId}
-                  size="sm"
-                  checked={account.channels[channel]}
-                  onCheckedChange={(checked) =>
-                    onChannelChange(account.platform, channel, checked)
-                  }
-                  aria-label={tSocial("toggleChannel", {
-                    platform: tSocial(account.platform),
-                    channel: tSocial(channel),
-                  })}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
+  const isGloballyEnabled = automation?.isGloballyEnabled ?? true;
 
   return (
     <div>
-      <PlatformHeader account={account} />
-      <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] grid-rows-2 items-center gap-x-6 gap-y-1.5 pl-6">
-        {CHANNELS.map((channel, index) => (
-          <p
+      <PlatformHeader platform={platform} />
+      <div className="mt-2 space-y-1.5 pl-6">
+        {CHANNELS.map((channel) => {
+          const postingChannel = toPostingChannel(platform, channel);
+          const channelSwitchId = `${automationType}-${postingChannel}`;
+          const isPostingChannelEnabled =
+            automation?.postingChannels?.[postingChannel] ?? true;
+
+          return (
+            <div
             key={channel}
-            className={cn(
-              "text-xs text-muted-foreground/50",
-              index === 0 ? "row-start-1" : "row-start-2",
-            )}
-          >
-            {tSocial(channel)}
-          </p>
-        ))}
-        {/*
-         * Backend (future): Meta OAuth — action initiateSocialConnect({ platform })
-         */}
-        <Button
-          type="button"
-          variant="outline"
-          size="xs"
-          className="col-start-2 row-span-2 row-start-1 h-auto shrink-0 self-center px-2 py-1 text-[11px] leading-tight whitespace-normal"
-          onClick={() => onConnect(account.platform)}
-        >
-          {tSocial("connectAccount")}
-        </Button>
+              className="flex items-center justify-between gap-6"
+            >
+              <span
+                className={
+                  isGloballyEnabled
+                    ? "text-xs text-muted-foreground"
+                    : "text-xs text-muted-foreground/50"
+                }
+              >
+                {tSocial(channel)}
+              </span>
+              <Label htmlFor={channelSwitchId} className="sr-only">
+                {tSocial("toggleChannel", {
+                  platform: tSocial(platform),
+                  channel: tSocial(channel),
+                })}
+              </Label>
+              <Switch
+                id={channelSwitchId}
+                size="sm"
+                checked={isPostingChannelEnabled}
+                disabled={
+                  !automation ||
+                  !isGloballyEnabled ||
+                  savingPostingChannel === postingChannel
+                }
+                onCheckedChange={(checked) =>
+                  onPostingChannelChange(postingChannel, checked)
+                }
+                aria-label={tSocial("toggleChannel", {
+                  platform: tSocial(platform),
+                  channel: tSocial(channel),
+                })}
+              />
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -155,44 +132,62 @@ function PlatformBlock({
 
 type AutomationTypeCardProps = {
   automationType: AutomationTypeSlug;
+  automation?: AutomationSummary;
 };
 
 export function AutomationTypeCard({
   automationType,
+  automation,
 }: AutomationTypeCardProps) {
   const t = useTranslations("app.automations");
   const Icon = TYPE_ICONS[automationType];
-  const [accounts, setAccounts] = useState<MockSocialAccount[]>(cloneMockAccounts);
+  const setAutomationGlobalEnabled = useMutation(
+    api.automations.mutations.setAutomationGlobalEnabled,
+  );
+  const setAutomationPostingChannelEnabled = useMutation(
+    api.automations.mutations.setAutomationPostingChannelEnabled,
+  );
+  const [isSavingGlobalStatus, setIsSavingGlobalStatus] = useState(false);
+  const [savingPostingChannel, setSavingPostingChannel] =
+    useState<PostingChannel | null>(null);
 
-  const handleChannelChange = (
-    platform: SocialPlatform,
-    channel: SocialChannel,
-    active: boolean,
-  ) => {
-    setAccounts((prev) =>
-      prev.map((a) =>
-        a.platform === platform
-          ? { ...a, channels: { ...a.channels, [channel]: active } }
-          : a,
-      ),
-    );
+  const isGloballyEnabled = automation?.isGloballyEnabled ?? true;
+  const templateCount = automation?.templateCount ?? 0;
+
+  const handleGlobalStatusChange = async (checked: boolean) => {
+    setIsSavingGlobalStatus(true);
+
+    try {
+      await setAutomationGlobalEnabled({
+        automationType: toBackendAutomationType(automationType),
+        isGloballyEnabled: checked,
+      });
+      showSuccessToast(t("toggleSuccess"));
+    } catch {
+      showErrorToast(t("toggleFailed"));
+    } finally {
+      setIsSavingGlobalStatus(false);
+    }
   };
 
-  const handleConnect = (platform: SocialPlatform) => {
-    /*
-     * Mock only — replace with OAuth redirect when socialConnections ships.
-     */
-    setAccounts((prev) =>
-      prev.map((a) =>
-        a.platform === platform
-          ? {
-              ...a,
-              connected: true,
-              channels: { posts: true, story: false },
-            }
-          : a,
-      ),
-    );
+  const handlePostingChannelChange = async (
+    postingChannel: PostingChannel,
+    checked: boolean,
+  ) => {
+    setSavingPostingChannel(postingChannel);
+
+    try {
+      await setAutomationPostingChannelEnabled({
+        automationType: toBackendAutomationType(automationType),
+        postingChannel,
+        isEnabled: checked,
+      });
+      showSuccessToast(t("channelToggleSuccess"));
+    } catch {
+      showErrorToast(t("channelToggleFailed"));
+    } finally {
+      setSavingPostingChannel(null);
+    }
   };
 
   return (
@@ -215,23 +210,58 @@ export function AutomationTypeCard({
               </div>
             </div>
 
-            <Button variant="outline" size="sm" className="w-full md:w-fit" asChild>
-              <Link href={automationTemplatesPath(automationType)}>
-                {t("manageTemplates")}
-                <ArrowRight aria-hidden />
-              </Link>
-            </Button>
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-3">
+                <Switch
+                  id={`${automationType}-global-status`}
+                  checked={isGloballyEnabled}
+                  disabled={!automation || isSavingGlobalStatus}
+                  onCheckedChange={(checked) =>
+                    void handleGlobalStatusChange(checked)
+                  }
+                  aria-label={t("toggleAutomation", {
+                    type: t(`types.${automationType}.title`),
+                  })}
+                />
+                <Label
+                  htmlFor={`${automationType}-global-status`}
+                  className="flex flex-col gap-0.5"
+                >
+                  <span className="text-sm font-medium">
+                    {isGloballyEnabled ? t("enabled") : t("disabled")}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {t("templates.shortCount", { count: templateCount })}
+                  </span>
+                </Label>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full md:w-fit"
+                asChild
+              >
+                <Link href={automationTemplatesPath(automationType)}>
+                  {t("manageTemplates")}
+                  <ArrowRight aria-hidden />
+                </Link>
+              </Button>
+            </div>
           </div>
 
           {/* Right: social platforms */}
           <div className="flex w-full shrink-0 flex-col gap-5 border-t border-border p-4 md:w-[31%] md:justify-center md:border-t-0 md:border-l md:p-3">
-            {accounts.map((account) => (
+            {PLATFORMS.map((platform) => (
               <PlatformBlock
-                key={account.platform}
-                account={account}
+                key={platform}
+                platform={platform}
                 automationType={automationType}
-                onChannelChange={handleChannelChange}
-                onConnect={handleConnect}
+                automation={automation}
+                savingPostingChannel={savingPostingChannel}
+                onPostingChannelChange={(postingChannel, checked) =>
+                  void handlePostingChannelChange(postingChannel, checked)
+                }
               />
             ))}
           </div>

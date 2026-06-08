@@ -280,6 +280,13 @@
       "backToTemplates": "Terug naar templates",
       "manageTemplates": "Templates beheren",
       "connectedAccounts": "Gekoppelde accounts",
+      "enabled": "Actief",
+      "disabled": "Gepauzeerd",
+      "toggleAutomation": "{type} in- of uitschakelen",
+      "toggleSuccess": "Automatisering bijgewerkt.",
+      "toggleFailed": "Automatisering bijwerken mislukt. Probeer het opnieuw.",
+      "channelToggleSuccess": "Postkanaal bijgewerkt.",
+      "channelToggleFailed": "Postkanaal bijwerken mislukt. Probeer het opnieuw.",
       "types": {
         "result": {
           "title": "Wedstrijdresultaat",
@@ -302,14 +309,21 @@
       },
       "templates": {
         "create": "Nieuw template",
+        "creating": "Template maken...",
+        "defaultName": "Nieuw template",
+        "createSuccess": "Template aangemaakt.",
+        "createFailed": "Template aanmaken mislukt. Probeer het opnieuw.",
+        "shortCount": "{count, plural, =0 {Geen templates} one {# template} other {# templates}}",
         "meta": "{count, plural, =0 {Geen templates} one {# template} other {# templates}} · {status}",
         "statusActive": "Automatisering actief",
+        "statusInactive": "Automatisering gepauzeerd",
         "empty": {
           "title": "Nog geen templates",
           "description": "Maak je eerste template om te beginnen met automatisch posten."
         },
         "edit": "Bewerken",
         "delete": "Verwijderen",
+        "deleting": "Verwijderen...",
         "cancel": "Annuleren",
         "deleteConfirmTitle": "Template verwijderen?",
         "deleteConfirmDescription": "\"{name}\" wordt permanent verwijderd. Dit kan niet ongedaan worden gemaakt.",
@@ -324,7 +338,8 @@
         "newTemplate": "Nieuw template",
         "editTemplate": "Template bewerken ({id})",
         "placeholderTitle": "Template-editor komt binnenkort",
-        "placeholderDescription": "De react-konva visuele editor verschijnt hier. Je kunt al navigeren en placeholder-templates opslaan."
+        "placeholderDescription": "De react-konva visuele editor verschijnt hier in fase 2. Dit template is al opgeslagen in de database.",
+        "notFound": "Template niet gevonden."
       }
     }
   },

@@ -1,0 +1,144 @@
+import { ConvexError, v } from "convex/values";
+import { mutation } from "../_generated/server";
+import {
+  ensureOrganizationAutomations,
+  requireCurrentMembership,
+} from "./helpers";
+import { normalizePostingChannelStatuses } from "./constants";
+import { createStarterSceneDocument } from "./scenes";
+import {
+  automationTypeValidator,
+  canvasPresetValidator,
+  postingChannelValidator,
+} from "./validators";
+
+export const ensureCurrentOrganizationAutomations = mutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const { user, membership } = await requireCurrentMembership(ctx);
+    await ensureOrganizationAutomations(ctx, membership.organizationId, user._id);
+    return null;
+  },
+});
+
+export const setAutomationGlobalEnabled = mutation({
+  args: {
+    automationType: automationTypeValidator,
+    isGloballyEnabled: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { user, membership } = await requireCurrentMembership(ctx);
+    await ensureOrganizationAutomations(ctx, membership.organizationId, user._id);
+
+    const automation = await ctx.db
+      .query("organizationAutomations")
+      .withIndex("by_organizationId_and_automationType", (q) =>
+        q
+          .eq("organizationId", membership.organizationId)
+          .eq("automationType", args.automationType),
+      )
+      .unique();
+
+    if (!automation) {
+      throw new ConvexError("Automation not found");
+    }
+
+    await ctx.db.patch(automation._id, {
+      isGloballyEnabled: args.isGloballyEnabled,
+      postingChannels: normalizePostingChannelStatuses(automation.postingChannels),
+      updatedAt: Date.now(),
+      updatedByUserId: user._id,
+    });
+
+    return null;
+  },
+});
+
+export const setAutomationPostingChannelEnabled = mutation({
+  args: {
+    automationType: automationTypeValidator,
+    postingChannel: postingChannelValidator,
+    isEnabled: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { user, membership } = await requireCurrentMembership(ctx);
+    await ensureOrganizationAutomations(ctx, membership.organizationId, user._id);
+
+    const automation = await ctx.db
+      .query("organizationAutomations")
+      .withIndex("by_organizationId_and_automationType", (q) =>
+        q
+          .eq("organizationId", membership.organizationId)
+          .eq("automationType", args.automationType),
+      )
+      .unique();
+
+    if (!automation) {
+      throw new ConvexError("Automation not found");
+    }
+
+    await ctx.db.patch(automation._id, {
+      postingChannels: {
+        ...normalizePostingChannelStatuses(automation.postingChannels),
+        [args.postingChannel]: args.isEnabled,
+      },
+      isGloballyEnabled: automation.isGloballyEnabled,
+      updatedAt: Date.now(),
+      updatedByUserId: user._id,
+    });
+
+    return null;
+  },
+});
+
+export const createTemplate = mutation({
+  args: {
+    automationType: automationTypeValidator,
+    canvasPreset: canvasPresetValidator,
+    name: v.string(),
+  },
+  returns: v.id("automationTemplates"),
+  handler: async (ctx, args) => {
+    const { user, membership } = await requireCurrentMembership(ctx);
+    await ensureOrganizationAutomations(ctx, membership.organizationId, user._id);
+
+    const name = args.name.trim();
+    if (!name) {
+      throw new ConvexError("Template name is required");
+    }
+
+    const now = Date.now();
+    return await ctx.db.insert("automationTemplates", {
+      organizationId: membership.organizationId,
+      automationType: args.automationType,
+      name,
+      sceneDocument: createStarterSceneDocument(args.canvasPreset),
+      canvasPreset: args.canvasPreset,
+      schemaVersion: 1,
+      createdByUserId: user._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
+export const deleteTemplate = mutation({
+  args: {
+    templateId: v.id("automationTemplates"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { membership } = await requireCurrentMembership(ctx);
+    const template = await ctx.db.get(args.templateId);
+
+    if (!template || template.organizationId !== membership.organizationId) {
+      throw new ConvexError("Template not found");
+    }
+
+    await ctx.db.delete(template._id);
+    return null;
+  },
+});

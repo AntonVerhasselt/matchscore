@@ -280,6 +280,13 @@
       "backToTemplates": "Zurück zu Vorlagen",
       "manageTemplates": "Vorlagen verwalten",
       "connectedAccounts": "Verbundene Konten",
+      "enabled": "Aktiv",
+      "disabled": "Pausiert",
+      "toggleAutomation": "{type} ein- oder ausschalten",
+      "toggleSuccess": "Automatisierung aktualisiert.",
+      "toggleFailed": "Automatisierung konnte nicht aktualisiert werden. Bitte versuche es erneut.",
+      "channelToggleSuccess": "Posting-Kanal aktualisiert.",
+      "channelToggleFailed": "Posting-Kanal konnte nicht aktualisiert werden. Bitte versuche es erneut.",
       "types": {
         "result": {
           "title": "Spielergebnis",
@@ -302,14 +309,21 @@
       },
       "templates": {
         "create": "Neue Vorlage",
+        "creating": "Vorlage wird erstellt...",
+        "defaultName": "Neue Vorlage",
+        "createSuccess": "Vorlage erstellt.",
+        "createFailed": "Vorlage konnte nicht erstellt werden. Bitte versuche es erneut.",
+        "shortCount": "{count, plural, =0 {Keine Vorlagen} one {# Vorlage} other {# Vorlagen}}",
         "meta": "{count, plural, =0 {Keine Vorlagen} one {# Vorlage} other {# Vorlagen}} · {status}",
         "statusActive": "Automatisierung aktiv",
+        "statusInactive": "Automatisierung pausiert",
         "empty": {
           "title": "Noch keine Vorlagen",
           "description": "Erstelle deine erste Vorlage, um automatisch zu posten."
         },
         "edit": "Bearbeiten",
         "delete": "Löschen",
+        "deleting": "Wird gelöscht...",
         "cancel": "Abbrechen",
         "deleteConfirmTitle": "Vorlage löschen?",
         "deleteConfirmDescription": "\"{name}\" wird dauerhaft gelöscht. Dies kann nicht rückgängig gemacht werden.",
@@ -324,7 +338,8 @@
         "newTemplate": "Neue Vorlage",
         "editTemplate": "Vorlage bearbeiten ({id})",
         "placeholderTitle": "Vorlagen-Editor kommt bald",
-        "placeholderDescription": "Der visuelle react-konva-Editor erscheint hier. Du kannst bereits navigieren und Platzhalter-Vorlagen speichern."
+        "placeholderDescription": "Der visuelle react-konva-Editor erscheint hier in Phase 2. Diese Vorlage ist bereits in der Datenbank gespeichert.",
+        "notFound": "Vorlage nicht gefunden."
       }
     }
   },

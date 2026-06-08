@@ -3,6 +3,9 @@ import { components } from "../_generated/api";
 import { internalMutation, type MutationCtx } from "../_generated/server";
 
 const appTables = [
+  "templateAssets",
+  "automationTemplates",
+  "organizationAutomations",
   "organizationInvitations",
   "organizationMembers",
   "organizations",

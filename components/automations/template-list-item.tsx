@@ -5,36 +5,46 @@ import Link from "next/link";
 import { useFormatter, useTranslations } from "next-intl";
 import { useState } from "react";
 
+import { api } from "@/convex/_generated/api";
 import { DeleteTemplateDialog } from "@/components/automations/delete-template-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CANVAS_PRESET_LABELS } from "@/lib/automations/canvas-presets";
 import {
   automationEditorPath,
+  type AutomationTemplateSummary,
   type AutomationTypeSlug,
-  type MockTemplate,
 } from "@/lib/automations/types";
-import { showSuccessToast } from "@/lib/user-feedback";
+import { showErrorToast, showSuccessToast } from "@/lib/user-feedback";
+import { useMutation } from "convex/react";
 
 type TemplateListItemProps = {
-  template: MockTemplate;
+  template: AutomationTemplateSummary;
   automationType: AutomationTypeSlug;
-  onDelete: (templateId: string) => void;
 };
 
 export function TemplateListItem({
   template,
   automationType,
-  onDelete,
 }: TemplateListItemProps) {
   const t = useTranslations("app.automations.templates");
   const format = useFormatter();
+  const deleteTemplate = useMutation(api.automations.mutations.deleteTemplate);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleDeleteConfirm = () => {
-    onDelete(template.id);
-    setDeleteOpen(false);
-    showSuccessToast(t("deleteSuccess"));
+  const handleDeleteConfirm = async () => {
+    setIsDeleting(true);
+
+    try {
+      await deleteTemplate({ templateId: template._id });
+      setDeleteOpen(false);
+      showSuccessToast(t("deleteSuccess"));
+    } catch {
+      showErrorToast(t("deleteFailed"));
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -58,7 +68,7 @@ export function TemplateListItem({
         <div className="flex shrink-0 items-center gap-1">
           <Button variant="ghost" size="icon-sm" asChild>
             <Link
-              href={automationEditorPath(automationType, template.id)}
+              href={automationEditorPath(automationType, template._id)}
               aria-label={t("edit")}
             >
               <Pencil aria-hidden />
@@ -79,7 +89,8 @@ export function TemplateListItem({
         templateName={template.name}
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        onConfirm={handleDeleteConfirm}
+        onConfirm={() => void handleDeleteConfirm()}
+        isDeleting={isDeleting}
       />
     </>
   );
