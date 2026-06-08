@@ -12,15 +12,17 @@ import {
 
 type CreateTemplateButtonProps = {
   automationType: AutomationTypeSlug;
+  className?: string;
 };
 
 export function CreateTemplateButton({
   automationType,
+  className,
 }: CreateTemplateButtonProps) {
   const t = useTranslations("app.automations.templates");
 
   return (
-    <Button asChild>
+    <Button asChild className={className}>
       <Link href={automationEditorPath(automationType, "new")}>
         <Plus aria-hidden />
         {t("create")}

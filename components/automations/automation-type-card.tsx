@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 import { MOCK_SOCIAL_ACCOUNTS } from "@/lib/automations/mock-data";
 import { SOCIAL_PLATFORM_FAVICONS } from "@/lib/automations/social-platforms";
 import {
@@ -123,14 +124,18 @@ function PlatformBlock({
   return (
     <div>
       <PlatformHeader account={account} />
-      <div className="mt-2 flex items-center gap-4 pl-6">
-        <div className="min-w-0 flex-1 space-y-1">
-          {CHANNELS.map((channel) => (
-            <p key={channel} className="text-xs text-muted-foreground/50">
-              {tSocial(channel)}
-            </p>
-          ))}
-        </div>
+      <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] grid-rows-2 items-center gap-x-6 gap-y-1.5 pl-6">
+        {CHANNELS.map((channel, index) => (
+          <p
+            key={channel}
+            className={cn(
+              "text-xs text-muted-foreground/50",
+              index === 0 ? "row-start-1" : "row-start-2",
+            )}
+          >
+            {tSocial(channel)}
+          </p>
+        ))}
         {/*
          * Backend (future): Meta OAuth — action initiateSocialConnect({ platform })
          */}
@@ -138,7 +143,7 @@ function PlatformBlock({
           type="button"
           variant="outline"
           size="xs"
-          className="h-auto shrink-0 px-2 py-1 text-[11px] leading-tight whitespace-normal"
+          className="col-start-2 row-span-2 row-start-1 h-auto shrink-0 self-center px-2 py-1 text-[11px] leading-tight whitespace-normal"
           onClick={() => onConnect(account.platform)}
         >
           {tSocial("connectAccount")}
@@ -193,15 +198,15 @@ export function AutomationTypeCard({
   return (
     <article>
       <Card size="sm" className="overflow-hidden py-0">
-        <div className="flex flex-row">
+        <div className="flex flex-col md:flex-row">
           {/* Left: icon, title, description, manage templates */}
-          <div className="flex min-w-0 flex-1 flex-col justify-between gap-6 p-4">
-            <div className="flex gap-4">
-              <div className="flex size-12 shrink-0 items-center justify-center bg-muted text-foreground">
-                <Icon className="size-6" aria-hidden />
+          <div className="flex min-w-0 flex-1 flex-col gap-4 p-4 md:justify-between md:gap-6">
+            <div className="flex gap-3 md:gap-4">
+              <div className="flex size-10 shrink-0 items-center justify-center bg-muted text-foreground md:size-12">
+                <Icon className="size-5 md:size-6" aria-hidden />
               </div>
               <div className="min-w-0">
-                <h2 className="font-heading text-lg font-semibold uppercase leading-tight tracking-wide">
+                <h2 className="font-heading text-base font-semibold uppercase leading-tight tracking-wide break-words md:text-lg">
                   {t(`types.${automationType}.title`)}
                 </h2>
                 <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
@@ -210,7 +215,7 @@ export function AutomationTypeCard({
               </div>
             </div>
 
-            <Button variant="outline" size="sm" className="w-fit" asChild>
+            <Button variant="outline" size="sm" className="w-full md:w-fit" asChild>
               <Link href={automationTemplatesPath(automationType)}>
                 {t("manageTemplates")}
                 <ArrowRight aria-hidden />
@@ -219,7 +224,7 @@ export function AutomationTypeCard({
           </div>
 
           {/* Right: social platforms */}
-          <div className="flex w-[31%] shrink-0 flex-col justify-center gap-5 border-l border-border p-3">
+          <div className="flex w-full shrink-0 flex-col gap-5 border-t border-border p-4 md:w-[31%] md:justify-center md:border-t-0 md:border-l md:p-3">
             {accounts.map((account) => (
               <PlatformBlock
                 key={account.platform}
