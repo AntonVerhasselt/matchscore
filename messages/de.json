@@ -245,7 +245,8 @@
     "shell": {
       "nav": {
         "calendar": "Kalender",
-        "automations": "Automatisierungen"
+        "automations": "Automatisierungen",
+        "socials": "Verbundene Socials"
       },
       "user": {
         "settings": "Einstellungen",
@@ -256,9 +257,75 @@
       "title": "Kalender",
       "description": "Dein Kalender erscheint hier."
     },
+    "socials": {
+      "title": "Verbundene Socials",
+      "description": "Verwalte die mit deinem Verein verknüpften Social-Media-Konten für automatisches Posten.",
+      "planned": {
+        "title": "Demnächst verfügbar",
+        "description": "Diese Seite wird der zentrale Ort sein, um Social-Media-Kontoverbindungen für deine Organisation zu verwalten.",
+        "features": {
+          "overview": "Alle verbundenen Plattformen (Facebook, Instagram) mit Verbindungsstatus, verknüpftem Seiten- oder Profilnamen und Verbindungsdatum anzeigen.",
+          "connect": "Meta OAuth starten, um eine neue Facebook-Seite oder ein Instagram-Konto mit dem Verein zu verbinden.",
+          "disconnect": "Ein Konto trennen oder widerrufen, wenn der Verein Matchscore nicht mehr posten lassen möchte.",
+          "accountDetails": "Erteilte Berechtigungen, Token-Status und Einrichtungsprobleme anzeigen (z. B. Instagram nicht mit einer Facebook-Seite verknüpft).",
+          "automationUsage": "Anzeigen, welche Automatisierungen jedes verbundene Konto nutzen, damit Admins die Auswirkungen einer Trennung verstehen.",
+          "reauth": "Admins auffordern, sich erneut zu verbinden, wenn Tokens ablaufen oder sich Meta-Berechtigungen ändern."
+        }
+      }
+    },
     "automations": {
       "title": "Automatisierungen",
-      "description": "Deine Automatisierungen erscheinen hier."
+      "description": "Verwalte deine automatischen Social-Media-Posts für Spielergebnisse und Ankündigungen.",
+      "backToOverview": "Zurück zu Automatisierungen",
+      "backToTemplates": "Zurück zu Vorlagen",
+      "manageTemplates": "Vorlagen verwalten",
+      "connectedAccounts": "Verbundene Konten",
+      "types": {
+        "result": {
+          "title": "Spielergebnis",
+          "description": "Poste automatisch ein Ergebnis-Bild, sobald das Resultat veröffentlicht ist."
+        },
+        "preview": {
+          "title": "Spielankündigung",
+          "description": "Poste zwei Tage vor Anpfiff eine Ankündigung mit Gegner, Datum und Spielort."
+        }
+      },
+      "social": {
+        "facebook": "Facebook",
+        "instagram": "Instagram",
+        "posts": "Beiträge",
+        "story": "Story",
+        "connect": "Verbinden",
+        "connectAccount": "Konto verbinden",
+        "toggleActive": "{platform} für diese Automatisierung ein- oder ausschalten",
+        "toggleChannel": "{platform} {channel} ein- oder ausschalten"
+      },
+      "templates": {
+        "create": "Neue Vorlage",
+        "meta": "{count, plural, =0 {Keine Vorlagen} one {# Vorlage} other {# Vorlagen}} · {status}",
+        "statusActive": "Automatisierung aktiv",
+        "empty": {
+          "title": "Noch keine Vorlagen",
+          "description": "Erstelle deine erste Vorlage, um automatisch zu posten."
+        },
+        "edit": "Bearbeiten",
+        "delete": "Löschen",
+        "cancel": "Abbrechen",
+        "deleteConfirmTitle": "Vorlage löschen?",
+        "deleteConfirmDescription": "\"{name}\" wird dauerhaft gelöscht. Dies kann nicht rückgängig gemacht werden.",
+        "deleteSuccess": "Vorlage gelöscht.",
+        "deleteFailed": "Vorlage konnte nicht gelöscht werden. Bitte versuche es erneut."
+      },
+      "editor": {
+        "loading": "Editor wird geladen…",
+        "save": "Speichern",
+        "saveSuccess": "Vorlage gespeichert.",
+        "saveFailed": "Speichern fehlgeschlagen. Bitte versuche es erneut.",
+        "newTemplate": "Neue Vorlage",
+        "editTemplate": "Vorlage bearbeiten ({id})",
+        "placeholderTitle": "Vorlagen-Editor kommt bald",
+        "placeholderDescription": "Der visuelle react-konva-Editor erscheint hier. Du kannst bereits navigieren und Platzhalter-Vorlagen speichern."
+      }
     }
   },
   "settings": {

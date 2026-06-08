@@ -1,6 +1,7 @@
 "use client";
 
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { AppPageHeader } from "@/components/app-page";
 import { OrganizationMembers } from "@/components/settings/OrganizationMembers";
 import {
   Card,
@@ -16,9 +17,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <h1 className="mb-8 text-3xl tracking-tight text-foreground">
-        {t("title")}
-      </h1>
+      <AppPageHeader title={t("title")} />
 
       <div className="space-y-6">
         <OrganizationMembers />
