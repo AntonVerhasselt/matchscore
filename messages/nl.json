@@ -245,7 +245,8 @@
     "shell": {
       "nav": {
         "calendar": "Kalender",
-        "automations": "Automatiseringen"
+        "automations": "Automatiseringen",
+        "socials": "Gekoppelde socials"
       },
       "user": {
         "settings": "Instellingen",
@@ -256,9 +257,75 @@
       "title": "Kalender",
       "description": "Je kalender verschijnt hier."
     },
+    "socials": {
+      "title": "Gekoppelde socials",
+      "description": "Beheer de social accounts van je club voor geautomatiseerd posten.",
+      "planned": {
+        "title": "Binnenkort beschikbaar",
+        "description": "Deze pagina wordt de centrale plek om social account-koppelingen voor je organisatie te beheren.",
+        "features": {
+          "overview": "Toon alle gekoppelde platformen (Facebook, Instagram) met koppelingsstatus, gekoppelde pagina of profielnaam, en wanneer het account is gekoppeld.",
+          "connect": "Start Meta OAuth om een nieuwe Facebook-pagina of Instagram-account aan de club te koppelen.",
+          "disconnect": "Ontkoppel of trek een account in wanneer de club Matchscore niet langer mag posten.",
+          "accountDetails": "Toon verleende rechten, tokenstatus en eventuele setup-problemen (bv. Instagram niet gekoppeld aan een Facebook-pagina).",
+          "automationUsage": "Geef aan welke automatiseringen elk gekoppeld account gebruiken, zodat admins begrijpen wat ontkoppelen inhoudt.",
+          "reauth": "Vraag admins om opnieuw te koppelen wanneer tokens verlopen of Meta-rechten wijzigen."
+        }
+      }
+    },
     "automations": {
       "title": "Automatiseringen",
-      "description": "Je automatiseringen verschijnen hier."
+      "description": "Beheer je geautomatiseerde social media posts voor wedstrijdresultaten en aankondigingen.",
+      "backToOverview": "Terug naar automatiseringen",
+      "backToTemplates": "Terug naar templates",
+      "manageTemplates": "Templates beheren",
+      "connectedAccounts": "Gekoppelde accounts",
+      "types": {
+        "result": {
+          "title": "Wedstrijdresultaat",
+          "description": "Post automatisch een score-visual zodra het resultaat bekend is."
+        },
+        "preview": {
+          "title": "Wedstrijdaankondiging",
+          "description": "Post twee dagen voor de wedstrijd een aankondiging met tegenstander, datum en locatie."
+        }
+      },
+      "social": {
+        "facebook": "Facebook",
+        "instagram": "Instagram",
+        "posts": "Posts",
+        "story": "Story",
+        "connect": "Koppelen",
+        "connectAccount": "Account koppelen",
+        "toggleActive": "{platform} in- of uitschakelen voor deze automatisering",
+        "toggleChannel": "{platform} {channel} in- of uitschakelen"
+      },
+      "templates": {
+        "create": "Nieuw template",
+        "meta": "{count, plural, =0 {Geen templates} one {# template} other {# templates}} · {status}",
+        "statusActive": "Automatisering actief",
+        "empty": {
+          "title": "Nog geen templates",
+          "description": "Maak je eerste template om te beginnen met automatisch posten."
+        },
+        "edit": "Bewerken",
+        "delete": "Verwijderen",
+        "cancel": "Annuleren",
+        "deleteConfirmTitle": "Template verwijderen?",
+        "deleteConfirmDescription": "\"{name}\" wordt permanent verwijderd. Dit kan niet ongedaan worden gemaakt.",
+        "deleteSuccess": "Template verwijderd.",
+        "deleteFailed": "Template verwijderen mislukt. Probeer het opnieuw."
+      },
+      "editor": {
+        "loading": "Editor laden…",
+        "save": "Opslaan",
+        "saveSuccess": "Template opgeslagen.",
+        "saveFailed": "Opslaan mislukt. Probeer het opnieuw.",
+        "newTemplate": "Nieuw template",
+        "editTemplate": "Template bewerken ({id})",
+        "placeholderTitle": "Template-editor komt binnenkort",
+        "placeholderDescription": "De react-konva visuele editor verschijnt hier. Je kunt al navigeren en placeholder-templates opslaan."
+      }
     }
   },
   "settings": {

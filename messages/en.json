@@ -245,7 +245,8 @@
     "shell": {
       "nav": {
         "calendar": "Calendar",
-        "automations": "Automations"
+        "automations": "Automations",
+        "socials": "Connected socials"
       },
       "user": {
         "settings": "Settings",
@@ -256,9 +257,75 @@
       "title": "Calendar",
       "description": "Your calendar will appear here."
     },
+    "socials": {
+      "title": "Connected socials",
+      "description": "Manage the social accounts linked to your club for automated posting.",
+      "planned": {
+        "title": "Coming soon",
+        "description": "This page will be the central place to manage social account connections for your organisation.",
+        "features": {
+          "overview": "Show all connected platforms (Facebook, Instagram) with connection status, linked page or profile name, and when the account was connected.",
+          "connect": "Start Meta OAuth to connect a new Facebook Page or Instagram account to the club.",
+          "disconnect": "Disconnect or revoke an account when the club no longer wants Matchscore to post on its behalf.",
+          "accountDetails": "Display granted permissions, token health, and any setup issues (e.g. missing Instagram link to a Facebook Page).",
+          "automationUsage": "Indicate which automations currently use each connected account so admins understand the impact of disconnecting.",
+          "reauth": "Prompt admins to reconnect when tokens expire or Meta permissions change."
+        }
+      }
+    },
     "automations": {
       "title": "Automations",
-      "description": "Your automations will appear here."
+      "description": "Manage your automated social media posts for match results and announcements.",
+      "backToOverview": "Back to automations",
+      "backToTemplates": "Back to templates",
+      "manageTemplates": "Manage templates",
+      "connectedAccounts": "Connected accounts",
+      "types": {
+        "result": {
+          "title": "Match result",
+          "description": "Automatically post a score visual as soon as the result is published."
+        },
+        "preview": {
+          "title": "Match announcement",
+          "description": "Post an announcement two days before kick-off with opponent, date, and venue."
+        }
+      },
+      "social": {
+        "facebook": "Facebook",
+        "instagram": "Instagram",
+        "posts": "Posts",
+        "story": "Story",
+        "connect": "Connect",
+        "connectAccount": "Connect account",
+        "toggleActive": "Toggle {platform} for this automation",
+        "toggleChannel": "Toggle {platform} {channel}"
+      },
+      "templates": {
+        "create": "New template",
+        "meta": "{count, plural, =0 {No templates} one {# template} other {# templates}} · {status}",
+        "statusActive": "Automation active",
+        "empty": {
+          "title": "No templates yet",
+          "description": "Create your first template to start posting automatically."
+        },
+        "edit": "Edit",
+        "delete": "Delete",
+        "cancel": "Cancel",
+        "deleteConfirmTitle": "Delete template?",
+        "deleteConfirmDescription": "\"{name}\" will be permanently deleted. This cannot be undone.",
+        "deleteSuccess": "Template deleted.",
+        "deleteFailed": "Couldn't delete template. Please try again."
+      },
+      "editor": {
+        "loading": "Loading editor…",
+        "save": "Save",
+        "saveSuccess": "Template saved.",
+        "saveFailed": "Couldn't save template. Please try again.",
+        "newTemplate": "New template",
+        "editTemplate": "Edit template ({id})",
+        "placeholderTitle": "Template editor coming soon",
+        "placeholderDescription": "The react-konva visual editor will appear here. You can already navigate and save placeholder templates."
+      }
     }
   },
   "settings": {

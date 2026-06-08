@@ -1,0 +1,1554 @@
+# Automations and Template Editor - Phased Implementation Plan
+
+> Status: combined implementation specification  
+> Sources: `Documentation/automations-and-templates.md`, `plan/template-editor-react-konva.md`  
+> Branch context: `feature/club-automations-templates`  
+> Scope: Convex database design, automation/template APIs, react-konva editor, storage conventions, server render foundation, and phase-by-phase testing.  
+> Non-scope for MVP: match/calendar storage, actual scheduled posting, Meta/social posting, subscription/watermark enforcement, and `starting_eleven`.
+
+This document combines the approved product/backend brief and the react-konva technical guide into one phased implementation plan. Each phase must produce a small integrated slice: backend state, frontend UI, automated checks, browser verification, and database verification. After a phase passes those checks, the implementer should stop and hand it to the user for manual testing before continuing.
+
+## Implementation Contract
+
+Each phase follows the same delivery loop:
+
+1. Implement the backend and frontend scope for that phase only.
+2. Run the relevant code tests and type/lint/build checks.
+3. Open the browser and verify the user flow manually.
+4. Verify the database state changed exactly as expected.
+5. If anything fails, continue fixing inside the same phase.
+6. Only when the phase passes, report the result to the user and ask them to test.
+
+The first phase must be intentionally small: it should have almost no editor functionality, but it must prove the data model, authentication/org scoping, route wiring, UI interaction, and database writes are real.
+
+## Product Context
+
+Matchscore automates social media for Belgian amateur football clubs. In user-facing copy we say "club"; in code and database schema we use `organization`.
+
+Each organization can:
+
+- Design visual templates for automated posts.
+- Toggle automations on or off per post type.
+- Later connect social accounts so Matchscore can select a template, fill variables, render an image, and post it.
+
+MVP automation types:
+
+| Type | Future trigger | Purpose |
+| --- | --- | --- |
+| `match_announcement` | 2 days before kick-off | Opponent, location, date/time |
+| `match_result` | When federation publishes result | Final score visual |
+
+Deferred automation type:
+
+- `starting_eleven`
+
+Deferred product areas:
+
+- Match/calendar tables.
+- Render scheduling.
+- Meta/social posting.
+- Subscription gating and watermark behavior.
+- Full live preview with real fixture data.
+- Email nudges.
+- Thumbnails, unless a later phase explicitly chooses to add them.
+
+## Approved Decisions
+
+These decisions are carried forward unchanged:
+
+| Topic | Decision |
+| --- | --- |
+| MVP automation types | `match_announcement`, `match_result` only |
+| Initial automation state | All active when an organization is created |
+| Enable rule | Users can toggle freely; no template is required to keep an automation active |
+| Enabled with zero templates | Valid state; future posting job skips that automation type |
+| Active-but-no-template nudge | Deferred email reminder |
+| Template selection at post time | Uniform random among templates |
+| Subscription lapse | Block posting only; editing remains allowed |
+| Canvas dimensions | Fixed presets |
+| Static images | Stored as `templateAssets` and referenced by `assetId` |
+| Dynamic images | Club logos resolved at render time from match data; placeholders in editor |
+| Home/away wording | Variables are match-relative: `homeClubLogo`, not "our logo" |
+| Date/time format | `nl-BE` |
+| Variable UX | Property panel binding dropdown, not `{{mustache}}` text |
+| Live preview MVP | Static placeholder values first |
+| Template limit | None |
+| Version history | None; overwrite on save |
+| Permissions | Any organization member can manage automations and templates |
+| Watermark | Out of scope |
+| Scene storage | Inline `sceneDocument` object on template row |
+| Fonts | System fonts only for MVP |
+| Konva features | Basic `Stage`, `Layer`, `Group`, `Rect`, `Text`, `Image` only |
+| Schema versioning | `schemaVersion: 1` on every template |
+| Thumbnail | Optional `thumbnailStorageId`, implement later |
+| Delete templates | Hard delete |
+| Organization deletion | Delete child automation/template/asset rows when org deletion exists |
+
+## Architecture Summary
+
+The core architecture is:
+
+- React state serialized as normalized Konva scene JSON is the single source of truth.
+- The frontend editor uses `react-konva`.
+- The backend stores the normalized scene JSON inline on `automationTemplates`.
+- The future server renderer uses the same scene JSON with Konva 10+ and `konva/skia-backend`.
+- Static uploaded images live in Convex Storage and are referenced through `templateAssets`.
+- Dynamic content uses `bindingKey` attrs on Konva nodes.
+
+The key discovery from the research is that Konva v10+ has an explicit skia backend:
+
+```ts
+import Konva from "konva";
+import "konva/skia-backend";
+```
+
+That means the same normalized Konva scene JSON can be edited in the browser and rendered server-side without a custom Canvas 2D translator. A custom schema and dual-storage approach are rejected for the MVP because they introduce a second renderer or two sources of truth.
+
+## Data Model
+
+The database relationship is:
+
+```text
+organizations
+  -> organizationAutomations
+  -> automationTemplates
+  -> templateAssets
+```
+
+### `organizationAutomations`
+
+One row per organization per automation type.
+
+```ts
+organizationAutomations: defineTable({
+  organizationId: v.id("organizations"),
+  automationType: v.union(
+    v.literal("match_announcement"),
+    v.literal("match_result"),
+  ),
+  isEnabled: v.boolean(),
+  updatedAt: v.number(),
+  updatedByUserId: v.optional(v.string()),
+})
+  .index("by_organizationId", ["organizationId"])
+  .index("by_organizationId_and_automationType", [
+    "organizationId",
+    "automationType",
+  ]);
+```
+
+Invariants:
+
+- Exactly two rows per organization for MVP.
+- Rows are created when the organization is created.
+- Existing organizations need a one-time backfill or an idempotent `ensureOrganizationAutomations` path during Phase 1.
+- `isEnabled` defaults to `true`.
+- Toggling is always allowed.
+- No template count check on enable.
+- Deleting the last template does not disable the automation.
+- Future posting skips enabled automation types with zero templates.
+
+### `automationTemplates`
+
+Templates are stored per organization and automation type.
+
+```ts
+automationTemplates: defineTable({
+  organizationId: v.id("organizations"),
+  automationType: v.union(
+    v.literal("match_announcement"),
+    v.literal("match_result"),
+  ),
+  name: v.string(),
+  sceneDocument: v.any(),
+  canvasPreset: v.union(
+    v.literal("instagram_square"),
+    v.literal("instagram_portrait"),
+    v.literal("facebook_landscape"),
+  ),
+  schemaVersion: v.number(),
+  thumbnailStorageId: v.optional(v.id("_storage")),
+  createdByUserId: v.string(),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+  .index("by_organizationId", ["organizationId"])
+  .index("by_organizationId_and_automationType", [
+    "organizationId",
+    "automationType",
+  ]);
+```
+
+Canvas presets:
+
+| Key | Size | Typical use |
+| --- | --- | --- |
+| `instagram_square` | 1080 x 1080 | Instagram feed, Facebook square posts |
+| `instagram_portrait` | 1080 x 1350 | Instagram portrait |
+| `facebook_landscape` | 1200 x 630 | Facebook landscape/link-style visual |
+
+Rules:
+
+- Store only `canvasPreset`; derive width and height in code.
+- `automationType` should be immutable after creation.
+- `schemaVersion` starts at `1`.
+- `sceneDocument` is stored as a parsed object, not a JSON string.
+- `thumbnailStorageId` is optional and can remain unused until thumbnails are implemented.
+- Inline `sceneDocument` is acceptable for MVP because templates should be well under Convex's document size limit.
+- If real templates approach the 1 MB document limit, revisit storing JSON in `_storage`.
+
+### `templateAssets`
+
+Static files uploaded by a club, such as backgrounds and sponsor logos.
+
+```ts
+templateAssets: defineTable({
+  organizationId: v.id("organizations"),
+  storageId: v.id("_storage"),
+  fileName: v.string(),
+  mimeType: v.string(),
+  byteSize: v.number(),
+  uploadedByUserId: v.string(),
+  createdAt: v.number(),
+})
+  .index("by_organizationId", ["organizationId"]);
+```
+
+Rules:
+
+- Store static club uploads here.
+- Do not store home/away club logos here for MVP; those are dynamic image bindings resolved from match data at render time.
+- Deleting an asset should reject if any template references it through `attrs.assetId`.
+- A later background integrity job can clean orphaned assets, but Phase 4 should at least prevent deleting referenced assets.
+
+## Convex API Surface
+
+Follow the repository's Convex folder conventions. The source brief expects `convex/automations/` and `convex/templateAssets/`.
+
+All public functions must:
+
+- Validate arguments.
+- Validate returns where the project pattern supports return validators.
+- Authenticate server-side.
+- Resolve the current organization from membership.
+- Never accept a `userId` or organization owner id from the client for authorization.
+- Scope reads and writes to `membership.organizationId`.
+- Use indexes rather than table scans.
+- Keep query/mutation wrappers thin and move shared logic into helper functions when useful.
+- Show success/error feedback in the UI with Sonner via `@/lib/user-feedback` after user actions.
+
+Automation queries:
+
+| Function | Purpose |
+| --- | --- |
+| `listAutomations` | Return both automation rows for current organization plus template count per type |
+| `listTemplates` | Return templates for current organization, optionally filtered by automation type |
+| `getTemplate` | Return one template by id if it belongs to the current organization |
+
+Automation mutations:
+
+| Function | Purpose |
+| --- | --- |
+| `setAutomationEnabled` | Set `isEnabled`; no template count check |
+| `createTemplate` | Validate scene document and insert template |
+| `updateTemplate` | Validate scene document and update name/scene |
+| `deleteTemplate` | Hard delete; do not change automation state |
+
+Template asset functions:
+
+| Function | Purpose |
+| --- | --- |
+| `generateUploadUrl` | Return Convex Storage upload URL |
+| `saveTemplateAsset` | Insert asset metadata after upload |
+| `listTemplateAssets` | List current organization's assets |
+| `deleteTemplateAsset` | Reject if referenced; otherwise delete row and storage blob if supported |
+
+## Scene Document Format
+
+Persist this top-level structure:
+
+```ts
+type SceneDocument = {
+  schemaVersion: 1;
+  stage: KonvaSerializedNode;
+};
+```
+
+`stage` follows Konva's serialized tree:
+
+```ts
+type KonvaSerializedNode = {
+  className: string;
+  attrs: Record<string, unknown>;
+  children?: KonvaSerializedNode[];
+};
+```
+
+Custom editor metadata lives in `attrs`. Konva preserves unknown attrs through serialization.
+
+Important attrs:
+
+```ts
+interface TemplateNodeAttrs {
+  id?: string;
+  name?: string;
+  assetId?: Id<"templateAssets">;
+  bindingKey?: TextBindingKey | ImageBindingKey;
+  objectFit?: "cover" | "contain" | "fill";
+  overflowMode?: "wrap" | "shrink" | "ellipsis" | "fixed";
+  textTransform?: "none" | "uppercase";
+  condition?: LayerCondition; // future
+}
+```
+
+Allowed node classes for MVP:
+
+| `className` | Use |
+| --- | --- |
+| `Stage` | Root |
+| `Layer` | Content layer |
+| `Group` | Optional grouping |
+| `Rect` | Blocks, overlays, background shapes |
+| `Text` | Typography |
+| `Image` | Backgrounds, sponsors, bound logos |
+
+Do not use in MVP:
+
+- `Line`
+- `Circle`
+- `Path`
+- filters
+- custom `sceneFunc`
+- animations
+- `Konva.Tween`
+- multiple stages
+- `cache()` unless profiling proves it is necessary
+
+### Binding Keys
+
+Text bindings:
+
+| `bindingKey` | Automation types | Placeholder |
+| --- | --- | --- |
+| `homeClubName` | both | `Thuisploeg` |
+| `awayClubName` | both | `Uitploeg` |
+| `matchAddress` | both | `Adres van de wedstrijd` |
+| `matchDateTime` | both | `za 15 mrt. 2025, 20:00` |
+| `score` | `match_result` only | `2 - 1` |
+
+Image bindings:
+
+| `bindingKey` | Automation types | Editor placeholder |
+| --- | --- | --- |
+| `homeClubLogo` | both | bundled generic crest |
+| `awayClubLogo` | both | bundled generic crest |
+
+Rules:
+
+- Dynamic text and image content is represented by `attrs.bindingKey`.
+- Static image content is represented by `attrs.assetId`.
+- Do not use `{{mustache}}` syntax in text.
+- The property panel should show "Inhoud" with fixed text/image versus variable binding.
+- Binding dropdown options must be filtered by automation type.
+- `score` is invalid for `match_announcement`.
+
+### Normalization on Save
+
+Every save must run through `normalizeSceneDocument`.
+
+Responsibilities:
+
+1. Parse raw JSON if needed.
+2. Ensure top-level `schemaVersion: 1`.
+3. Ensure root class is `Stage`.
+4. Validate allowed `className` values.
+5. Strip editor-only attrs such as `draggable`, transformer metadata, selection state, guide metadata, and temporary UI flags.
+6. Reject filters, custom `sceneFunc`, unknown classes, and unsupported shapes.
+7. Ensure `Image` nodes have exactly one of `assetId` or image `bindingKey` when they require external content.
+8. Ensure dynamic `Text` nodes have valid text `bindingKey`.
+9. Bake any lingering `scaleX` and `scaleY` into width/height.
+10. Keep persisted coordinates as output pixels.
+11. Keep only the content layer, not overlay guides or transformer nodes.
+
+The same validation rules should run client-side before calling mutations and server-side inside Convex mutations. Client validation is UX; server validation is authority.
+
+### Hydration on Load
+
+Images are not stored in Konva JSON. On load:
+
+- Static `assetId` resolves to a signed Convex Storage URL.
+- Dynamic logo `bindingKey` resolves to a bundled placeholder image in the editor.
+- Dynamic text `bindingKey` resolves to placeholder text or preview mock data.
+- Server rendering later resolves asset IDs from Convex Storage and dynamic bindings from match data.
+
+## Frontend Architecture
+
+The editor must be client-only where it imports `react-konva`.
+
+Next.js integration rules:
+
+- Keep `react-konva` imports inside dynamically imported components.
+- Do not synchronously import `Stage`, `Layer`, or other Konva components from app route files.
+- Use `next/dynamic` with `{ ssr: false }`.
+- Never import `konva/skia-backend` or `skia-canvas` in client files.
+- If a build fails with `Can't resolve 'canvas'`, first confirm the dynamic import boundary is correct. Only then use the existing fallback pattern in `next.config.ts`.
+
+Dependency intent:
+
+```bash
+pnpm add konva react-konva use-image
+pnpm add skia-canvas
+```
+
+`skia-canvas` is for a future Convex `"use node"` render action only. It must not enter the client bundle.
+
+### Runtime State Split
+
+Persist only `SceneDocument`. Keep UI state in React.
+
+```ts
+interface EditorUiState {
+  selectedNodeId: string | null;
+  tool: "select" | "text" | "rect" | "image";
+  previewMode: boolean;
+  history: SceneDocument[];
+  historyIndex: number;
+  isDirty: boolean;
+  editingTextNodeId: string | null;
+}
+```
+
+Never persist:
+
+- Transformer state.
+- Guide lines.
+- Selection highlights.
+- Drag ghosts.
+- Overlay layer nodes.
+- Local history.
+
+React state is authoritative. Do not treat the live Konva node tree as the source of truth. Refs can be used for measurement, exporting a dev preview, and transformer attachment.
+
+### Coordinate System
+
+The stage always uses the logical canvas preset size:
+
+- `instagram_square`: 1080 x 1080
+- `instagram_portrait`: 1080 x 1350
+- `facebook_landscape`: 1200 x 630
+
+Do not resize the stage to the browser window. Scale the stage visually to fit its container. Persisted `x`, `y`, `width`, and `height` values are output pixels and must match final PNG coordinates.
+
+### Suggested Folder Structure
+
+```text
+components/template-editor/
+  template-editor-root.tsx
+  template-editor-skeleton.tsx
+  canvas/
+    template-stage.tsx
+    scene-layer.tsx
+    overlay-layer.tsx
+    selection-transformer.tsx
+    editable-text-overlay.tsx
+    nodes/
+      scene-text.tsx
+      scene-image.tsx
+      scene-rect.tsx
+  panels/
+    layers-panel.tsx
+    properties-panel.tsx
+    assets-panel.tsx
+    bindings-panel.tsx
+  toolbar/
+    editor-toolbar.tsx
+    preset-toolbar.tsx
+  hooks/
+    use-editor-state.ts
+    use-scene-history.ts
+    use-stage-scale.ts
+    use-template-asset-url.ts
+    use-text-fit.ts
+
+lib/template-scene/
+  index.ts
+  types.ts
+  canvas-presets.ts
+  placeholders.ts
+  normalize-scene-document.ts
+  validate-scene-document.ts
+  hydrate-scene.ts
+  resolve-binding.ts
+  calculate-object-fit.ts
+  calculate-text-fit.ts
+  adapt-layout-ratio.ts
+```
+
+`adapt-layout-ratio.ts` is for a later multi-ratio feature. It can be stubbed or deferred until needed.
+
+## Route Intent
+
+The product route intent is:
+
+| Route | Purpose |
+| --- | --- |
+| `/app/automations` | List automation types, toggles, and template counts |
+| `/app/automations/[automationType]` | Template list for one automation type |
+| `/app/automations/[automationType]/new` | Create template or choose preset |
+| `/app/automations/[automationType]/[templateId]` | Edit existing template |
+
+If the branch keeps the older documented `/templates` segment, the same semantics apply:
+
+- `/app/automations/[type]/templates`
+- `/app/automations/[type]/templates/new`
+- `/app/automations/[type]/templates/[id]/edit`
+
+Pick one route shape and keep code, links, tests, and docs consistent. Since the branch already appears to have `[automationType]` and `[templateId]` routes scaffolded, prefer the shorter route shape unless there is a strong reason to change.
+
+## Technical Notes That Apply Across Phases
+
+### Convex Limits and Storage Rules
+
+Keep these constraints in mind while implementing every phase:
+
+- Convex document fields have an effective maximum around 1 MB when encoded.
+- Object values can have at most 1024 entries.
+- Array values can have at most 8192 elements.
+- Do not store unbounded child lists on parent documents.
+- Use child tables for growing data.
+- High-churn operational state should not be stored on stable shared profile documents.
+- Template scenes can be inline for MVP because expected node count is small.
+- If templates ever approach document limits, migrate scene JSON to `_storage` or a dedicated chunking approach in a later schema version.
+- Convex Storage stores blobs; persist `storageId` references, not bytes or signed URLs.
+- Use `_storage` metadata access through the system table pattern, not deprecated metadata APIs.
+
+Because the MVP adds new tables, most schema changes are safe. The only migration-like concern is existing organizations that predate automation rows. Handle that with a one-time backfill or an explicit idempotent ensure mutation. If a later phase changes required fields or reshapes persisted scene documents, use the widen-migrate-narrow pattern:
+
+1. Widen schema to allow old and new data.
+2. Update code to write the new format and read both.
+3. Backfill existing data.
+4. Verify migration completion.
+5. Narrow schema and remove old read compatibility.
+
+### Schema Version Strategy
+
+Every template has two version signals:
+
+- Top-level template row field: `schemaVersion: 1`.
+- `sceneDocument.schemaVersion: 1`.
+
+They should match for MVP. The loader and normalizer should reject unsupported future versions until a migration function exists.
+
+Future versioning plan:
+
+- `v1`: basic Konva subset, binding keys from this document, static assets by `assetId`, dynamic values by `bindingKey`.
+- `v2+`: implement `migrateSceneDocument(doc)` and either migrate on read or backfill before tightening validation.
+
+Version history for user edits is still out of scope. `schemaVersion` is format compatibility, not user-visible revision history.
+
+### Next.js and react-konva Boundary
+
+Every component importing `react-konva` must be inside the dynamically imported editor tree.
+
+Example route pattern:
+
+```tsx
+"use client";
+
+import dynamic from "next/dynamic";
+import { TemplateEditorSkeleton } from "@/components/template-editor/template-editor-skeleton";
+
+const TemplateEditorRoot = dynamic(
+  () => import("@/components/template-editor/template-editor-root"),
+  { ssr: false, loading: () => <TemplateEditorSkeleton /> },
+);
+```
+
+Do not import `Stage`, `Layer`, `Text`, `Image`, or `Transformer` in the page file unless that file is itself inside the dynamic boundary. The safe pattern is:
+
+- Page/route component handles params, loading shell, and dynamic import.
+- Dynamically imported editor root imports `react-konva`.
+- Nested editor components import `react-konva`.
+- Server render helpers never import client editor components.
+
+If build fails with `Can't resolve 'canvas'`, first check the import boundary. If the boundary is correct and the build still fails, use the fallback config pattern:
+
+```ts
+const nextConfig: NextConfig = {
+  webpack: (config) => {
+    config.externals = [...(config.externals ?? []), { canvas: "canvas" }];
+    return config;
+  },
+};
+```
+
+React 19 notes:
+
+- `useRef<Konva.Stage>(null)` remains the expected ref pattern.
+- Strict Mode can double-mount effects, so image-loading effects and history initialization need cleanup.
+- Memoize heavy Konva event handlers with `useCallback` and derived node collections with `useMemo` where churn becomes visible.
+
+### Stage Scaling and Coordinates
+
+Use a fixed logical stage and scale visually:
+
+```tsx
+function useStageScale(logicalWidth: number, logicalHeight: number) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const ro = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      const nextScale = Math.min(width / logicalWidth, height / logicalHeight, 1);
+      setScale(nextScale);
+    });
+
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [logicalWidth, logicalHeight]);
+
+  return { containerRef, scale };
+}
+```
+
+Pointer conversion when stage is scaled:
+
+```ts
+function getStagePointer(stage: Konva.Stage): { x: number; y: number } | null {
+  const pos = stage.getPointerPosition();
+  if (!pos) return null;
+  const scale = stage.scaleX();
+  return { x: pos.x / scale, y: pos.y / scale };
+}
+```
+
+All persisted coordinates must be logical output pixels, not scaled browser pixels.
+
+### Transformer Rules
+
+Konva Transformer mutates scale, not dimensions. On transform end, read from refs, compute new attrs, dispatch to React state, and persist scale as `1`.
+
+```ts
+function bakeTransform(node: Konva.Node) {
+  const scaleX = node.scaleX();
+  const scaleY = node.scaleY();
+  node.scaleX(1);
+  node.scaleY(1);
+
+  if (node.className === "Text") {
+    const text = node as Konva.Text;
+    text.width(Math.max(text.width() * scaleX, 30));
+  } else {
+    node.width(Math.max(node.width() * scaleX, 10));
+    node.height(Math.max(node.height() * scaleY, 10));
+  }
+}
+```
+
+Text nodes should generally use horizontal resize anchors. Rect and Image nodes can use corner and side anchors.
+
+### Text Editing Rules
+
+`Konva.Text` is not editable. Use a DOM overlay:
+
+1. Double-click a text node.
+2. Set `editingTextNodeId`.
+3. Hide the Konva text node and transformer while editing.
+4. Position a `<textarea>` using the node absolute position, stage container bounds, stage scale, and rotation.
+5. Sync visual styles from Konva attrs:
+   - `fontSize`
+   - `fontFamily`
+   - `fontStyle`
+   - `lineHeight`
+   - `fill` -> CSS color
+   - `align` -> CSS text align
+   - `letterSpacing` if used
+6. Commit on blur or Enter without Shift.
+7. Restore Konva text rendering and push a history snapshot.
+
+Use `attrs.textTransform: "uppercase"` instead of relying on CSS. Apply the transform in both browser display and server hydration:
+
+```ts
+function displayText(raw: string, attrs: TemplateNodeAttrs): string {
+  return attrs.textTransform === "uppercase" ? raw.toUpperCase() : raw;
+}
+```
+
+### Image Loading and Object Fit
+
+Browser image rendering should use `use-image`:
+
+```tsx
+function SceneImage({ src, crop, ...props }: SceneImageProps) {
+  const [image, status] = useImage(src, "anonymous");
+  if (status === "loading") return null;
+  if (!image) return null;
+  return <Image image={image} crop={crop} {...props} />;
+}
+```
+
+Resolution rules:
+
+- Static upload: `assetId` -> signed Convex Storage URL -> `useImage`.
+- Dynamic editor logo: `bindingKey` -> bundled placeholder image.
+- Dynamic server logo: `bindingKey` -> match DTO logo source.
+
+Konva does not have CSS `object-fit`, so compute crop rectangles in a shared pure function:
+
+```ts
+export function calculateObjectFit(
+  srcWidth: number,
+  srcHeight: number,
+  destWidth: number,
+  destHeight: number,
+  mode: "cover" | "contain" | "fill",
+): { x: number; y: number; width: number; height: number } {
+  // Shared browser/server math.
+}
+```
+
+If canvas export becomes tainted by image CORS behavior, verify Convex signed URL headers. If needed, proxy through a same-origin route. Do not work around this by persisting image data URLs in templates.
+
+### Text Overflow
+
+Supported text overflow modes:
+
+| Mode | Behavior |
+| --- | --- |
+| `wrap` | Fixed font size, word wrap inside width |
+| `shrink` | Binary search font size until content fits |
+| `ellipsis` | Truncate measured text and append ellipsis |
+| `fixed` | Single line or fixed box; clipping is allowed |
+
+Shared shrink-to-fit shape:
+
+```ts
+export function calculateTextFit(
+  text: string,
+  fontFamily: string,
+  maxWidth: number,
+  maxHeight: number,
+  baseFontSize: number,
+  measure: (text: string, fontSize: number) => { width: number; height: number },
+): number {
+  let lo = 8;
+  let hi = baseFontSize;
+  let best = lo;
+
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    const measured = measure(text, mid);
+    if (measured.width <= maxWidth && measured.height <= maxHeight) {
+      best = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+
+  return best;
+}
+```
+
+Default suggestion:
+
+- Bound team names use `shrink`.
+- Static headings use `wrap`.
+
+### Layer, Overlay, and Performance Rules
+
+Layer behavior:
+
+- Store z-order as array order in the content layer's `children`.
+- Reordering layers is an immutable array splice.
+- `attrs.name` can drive layer labels.
+- Locking should prevent drag/transform and can use `listening={false}` if the UX still allows selection from the layer panel.
+- Visibility can persist as `visible`.
+
+Overlay behavior:
+
+- Overlay layer is a second React-rendered `<Layer listening={false}>`.
+- It can show center guides, safe zones, drag guides, or later watermark preview.
+- It must never be included in normalized scene JSON.
+
+Performance guidelines:
+
+- One content layer is enough for MVP.
+- Keep templates under roughly 30 nodes.
+- Debounce numeric property inputs.
+- Commit history snapshots only on discrete actions.
+- Let react-konva batch normal state-driven renders.
+- Use `batchDraw()` only after bulk hydration or transformer attachment.
+- Use `listening={false}` on static background images where possible.
+
+### Server Render Parity Checklist
+
+The browser and server render paths must share:
+
+| Concern | Shared implementation |
+| --- | --- |
+| Object fit | `calculate-object-fit.ts` |
+| Shrink text | `calculate-text-fit.ts` |
+| Binding text | `resolve-binding.ts` |
+| Uppercase | `displayText()` |
+| Date/time | `formatBinding()` with `nl-BE` |
+| Gradients | Same Konva attrs |
+| Fonts | Same system font names |
+
+When custom fonts are added later, document the font list and use `registerFont()` on the server.
+
+## Phase 1 - Database Backbone and Minimal UI
+
+Goal: prove that automations exist per organization, can be toggled from the UI, and can create a minimal template row visible in the database. This phase intentionally has almost no editor behavior.
+
+### Backend Scope
+
+Implement:
+
+- Add `organizationAutomations`, `automationTemplates`, and `templateAssets` tables to `convex/schema.ts`.
+- Add shared automation type and canvas preset constants.
+- Seed `organizationAutomations` rows when a new organization is created.
+- Add an idempotent helper to ensure existing organizations have the two MVP automation rows.
+- Add `listAutomations`.
+- Add `setAutomationEnabled`.
+- Add `listTemplates` filtered by `automationType`.
+- Add `createTemplate` that inserts a very basic valid scene document.
+- Add `deleteTemplate` only if the UI needs it in this phase; otherwise defer.
+
+Minimal starter `sceneDocument` for Phase 1:
+
+```ts
+{
+  schemaVersion: 1,
+  stage: {
+    className: "Stage",
+    attrs: { width: 1080, height: 1080 },
+    children: [
+      {
+        className: "Layer",
+        attrs: {},
+        children: [
+          {
+            className: "Rect",
+            attrs: { id: "background", x: 0, y: 0, width: 1080, height: 1080, fill: "#111827" },
+          },
+          {
+            className: "Text",
+            attrs: { id: "title", x: 80, y: 80, width: 920, text: "Matchscore template", fontSize: 64, fill: "#ffffff" },
+          },
+        ],
+      },
+    ],
+  },
+}
+```
+
+Backend details:
+
+- All functions derive the organization from the authenticated user membership.
+- `listAutomations` should return both automation rows plus template counts.
+- Counts can be computed safely for two automation types in MVP, but avoid patterns that will become unbounded. A bounded per-type query is acceptable for this small fixed set.
+- `setAutomationEnabled` records `updatedAt` and `updatedByUserId` if available.
+- `createTemplate` sets `schemaVersion: 1`, `canvasPreset`, `createdAt`, `updatedAt`, and `createdByUserId`.
+- `automationType` and `canvasPreset` are validated through Convex validators.
+- If existing organizations have no automation rows, `listAutomations` should either call an idempotent ensure helper from a mutation path before this phase is tested, or the phase should include a one-time internal backfill for dev data.
+
+### Frontend Scope
+
+Implement:
+
+- `/app/automations` loads `listAutomations`.
+- Show two automation cards: Match announcement and Match result.
+- Each card shows:
+  - user-facing title and short description
+  - enabled/disabled switch
+  - template count
+  - link to the automation type page
+- Toggling the switch calls `setAutomationEnabled` and shows Sonner success/error feedback.
+- `/app/automations/[automationType]` lists templates for that type.
+- Add a "Create basic template" button.
+- Clicking it calls `createTemplate`, then routes to the template detail route or keeps the user on the list with the new row visible.
+- The template detail route can be a read-only placeholder in this phase that displays:
+  - template name
+  - automation type
+  - canvas preset
+  - a note that the visual editor starts in Phase 2
+
+No `react-konva` is required in Phase 1.
+
+### Agent Testing Before User Handoff
+
+Automated checks:
+
+- Run the repository's lint/type/test commands after inspecting `package.json`.
+- Add focused Convex tests if the repo already has `convex-test`; otherwise document the missing test harness and cover with function-level manual verification.
+- Verify `listAutomations` returns exactly two rows for a test organization.
+- Verify `setAutomationEnabled` changes only the requested row.
+- Verify `createTemplate` inserts a template with `schemaVersion: 1`, the selected `automationType`, and the selected `canvasPreset`.
+
+Browser checks:
+
+- Open `/app/automations`.
+- Confirm both automation cards render.
+- Toggle `match_announcement` off and back on.
+- Confirm the UI updates and toasts appear.
+- Open one automation type page.
+- Create a basic template.
+- Confirm the template appears in the list.
+- Open the template placeholder page.
+
+Database checks:
+
+- Confirm `organizationAutomations` has two rows for the active organization.
+- Confirm toggling updates `isEnabled` and `updatedAt`.
+- Confirm `automationTemplates` has one new row after pressing "Create basic template".
+- Confirm `sceneDocument.schemaVersion === 1`.
+- Confirm no template row is created under another organization.
+
+User testing script:
+
+1. Go to `/app/automations`.
+2. Toggle both automation types and refresh the page.
+3. Open `Match announcement`.
+4. Create a basic template.
+5. Refresh and confirm it remains in the list.
+
+Phase 1 is complete only when the UI flow works and the database state matches the user actions.
+
+## Phase 2 - Static Template Editor With Save and Reload
+
+Goal: replace the placeholder template page with a real but minimal react-konva editor that edits static shapes/text and persists the scene back to Convex.
+
+### Backend Scope
+
+Implement or extend:
+
+- `getTemplate`.
+- `updateTemplate`.
+- `validateSceneDocument`.
+- `normalizeSceneDocument` shared logic where practical.
+- Return data needed by the editor: template id, name, automation type, canvas preset, scene document.
+
+Validation requirements:
+
+- `schemaVersion` must be `1`.
+- Root node must be `Stage`.
+- Content must use only allowed MVP classes.
+- Strip or reject editor-only attrs.
+- Reject custom functions, filters, and unsupported shapes.
+- Reject scene documents that do not match the selected canvas preset size.
+- Ensure `automationType` cannot be changed through `updateTemplate`.
+- Ensure the template belongs to the current organization before returning or updating it.
+
+### Frontend Scope
+
+Install and wire client-only editor dependencies:
+
+- `konva`
+- `react-konva`
+- `use-image` if not deferred to Phase 4
+
+Implement:
+
+- Dynamic import boundary for the editor root with `ssr: false`.
+- `TemplateEditorSkeleton`.
+- `template-editor-root.tsx` layout with toolbar, center canvas area, and basic side panel.
+- `useStageScale` so the stage keeps logical preset size and scales visually to fit.
+- Render `Rect` and `Text` nodes from React scene state.
+- Select nodes by click.
+- Drag nodes and update React scene state on drag end.
+- Resize/rotate with `Transformer`.
+- Bake transform scale into width/height on transform end.
+- Basic property panel for selected node:
+  - x
+  - y
+  - width
+  - height
+  - fill for rects/text
+  - text value for text nodes
+  - font size for text nodes
+- Save button calls `updateTemplate`.
+- Reloading the page loads the saved scene from Convex.
+- Dirty state in the toolbar.
+
+Out of scope for Phase 2:
+
+- Asset uploads.
+- Image nodes.
+- Binding dropdowns.
+- Preview mode.
+- DOM textarea text editing.
+- Layer panel reorder.
+- Undo/redo.
+
+### Agent Testing Before User Handoff
+
+Automated checks:
+
+- Unit tests for `normalizeSceneDocument`:
+  - accepts minimal Stage/Layer/Rect/Text fixture
+  - rejects unsupported `Circle`
+  - strips `draggable`
+  - rejects filters/custom scene functions
+  - bakes scale when present
+- Type/lint checks.
+- Run build or at least the Next command that catches invalid server imports.
+- Confirm no `react-konva`, `konva/skia-backend`, or `skia-canvas` imports leak into server route files.
+
+Browser checks:
+
+- Open an existing template.
+- Select text.
+- Move it.
+- Change its text and color in the panel.
+- Resize it.
+- Save.
+- Refresh the page.
+- Confirm the changes remain.
+- Navigate away and back.
+- Confirm the scene still renders.
+
+Database checks:
+
+- Confirm `automationTemplates.updatedAt` changes on save.
+- Confirm `sceneDocument.stage` contains the changed attrs.
+- Confirm there is no persisted transformer or overlay data.
+- Confirm `scaleX`/`scaleY` are not persisted after resizing.
+
+User testing script:
+
+1. Create a basic template from Phase 1.
+2. Open it.
+3. Move the text.
+4. Change the text content and color.
+5. Save and refresh.
+6. Confirm the visual result is preserved.
+
+Phase 2 is complete only when a static template can be edited, saved, and faithfully reloaded.
+
+## Phase 3 - Variables, Bindings, and Placeholder Preview
+
+Goal: make templates useful for match automations by adding data bindings through the property panel while still using placeholder data.
+
+### Backend Scope
+
+Extend validation:
+
+- Add typed binding key definitions.
+- Validate text binding keys:
+  - `homeClubName`
+  - `awayClubName`
+  - `matchAddress`
+  - `matchDateTime`
+  - `score`
+- Validate image binding keys:
+  - `homeClubLogo`
+  - `awayClubLogo`
+- Reject `score` on `match_announcement`.
+- Validate `bindingKey` type matches node class:
+  - text bindings only on `Text`
+  - image bindings only on `Image`
+- Reject nodes where `assetId` and `bindingKey` are both set.
+- Keep `schemaVersion: 1`.
+
+No new tables are needed.
+
+### Frontend Scope
+
+Implement:
+
+- Placeholder text constants:
+  - `homeClubName`: `Thuisploeg`
+  - `awayClubName`: `Uitploeg`
+  - `matchAddress`: `Adres van de wedstrijd`
+  - `matchDateTime`: `za 15 mrt. 2025, 20:00`
+  - `score`: `2 - 1`
+- Bundled placeholder crest images for `homeClubLogo` and `awayClubLogo`.
+- Property panel section "Inhoud":
+  - Fixed text
+  - Variable
+- If variable is selected, show a second dropdown of bindings filtered by automation type.
+- Canvas displays the placeholder value immediately when a binding is selected.
+- Add simple `Image` support for dynamic logo placeholders if image nodes are needed here; static uploaded images remain Phase 4.
+- Preview/design toggle:
+  - Design mode can show placeholders.
+  - Preview mode can show richer mock fixture values.
+- Ensure the saved scene stores the `bindingKey` and not the resolved text as the source of truth for dynamic content.
+
+Important UX rule:
+
+- Users should never need to type `{{homeClubName}}`.
+
+### Agent Testing Before User Handoff
+
+Automated checks:
+
+- Unit tests for binding validation.
+- Unit tests that available binding keys differ by automation type.
+- Unit tests for `resolveTextContent`.
+- Normalizer tests for `assetId`/`bindingKey` exclusivity.
+- Type/lint checks.
+
+Browser checks:
+
+- Open a `match_announcement` template.
+- Select a text node.
+- Change it from fixed text to variable `homeClubName`.
+- Confirm placeholder appears.
+- Confirm `score` is not available.
+- Save and refresh.
+- Confirm the binding still displays placeholder text.
+- Open a `match_result` template.
+- Confirm `score` is available.
+- Bind a text node to `score`, save, and reload.
+- Toggle preview mode if implemented and confirm mock values render.
+
+Database checks:
+
+- Confirm bound text nodes persist `attrs.bindingKey`.
+- Confirm dynamic placeholder text is not incorrectly persisted as a static replacement unless the fixed text mode is selected.
+- Confirm invalid bindings are rejected by the mutation, not just hidden in the UI.
+
+User testing script:
+
+1. Open a match announcement template.
+2. Select a text layer.
+3. Set content to variable `homeClubName`.
+4. Save and refresh.
+5. Confirm the placeholder remains and the binding dropdown still shows the selected binding.
+6. Repeat on a match result template with `score`.
+
+Phase 3 is complete only when variable bindings survive save/reload and invalid bindings cannot be saved.
+
+## Phase 4 - Static Asset Uploads and Image Nodes
+
+Goal: allow clubs to upload backgrounds and sponsor logos, insert them into templates, save them as `assetId` references, and hydrate them on reload.
+
+### Backend Scope
+
+Implement:
+
+- `templateAssets.generateUploadUrl`.
+- `templateAssets.saveTemplateAsset`.
+- `templateAssets.listTemplateAssets`.
+- `templateAssets.deleteTemplateAsset`.
+- URL resolution query or include signed URLs in list results, depending on project conventions.
+
+Rules:
+
+- Asset rows are scoped to the current organization.
+- Store `storageId`, `fileName`, `mimeType`, `byteSize`, `uploadedByUserId`, and `createdAt`.
+- Accept only image MIME types needed for MVP.
+- Enforce reasonable byte-size limits.
+- `deleteTemplateAsset` rejects if any template in the same organization references the asset in its scene document.
+- Dynamic club logos are not inserted into `templateAssets`.
+
+### Frontend Scope
+
+Implement:
+
+- Assets panel.
+- Upload button using Convex Storage upload flow.
+- Asset list with thumbnails or file names.
+- Insert selected asset as an `Image` node.
+- `SceneImage` component using `use-image`.
+- Hydration from `assetId` to signed URL.
+- Add image selection, drag, resize, and property editing.
+- Add `objectFit` attr with at least:
+  - `cover`
+  - `contain`
+  - `fill`
+- Default background images to `cover`.
+
+Keep scope controlled:
+
+- No advanced cropping UI yet.
+- No image filters.
+- No delete-cascade from templates.
+
+### Agent Testing Before User Handoff
+
+Automated checks:
+
+- Unit tests for `calculateObjectFit`.
+- Unit tests for asset-reference scanning in scene documents.
+- Convex tests for asset save/list/delete rejection if test harness supports storage mocking.
+- Type/lint/build checks.
+
+Browser checks:
+
+- Open template editor.
+- Upload an image.
+- Confirm it appears in the assets panel.
+- Insert it into the canvas.
+- Move and resize it.
+- Change object fit.
+- Save and refresh.
+- Confirm the image hydrates and renders.
+- Try deleting the asset while it is still referenced.
+- Confirm deletion is rejected with clear feedback.
+- Remove the image node from the template, save, then delete the asset if that behavior is implemented in this phase.
+
+Database/storage checks:
+
+- Confirm `_storage` has the uploaded file.
+- Confirm `templateAssets` has one row with matching metadata.
+- Confirm `automationTemplates.sceneDocument` references the asset through `attrs.assetId`.
+- Confirm no raw image bytes or signed URLs are persisted in `sceneDocument`.
+
+User testing script:
+
+1. Upload a background or sponsor image.
+2. Add it to the template.
+3. Resize it.
+4. Save and refresh.
+5. Confirm the image remains visible.
+6. Try to delete the asset while it is used and confirm the app prevents it.
+
+Phase 4 is complete only when static images are stored in Convex Storage, referenced by `assetId`, and rehydrated after reload.
+
+## Phase 5 - Editor Usability, Text Editing, Layers, and History
+
+Goal: turn the basic editor into a practical Canva-like MVP while staying within the approved Konva subset.
+
+### Backend Scope
+
+No new tables should be needed.
+
+Extend validation if these attrs are added:
+
+- `overflowMode`
+- `textTransform`
+- `objectFit`
+- `visible`
+- `listening` or lock-related persisted attrs, if any
+- `name`
+
+Ensure save validation still strips non-persisted UI state:
+
+- guide lines
+- transformer state
+- temporary drag state
+- overlay layer nodes
+- text editing overlay state
+
+### Frontend Scope
+
+Implement:
+
+- DOM textarea overlay for editing `Konva.Text` on double-click.
+- Text style controls:
+  - font family from allowed system stacks
+  - font size
+  - fill color
+  - alignment
+  - line height if needed
+  - uppercase transform through `attrs.textTransform`
+- Text overflow modes:
+  - `wrap`
+  - `shrink`
+  - `ellipsis`
+  - `fixed`
+- Shared `calculateTextFit` for shrink-to-fit.
+- Layer panel:
+  - row per content node
+  - select on click
+  - reorder by array order
+  - visibility toggle
+  - lock toggle
+  - badge when `bindingKey` exists
+- Undo/redo:
+  - snapshot on drag end
+  - transform end
+  - text commit
+  - layer reorder
+  - add/delete
+  - property commit
+  - maximum history of 50
+- Keyboard shortcuts:
+  - delete selected node
+  - undo
+  - redo
+  - save
+- Overlay layer:
+  - center crosshair or safe-zone guides if useful
+  - `listening={false}`
+  - never persisted
+- Performance cleanup:
+  - debounce numeric property inputs
+  - avoid manual `stage.draw()` except targeted `batchDraw()` after bulk hydration
+  - keep node count target under 30 for MVP templates
+
+Important transformer rule:
+
+- Konva Transformer changes `scaleX` and `scaleY`; persist baked width/height instead.
+- Text layers should use horizontal resize anchors when appropriate.
+
+### Agent Testing Before User Handoff
+
+Automated checks:
+
+- Unit tests for `calculateTextFit` with mock measure function.
+- Unit tests for layer reorder.
+- Unit tests for history stack behavior.
+- Normalizer tests confirming overlay and editor attrs are stripped.
+- Type/lint/build checks.
+
+Browser checks:
+
+- Double-click text and edit with textarea overlay.
+- Commit with blur or Enter.
+- Drag and resize several nodes.
+- Reorder layers.
+- Toggle visibility and lock.
+- Undo and redo each action.
+- Delete a node and undo it.
+- Save and refresh.
+- Confirm all persisted visual changes remain and non-persisted UI state is gone.
+
+Database checks:
+
+- Confirm layer order is represented by child array order.
+- Confirm visibility and supported attrs persist.
+- Confirm hidden/locked/editor-only behavior is represented only by approved attrs.
+- Confirm undo history is not persisted.
+
+User testing script:
+
+1. Edit text by double-clicking it.
+2. Add or select multiple layers.
+3. Reorder layers.
+4. Toggle visibility.
+5. Use undo and redo.
+6. Save and refresh.
+7. Confirm only the intended design state persisted.
+
+Phase 5 is complete only when the editor feels usable for static layouts and the saved JSON remains clean.
+
+## Phase 6 - Server Render Parity Foundation
+
+Goal: prove that stored templates can be rendered server-side with Konva and skia-canvas using the same scene document. This still does not implement scheduled posting.
+
+### Backend Scope
+
+Implement a server-only render path:
+
+- A Convex action in a `"use node"` file.
+- Import `Konva` and `konva/skia-backend` only in that server action or server-only helper.
+- Load a template by id after authorization.
+- Hydrate scene:
+  - static `assetId` from Convex Storage
+  - text `bindingKey` from mock match data
+  - image `bindingKey` from placeholder or mock logo data
+- Render PNG buffer through the skia backend.
+- Return a URL or storage id for a temporary render preview, depending on the safest project pattern.
+
+Example shape:
+
+```ts
+"use node";
+
+import Konva from "konva";
+import "konva/skia-backend";
+
+export async function renderTemplateToPng(sceneDocument: SceneDocument, match: MatchDto) {
+  const stage = Konva.Node.create(sceneDocument.stage);
+  await hydrateScene(stage, {
+    resolveAsset: (assetId) => loadBufferFromConvexStorage(assetId),
+    resolveBindingImage: (key) => loadMockOrMatchLogo(match, key),
+    resolveBindingText: (key) => formatBinding(key, match, "nl-BE"),
+  });
+  const canvas = stage.toCanvas();
+  return await canvas.toBuffer("png");
+}
+```
+
+Rules:
+
+- Do not use `ctx.db` inside actions; run queries/mutations through function references or keep DB work in queries/mutations.
+- Do not mix `"use node"` actions and queries/mutations in the same file.
+- Use `nl-BE` for date/time formatting.
+- Keep system fonts only.
+- Do not implement actual social posting.
+
+### Frontend Scope
+
+Implement a render test action in the editor UI:
+
+- Add a "Render test image" or "Preview PNG" button.
+- Calls the server render action with mock match data.
+- Shows loading and success/error feedback.
+- Displays the rendered PNG result in a modal, side panel, or new preview area.
+- Make clear this is a render test, not a posted social update.
+
+### Agent Testing Before User Handoff
+
+Automated checks:
+
+- Unit tests for shared binding formatting.
+- Unit tests for object-fit/text-fit functions used by both browser and server render paths.
+- Build check to catch accidental client import of `skia-canvas`.
+- If feasible, golden image comparison:
+  - browser export of a simple fixture
+  - server-rendered PNG of same fixture
+  - compare dimensions and acceptable pixel difference
+
+Browser checks:
+
+- Open a template with:
+  - background rect
+  - static text
+  - bound text
+  - uploaded image if Phase 4 is complete
+- Click render test.
+- Confirm a PNG is produced.
+- Confirm dimensions match the canvas preset.
+- Visually compare browser canvas and rendered PNG.
+
+Database/storage checks:
+
+- If render output is stored, confirm it goes to `_storage` or the chosen temporary location.
+- Confirm no social posting record is created.
+- Confirm the template scene document is not mutated by rendering.
+
+User testing script:
+
+1. Open a saved template.
+2. Click render test.
+3. Compare the generated PNG to the editor preview.
+4. Confirm no post is published.
+
+Phase 6 is complete only when the same stored scene can produce a server-rendered PNG with acceptable visual parity.
+
+## Phase 7 - MVP Hardening and Handoff
+
+Goal: stabilize the automation/template MVP before connecting real match data or social posting.
+
+### Backend Scope
+
+Implement or verify:
+
+- `deleteTemplate` hard delete.
+- Deleting the last template leaves the automation enabled.
+- Any template list query remains bounded or paginated.
+- Random template selection helper can be designed but not wired to posting:
+  - only considers current organization
+  - filters by automation type
+  - skips if no templates exist
+  - uniformly selects one template
+- Optional internal cleanup plan for organization deletion:
+  - delete `organizationAutomations`
+  - delete `automationTemplates`
+  - delete `templateAssets`
+  - delete storage blobs where appropriate
+
+### Frontend Scope
+
+Implement or verify:
+
+- Delete template dialog.
+- Empty states:
+  - automation enabled with zero templates is allowed
+  - UI can explain "no template yet" without forcing disable
+- Clear route navigation:
+  - back to automation list
+  - back to templates for the current automation type
+- Loading and error states.
+- Responsive editor layout:
+  - side panels become drawers or collapse on small screens
+- Final copy uses "club" for users and `organization` only in code.
+
+### Agent Testing Before User Handoff
+
+Automated checks:
+
+- Full lint/type/test suite.
+- Production build.
+- Focused tests for delete behavior.
+- Focused tests that deleting the last template does not disable automation.
+- Tests for permission boundaries if the auth test harness supports multiple organizations.
+
+Browser checks:
+
+- Create two templates.
+- Delete one.
+- Delete the last one.
+- Confirm the automation remains enabled.
+- Toggle automation off/on with zero templates.
+- Confirm no error is shown.
+- Confirm empty states are understandable.
+
+Database checks:
+
+- Confirm deleted template rows are gone.
+- Confirm `organizationAutomations.isEnabled` is unchanged after deleting templates.
+- Confirm asset reference rules still hold.
+- Confirm no cross-organization templates are visible.
+
+User testing script:
+
+1. Create and delete templates.
+2. Toggle automations with and without templates.
+3. Confirm the UI makes sense when no templates exist.
+4. Confirm editing still works after refresh/navigation.
+
+Phase 7 is complete only when the MVP is stable enough to hand off before match data and posting integration.
+
+## Final Deferred Roadmap
+
+These items must remain out of the MVP unless explicitly pulled into a later implementation request:
+
+- `starting_eleven` automation.
+- Federation club ID and match/calendar integration.
+- Real match table and variable resolution from match DTOs.
+- Posting pipeline.
+- Convex scheduled functions for posting.
+- Meta OAuth and social account connection.
+- Subscription gating for posting.
+- Watermark layers.
+- Template thumbnails.
+- Template duplication.
+- Full live preview with real fixture data.
+- Email nudge for active automations with zero templates.
+- Asset reference integrity background sweep.
+- Custom font upload and `registerFont`.
+- Advanced filters, custom shapes, animations, or rich text.
+
+## Cross-Phase Pitfalls to Avoid
+
+- Do not import `react-konva` in server components or app route files that are not behind the dynamic editor boundary.
+- Do not import `skia-canvas` or `konva/skia-backend` in client code.
+- Do not size the stage to the browser window.
+- Do not persist `scaleX`/`scaleY` after transforms.
+- Do not persist transformer nodes, guide lines, or overlay state.
+- Do not rely on raw `stage.toJSON()` as live state on every frame.
+- Do not store image bytes or signed URLs in `sceneDocument`.
+- Do not use `{{mustache}}` variables in text.
+- Do not use unsupported Konva features in MVP.
+- Do not require a template before enabling an automation.
+- Do not disable an automation when its last template is deleted.
+- Do not block editing for subscription lapse; only future posting is blocked.
+- Do not query Convex with unindexed filters for growing tables.
+- Do not accept user or organization ids from clients for authorization decisions.
+
+## Final Acceptance Criteria
+
+The phased implementation is considered complete for this MVP when:
+
+- Every organization has two default enabled automation rows.
+- Users can toggle each automation type.
+- Users can create, edit, save, reload, and delete templates.
+- Templates are scoped to the user's organization.
+- Scene documents are normalized Konva JSON with `schemaVersion: 1`.
+- Static images are stored in Convex Storage and referenced by `assetId`.
+- Dynamic values are stored as `bindingKey` attrs.
+- `match_announcement` and `match_result` expose only valid bindings.
+- The editor uses fixed logical canvas presets and visual scaling.
+- The saved scene contains no editor-only state.
+- The server render test can produce a PNG from the stored scene.
+- Automated checks, browser checks, and database checks pass at each phase before user handoff.
+

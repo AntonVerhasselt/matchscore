@@ -245,7 +245,8 @@
     "shell": {
       "nav": {
         "calendar": "Calendrier",
-        "automations": "Automatisations"
+        "automations": "Automatisations",
+        "socials": "Réseaux connectés"
       },
       "user": {
         "settings": "Paramètres",
@@ -256,9 +257,75 @@
       "title": "Calendrier",
       "description": "Votre calendrier apparaîtra ici."
     },
+    "socials": {
+      "title": "Réseaux connectés",
+      "description": "Gérez les comptes sociaux de votre club pour la publication automatique.",
+      "planned": {
+        "title": "Bientôt disponible",
+        "description": "Cette page sera l'endroit central pour gérer les connexions de comptes sociaux de votre organisation.",
+        "features": {
+          "overview": "Afficher toutes les plateformes connectées (Facebook, Instagram) avec le statut de connexion, le nom de la page ou du profil lié, et la date de connexion.",
+          "connect": "Lancer l'OAuth Meta pour connecter une nouvelle page Facebook ou un compte Instagram au club.",
+          "disconnect": "Déconnecter ou révoquer un compte lorsque le club ne souhaite plus que Matchscore publie en son nom.",
+          "accountDetails": "Afficher les autorisations accordées, l'état du token et les problèmes de configuration (ex. Instagram non lié à une page Facebook).",
+          "automationUsage": "Indiquer quelles automatisations utilisent chaque compte connecté afin que les admins comprennent l'impact d'une déconnexion.",
+          "reauth": "Inviter les admins à se reconnecter lorsque les tokens expirent ou que les autorisations Meta changent."
+        }
+      }
+    },
     "automations": {
       "title": "Automatisations",
-      "description": "Vos automatisations apparaîtront ici."
+      "description": "Gérez vos publications automatiques sur les réseaux sociaux pour les résultats et les annonces de match.",
+      "backToOverview": "Retour aux automatisations",
+      "backToTemplates": "Retour aux modèles",
+      "manageTemplates": "Gérer les modèles",
+      "connectedAccounts": "Comptes connectés",
+      "types": {
+        "result": {
+          "title": "Résultat du match",
+          "description": "Publiez automatiquement un visuel du score dès que le résultat est connu."
+        },
+        "preview": {
+          "title": "Annonce de match",
+          "description": "Publiez une annonce deux jours avant le coup d'envoi avec l'adversaire, la date et le lieu."
+        }
+      },
+      "social": {
+        "facebook": "Facebook",
+        "instagram": "Instagram",
+        "posts": "Publications",
+        "story": "Story",
+        "connect": "Connecter",
+        "connectAccount": "Connecter le compte",
+        "toggleActive": "Activer ou désactiver {platform} pour cette automatisation",
+        "toggleChannel": "Activer ou désactiver {platform} {channel}"
+      },
+      "templates": {
+        "create": "Nouveau modèle",
+        "meta": "{count, plural, =0 {Aucun modèle} one {# modèle} other {# modèles}} · {status}",
+        "statusActive": "Automatisation active",
+        "empty": {
+          "title": "Pas encore de modèles",
+          "description": "Créez votre premier modèle pour commencer à publier automatiquement."
+        },
+        "edit": "Modifier",
+        "delete": "Supprimer",
+        "cancel": "Annuler",
+        "deleteConfirmTitle": "Supprimer le modèle ?",
+        "deleteConfirmDescription": "« {name} » sera définitivement supprimé. Cette action est irréversible.",
+        "deleteSuccess": "Modèle supprimé.",
+        "deleteFailed": "Impossible de supprimer le modèle. Veuillez réessayer."
+      },
+      "editor": {
+        "loading": "Chargement de l'éditeur…",
+        "save": "Enregistrer",
+        "saveSuccess": "Modèle enregistré.",
+        "saveFailed": "Impossible d'enregistrer le modèle. Veuillez réessayer.",
+        "newTemplate": "Nouveau modèle",
+        "editTemplate": "Modifier le modèle ({id})",
+        "placeholderTitle": "Éditeur de modèles bientôt disponible",
+        "placeholderDescription": "L'éditeur visuel react-konva apparaîtra ici. Vous pouvez déjà naviguer et enregistrer des modèles provisoires."
+      }
     }
   },
   "settings": {
