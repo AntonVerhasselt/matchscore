@@ -318,7 +318,11 @@ export function StaticTemplateEditor({
     async (assetId: Id<"templateAssets">) => {
       setDeletingAssetId(assetId);
       try {
-        await deleteTemplateAsset({ assetId });
+        const result = await deleteTemplateAsset({ assetId });
+        if (result.status === "inUse") {
+          showErrorToast(t("editor.assetDeleteFailed"));
+          return;
+        }
         showSuccessToast(t("editor.assetDeleteSuccess"));
       } catch {
         showErrorToast(t("editor.assetDeleteFailed"));

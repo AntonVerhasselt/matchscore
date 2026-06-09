@@ -84,7 +84,10 @@ export const deleteTemplateAsset = mutation({
   args: {
     assetId: v.id("templateAssets"),
   },
-  returns: v.null(),
+  returns: v.union(
+    v.object({ status: v.literal("deleted") }),
+    v.object({ status: v.literal("inUse") }),
+  ),
   handler: async (ctx, args) => {
     const { membership } = await requireCurrentMembership(ctx);
     const asset = await requireTemplateAsset(
@@ -99,12 +102,12 @@ export const deleteTemplateAsset = mutation({
     );
 
     if (referencingTemplate) {
-      throw new ConvexError("This image is still used by a template");
+      return { status: "inUse" };
     }
 
     await ctx.storage.delete(asset.storageId);
     await ctx.db.delete(asset._id);
-    return null;
+    return { status: "deleted" };
   },
 });
 
