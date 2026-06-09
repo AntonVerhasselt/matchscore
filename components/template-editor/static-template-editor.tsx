@@ -61,6 +61,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   toBackendAutomationType,
   type AutomationTypeSlug,
   type CanvasPreset,
@@ -242,10 +252,23 @@ export function StaticTemplateEditor({
     [selectedNodeId, updateSceneAttrs],
   );
 
-  const replaceSceneDocument = useCallback((nextSceneDocument: SceneDocument) => {
-    setSceneDocument(nextSceneDocument);
-    setIsDirty(true);
-  }, []);
+  const replaceSceneDocument = useCallback(
+    (
+      nextSceneDocument:
+        | SceneDocument
+        | ((current: SceneDocument) => SceneDocument),
+    ) => {
+      setSceneDocument((current) => {
+        if (typeof nextSceneDocument === "function") {
+          return current ? nextSceneDocument(current) : current;
+        }
+
+        return nextSceneDocument;
+      });
+      setIsDirty(true);
+    },
+    [],
+  );
 
   const selectNode = useCallback(
     (nodeId: string) => {
@@ -399,10 +422,6 @@ export function StaticTemplateEditor({
 
   const setBackgroundImage = useCallback(
     async (asset: TemplateAsset) => {
-      if (!sceneDocument) {
-        return;
-      }
-
       let dimensions;
       try {
         dimensions = await getTemplateAssetDimensions(asset);
@@ -411,12 +430,12 @@ export function StaticTemplateEditor({
         return;
       }
 
-      replaceSceneDocument(
-        setSceneBackgroundImage(sceneDocument, asset._id, dimensions),
+      replaceSceneDocument((current) =>
+        setSceneBackgroundImage(current, asset._id, dimensions),
       );
       setSelectedNodeId(BACKGROUND_NODE_ID);
     },
-    [replaceSceneDocument, sceneDocument, t],
+    [replaceSceneDocument, t],
   );
 
   const removeBackgroundImage = useCallback(() => {
@@ -724,7 +743,7 @@ function EditorRightPanel({
     assetId: Id<"templateAssets">,
   ) => void;
   onAssetActivate: (asset: TemplateAsset) => void;
-  onAssetDelete: (assetId: Id<"templateAssets">) => void;
+  onAssetDelete: (assetId: Id<"templateAssets">) => Promise<void>;
   onBackgroundColorChange: (fill: string) => void;
   onBackgroundImageChange: (asset: TemplateAsset) => void;
   onBackgroundImageRemove: () => void;
@@ -899,7 +918,7 @@ function AssetsPanel({
     assetId: Id<"templateAssets">,
   ) => void;
   onAssetActivate: (asset: TemplateAsset) => void;
-  onAssetDelete: (assetId: Id<"templateAssets">) => void;
+  onAssetDelete: (assetId: Id<"templateAssets">) => Promise<void>;
 }) {
   const t = useTranslations("app.automations.editor");
 
@@ -1108,42 +1127,85 @@ function AssetGridItem({
     assetId: Id<"templateAssets">,
   ) => void;
   onActivate: (asset: TemplateAsset) => void;
-  onDelete: (assetId: Id<"templateAssets">) => void;
+  onDelete: (assetId: Id<"templateAssets">) => Promise<void>;
 }) {
   const t = useTranslations("app.automations.editor");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const handleDeleteConfirm = async () => {
+    await onDelete(asset._id);
+    setDeleteOpen(false);
+  };
 
   return (
-    <div
-      draggable
-      role="button"
-      tabIndex={0}
-      aria-label={asset.fileName}
-      className="group relative aspect-square cursor-grab overflow-hidden border bg-muted shadow-sm transition-colors hover:border-primary/60 active:cursor-grabbing"
-      onDragStart={(event) => onDragStart(event, asset._id)}
-      onDoubleClick={() => onActivate(asset)}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onActivate(asset);
-        }
-      }}
-    >
-      <AssetThumbnail asset={asset} className="size-full" />
-      <Button
-        type="button"
-        variant="secondary"
-        size="icon-xs"
-        disabled={isDeleting}
-        aria-label={t("deleteAsset")}
-        className="absolute right-1.5 top-1.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
-        onClick={(event) => {
-          event.stopPropagation();
-          onDelete(asset._id);
+    <>
+      <div
+        draggable
+        role="button"
+        tabIndex={0}
+        aria-label={asset.fileName}
+        className="group relative aspect-square cursor-grab overflow-hidden border bg-muted shadow-sm transition-colors hover:border-primary/60 active:cursor-grabbing"
+        onDragStart={(event) => onDragStart(event, asset._id)}
+        onDoubleClick={() => onActivate(asset)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onActivate(asset);
+          }
         }}
       >
-        <Trash2 aria-hidden />
-      </Button>
-    </div>
+        <AssetThumbnail asset={asset} className="size-full" />
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon-xs"
+          disabled={isDeleting}
+          aria-label={t("deleteAsset")}
+          className="absolute right-1.5 top-1.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+          onClick={(event) => {
+            event.stopPropagation();
+            if (!isDeleting) {
+              setDeleteOpen(true);
+            }
+          }}
+        >
+          <Trash2 aria-hidden />
+        </Button>
+      </div>
+
+      <AlertDialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          if (!isDeleting) {
+            setDeleteOpen(open);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("deleteAssetConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("deleteAssetConfirmDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>
+              {t("cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDeleteConfirm();
+              }}
+            >
+              {isDeleting ? t("deletingAsset") : t("deleteAsset")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

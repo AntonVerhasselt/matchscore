@@ -156,7 +156,7 @@ Invariants:
 - Global and per-channel toggling is always allowed.
 - No template count check on enable.
 - Deleting the last template does not disable the automation.
-- Future posting skips globally enabled automation types with zero templates.
+- Future posting skips automation types that are globally enabled but have zero templates.
 - When `isGloballyEnabled` is false, UI-derived effective posting channel status is false for every channel, while stored per-channel preferences remain available for later re-enable.
 
 ### `automationTemplates`

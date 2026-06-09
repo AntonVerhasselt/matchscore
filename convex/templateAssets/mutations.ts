@@ -38,15 +38,17 @@ export const saveTemplateAsset = mutation({
     }
 
     const fileName = normalizeTemplateAssetFileName(args.fileName);
+    const roundedPixelWidth = Math.round(args.pixelWidth);
+    const roundedPixelHeight = Math.round(args.pixelHeight);
     if (!fileName) {
       await ctx.storage.delete(args.storageId);
       throw new ConvexError("File name is required");
     }
     if (
-      !Number.isFinite(args.pixelWidth) ||
-      !Number.isFinite(args.pixelHeight) ||
-      args.pixelWidth <= 0 ||
-      args.pixelHeight <= 0
+      !Number.isFinite(roundedPixelWidth) ||
+      !Number.isFinite(roundedPixelHeight) ||
+      roundedPixelWidth <= 0 ||
+      roundedPixelHeight <= 0
     ) {
       await ctx.storage.delete(args.storageId);
       throw new ConvexError("Image dimensions are required");
@@ -60,8 +62,8 @@ export const saveTemplateAsset = mutation({
       fileName,
       mimeType: metadata.mimeType,
       byteSize: metadata.byteSize,
-      pixelWidth: Math.round(args.pixelWidth),
-      pixelHeight: Math.round(args.pixelHeight),
+      pixelWidth: roundedPixelWidth,
+      pixelHeight: roundedPixelHeight,
       uploadedByUserId: user._id,
       createdAt: now,
     });
@@ -72,8 +74,8 @@ export const saveTemplateAsset = mutation({
       fileName,
       mimeType: metadata.mimeType,
       byteSize: metadata.byteSize,
-      pixelWidth: Math.round(args.pixelWidth),
-      pixelHeight: Math.round(args.pixelHeight),
+      pixelWidth: roundedPixelWidth,
+      pixelHeight: roundedPixelHeight,
       createdAt: now,
       url: await ctx.storage.getUrl(args.storageId),
     };
@@ -102,12 +104,12 @@ export const deleteTemplateAsset = mutation({
     );
 
     if (referencingTemplate) {
-      return { status: "inUse" };
+      return { status: "inUse" } as const;
     }
 
     await ctx.storage.delete(asset.storageId);
     await ctx.db.delete(asset._id);
-    return { status: "deleted" };
+    return { status: "deleted" } as const;
   },
 });
 
