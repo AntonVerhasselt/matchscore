@@ -5,6 +5,7 @@
 > Branch context: `feature/club-automations-templates`  
 > Scope: Convex database design, automation/template APIs, react-konva editor, storage conventions, server render foundation, and phase-by-phase testing.  
 > Non-scope for MVP: match/calendar storage, actual scheduled posting, Meta/social posting, subscription/watermark enforcement, and `starting_eleven`.
+> Current implementation status: Phases 1-4 are implemented on `templates-phase-4`; Phases 5-7 remain planned work.
 
 This document combines the approved product/backend brief and the react-konva technical guide into one phased implementation plan. Each phase must produce a small integrated slice: backend state, frontend UI, automated checks, browser verification, and database verification. After a phase passes those checks, the implementer should stop and hand it to the user for manual testing before continuing.
 
@@ -59,14 +60,15 @@ These decisions are carried forward unchanged:
 | Topic | Decision |
 | --- | --- |
 | MVP automation types | `match_announcement`, `match_result` only |
-| Initial automation state | All active when an organization is created |
-| Enable rule | Users can toggle freely; no template is required to keep an automation active |
+| Initial automation state | Globally active, with all MVP posting channels active, when an organization is created |
+| Enable rule | Users can toggle global automation state and per-channel posting freely; no template is required to keep an automation active |
 | Enabled with zero templates | Valid state; future posting job skips that automation type |
 | Active-but-no-template nudge | Deferred email reminder |
 | Template selection at post time | Uniform random among templates |
 | Subscription lapse | Block posting only; editing remains allowed |
 | Canvas dimensions | Fixed presets |
 | Static images | Stored as `templateAssets` and referenced by `assetId` |
+| Static image upload types | PNG, JPG/JPEG, and WebP only for MVP |
 | Dynamic images | Club logos resolved at render time from match data; placeholders in editor |
 | Home/away wording | Variables are match-relative: `homeClubLogo`, not "our logo" |
 | Date/time format | `nl-BE` |
@@ -82,6 +84,7 @@ These decisions are carried forward unchanged:
 | Schema versioning | `schemaVersion: 1` on every template |
 | Thumbnail | Optional `thumbnailStorageId`, implement later |
 | Delete templates | Hard delete |
+| Background editing | A dedicated Background tab controls background color/image; background selection opens this tab |
 | Organization deletion | Delete child automation/template/asset rows when org deletion exists |
 
 ## Architecture Summary
@@ -126,7 +129,13 @@ organizationAutomations: defineTable({
     v.literal("match_announcement"),
     v.literal("match_result"),
   ),
-  isEnabled: v.boolean(),
+  isGloballyEnabled: v.boolean(),
+  postingChannels: v.object({
+    facebookPagePost: v.boolean(),
+    facebookPageStory: v.boolean(),
+    instagramProfilePost: v.boolean(),
+    instagramProfileStory: v.boolean(),
+  }),
   updatedAt: v.number(),
   updatedByUserId: v.optional(v.string()),
 })
@@ -142,11 +151,13 @@ Invariants:
 - Exactly two rows per organization for MVP.
 - Rows are created when the organization is created.
 - Existing organizations need a one-time backfill or an idempotent `ensureOrganizationAutomations` path during Phase 1.
-- `isEnabled` defaults to `true`.
-- Toggling is always allowed.
+- `isGloballyEnabled` defaults to `true`.
+- All MVP `postingChannels` default to `true`.
+- Global and per-channel toggling is always allowed.
 - No template count check on enable.
 - Deleting the last template does not disable the automation.
-- Future posting skips enabled automation types with zero templates.
+- Future posting skips globally enabled automation types with zero templates.
+- When `isGloballyEnabled` is false, UI-derived effective posting channel status is false for every channel, while stored per-channel preferences remain available for later re-enable.
 
 ### `automationTemplates`
 
@@ -208,15 +219,22 @@ templateAssets: defineTable({
   fileName: v.string(),
   mimeType: v.string(),
   byteSize: v.number(),
+  pixelWidth: v.optional(v.number()),
+  pixelHeight: v.optional(v.number()),
   uploadedByUserId: v.string(),
   createdAt: v.number(),
 })
-  .index("by_organizationId", ["organizationId"]);
+  .index("by_organizationId", ["organizationId"])
+  .index("by_storageId", ["storageId"]);
 ```
 
 Rules:
 
 - Store static club uploads here.
+- Store durable Convex Storage IDs and metadata, not signed URLs.
+- Generate signed URLs at read time through `ctx.storage.getUrl(storageId)`.
+- Store intrinsic image dimensions when available so inserted image nodes can preserve original dimensions.
+- Accept only `image/png`, `image/jpeg`, and `image/webp` for MVP, with an 8 MB limit.
 - Do not store home/away club logos here for MVP; those are dynamic image bindings resolved from match data at render time.
 - Deleting an asset should reject if any template references it through `attrs.assetId`.
 - A later background integrity job can clean orphaned assets, but Phase 4 should at least prevent deleting referenced assets.
@@ -241,7 +259,7 @@ Automation queries:
 
 | Function | Purpose |
 | --- | --- |
-| `listAutomations` | Return both automation rows for current organization plus template count per type |
+| `listAutomations` | Return both automation rows for current organization plus global state, per-channel state, effective channel state, and template count per type |
 | `listTemplates` | Return templates for current organization, optionally filtered by automation type |
 | `getTemplate` | Return one template by id if it belongs to the current organization |
 
@@ -249,9 +267,10 @@ Automation mutations:
 
 | Function | Purpose |
 | --- | --- |
-| `setAutomationEnabled` | Set `isEnabled`; no template count check |
+| `setAutomationGlobalEnabled` | Set `isGloballyEnabled`; no template count check |
+| `setAutomationPostingChannelEnabled` | Set one stored posting channel preference; no template count check |
 | `createTemplate` | Validate scene document and insert template |
-| `updateTemplate` | Validate scene document and update name/scene |
+| `updateTemplate` | Validate scene document and update name/scene; reject `assetId` references outside the current organization |
 | `deleteTemplate` | Hard delete; do not change automation state |
 
 Template asset functions:
@@ -259,8 +278,8 @@ Template asset functions:
 | Function | Purpose |
 | --- | --- |
 | `generateUploadUrl` | Return Convex Storage upload URL |
-| `saveTemplateAsset` | Insert asset metadata after upload |
-| `listTemplateAssets` | List current organization's assets |
+| `saveTemplateAsset` | Insert asset metadata after upload, including intrinsic dimensions when supplied by the client |
+| `listTemplateAssets` | List current organization's assets with generated signed URLs |
 | `deleteTemplateAsset` | Reject if referenced; otherwise delete row and storage blob if supported |
 
 ## Scene Document Format
@@ -332,6 +351,7 @@ Text bindings:
 | --- | --- | --- |
 | `homeClubName` | both | `Thuisploeg` |
 | `awayClubName` | both | `Uitploeg` |
+| `homeAwayClubNames` | both | `Thuisploeg - Uitploeg` |
 | `matchAddress` | both | `Adres van de wedstrijd` |
 | `matchDateTime` | both | `za 15 mrt. 2025, 20:00` |
 | `score` | `match_result` only | `2 - 1` |
@@ -347,7 +367,7 @@ Rules:
 
 - Dynamic text and image content is represented by `attrs.bindingKey`.
 - Static image content is represented by `attrs.assetId`.
-- Do not use `{{mustache}}` syntax in text.
+- Users must never type `{{mustache}}` syntax manually. The editor may show token-like design placeholders for bound values, but the persisted source of truth is always `attrs.bindingKey`.
 - The property panel should show "Inhoud" for editable content. In Phase 3, text nodes support fixed text versus variable text bindings, and dynamic logo `Image` nodes support variable image bindings. Fixed/static uploaded image content remains Phase 4.
 - Binding dropdown options must be filtered by automation type.
 - `score` is invalid for `match_announcement`.
@@ -504,6 +524,8 @@ If the branch keeps the older documented `/templates` segment, the same semantic
 - `/app/automations/[type]/templates/[id]/edit`
 
 Pick one route shape and keep code, links, tests, and docs consistent. Since the branch already appears to have `[automationType]` and `[templateId]` routes scaffolded, prefer the shorter route shape unless there is a strong reason to change.
+
+Current implementation note: the app route uses user-facing slugs `/app/automations/result/...` and `/app/automations/preview/...`, mapped in code to backend values `match_result` and `match_announcement`.
 
 ## Technical Notes That Apply Across Phases
 
@@ -814,7 +836,8 @@ Implement:
 - Seed `organizationAutomations` rows when a new organization is created.
 - Add an idempotent helper to ensure existing organizations have the two MVP automation rows.
 - Add `listAutomations`.
-- Add `setAutomationEnabled`.
+- Add `setAutomationGlobalEnabled`.
+- Add `setAutomationPostingChannelEnabled` for Facebook/Instagram post/story channel preferences.
 - Add `listTemplates` filtered by `automationType`.
 - Add `createTemplate` that inserts a very basic valid scene document.
 - Add `deleteTemplate` only if the UI needs it in this phase; otherwise defer.
@@ -834,11 +857,11 @@ Minimal starter `sceneDocument` for Phase 1:
         children: [
           {
             className: "Rect",
-            attrs: { id: "background", x: 0, y: 0, width: 1080, height: 1080, fill: "#111827" },
+            attrs: { id: "background", x: 0, y: 0, width: 1080, height: 1080, fill: "#ffffff" },
           },
           {
             className: "Text",
-            attrs: { id: "title", x: 80, y: 80, width: 920, text: "Matchscore template", fontSize: 64, fill: "#ffffff" },
+            attrs: { id: "title", x: 80, y: 80, width: 920, text: "Matchscore template", fontSize: 64, fill: "#111827" },
           },
         ],
       },
@@ -852,7 +875,7 @@ Backend details:
 - All functions derive the organization from the authenticated user membership.
 - `listAutomations` should return both automation rows plus template counts.
 - Counts can be computed safely for two automation types in MVP, but avoid patterns that will become unbounded. A bounded per-type query is acceptable for this small fixed set.
-- `setAutomationEnabled` records `updatedAt` and `updatedByUserId` if available.
+- Automation mutations record `updatedAt` and `updatedByUserId` if available.
 - `createTemplate` sets `schemaVersion: 1`, `canvasPreset`, `createdAt`, `updatedAt`, and `createdByUserId`.
 - `automationType` and `canvasPreset` are validated through Convex validators.
 - If existing organizations have no automation rows, `listAutomations` should either call an idempotent ensure helper from a mutation path before this phase is tested, or the phase should include a one-time internal backfill for dev data.
@@ -865,10 +888,11 @@ Implement:
 - Show two automation cards: Match announcement and Match result.
 - Each card shows:
   - user-facing title and short description
-  - enabled/disabled switch
+  - global enabled/disabled switch
+  - Facebook/Instagram post/story channel switches
   - template count
   - link to the automation type page
-- Toggling the switch calls `setAutomationEnabled` and shows Sonner success/error feedback.
+- Toggling switches calls the global or channel mutation and shows Sonner success/error feedback.
 - `/app/automations/[automationType]` lists templates for that type.
 - Add a "Create basic template" button.
 - Clicking it calls `createTemplate`, then routes to the template detail route or keeps the user on the list with the new row visible.
@@ -887,7 +911,8 @@ Automated checks:
 - Run the repository's lint/type/test commands after inspecting `package.json`.
 - Add focused Convex tests if the repo already has `convex-test`; otherwise document the missing test harness and cover with function-level manual verification.
 - Verify `listAutomations` returns exactly two rows for a test organization.
-- Verify `setAutomationEnabled` changes only the requested row.
+- Verify `setAutomationGlobalEnabled` changes only the requested row.
+- Verify `setAutomationPostingChannelEnabled` changes only the requested channel preference.
 - Verify `createTemplate` inserts a template with `schemaVersion: 1`, the selected `automationType`, and the selected `canvasPreset`.
 
 Browser checks:
@@ -904,7 +929,7 @@ Browser checks:
 Database checks:
 
 - Confirm `organizationAutomations` has two rows for the active organization.
-- Confirm toggling updates `isEnabled` and `updatedAt`.
+- Confirm toggling updates `isGloballyEnabled`, `postingChannels`, and `updatedAt` as appropriate.
 - Confirm `automationTemplates` has one new row after pressing "Create basic template".
 - Confirm `sceneDocument.schemaVersion === 1`.
 - Confirm no template row is created under another organization.
@@ -1041,6 +1066,7 @@ Extend validation:
 - Validate text binding keys:
   - `homeClubName`
   - `awayClubName`
+  - `homeAwayClubNames`
   - `matchAddress`
   - `matchDateTime`
   - `score`
@@ -1063,6 +1089,7 @@ Implement:
 - Placeholder text constants:
   - `homeClubName`: `Thuisploeg`
   - `awayClubName`: `Uitploeg`
+  - `homeAwayClubNames`: `Thuisploeg - Uitploeg`
   - `matchAddress`: `Adres van de wedstrijd`
   - `matchDateTime`: `za 15 mrt. 2025, 20:00`
   - `score`: `2 - 1`
@@ -1138,6 +1165,8 @@ Phase 3 is complete only when text and dynamic logo variable bindings survive sa
 
 Goal: allow clubs to upload backgrounds and sponsor logos, insert them into templates, save them as `assetId` references, and hydrate them on reload.
 
+Implementation status: completed on `templates-phase-4`.
+
 ### Backend Scope
 
 Implement:
@@ -1146,15 +1175,17 @@ Implement:
 - `templateAssets.saveTemplateAsset`.
 - `templateAssets.listTemplateAssets`.
 - `templateAssets.deleteTemplateAsset`.
-- URL resolution query or include signed URLs in list results, depending on project conventions.
+- `listTemplateAssets` includes signed URLs generated from `storageId`.
 
 Rules:
 
 - Asset rows are scoped to the current organization.
-- Store `storageId`, `fileName`, `mimeType`, `byteSize`, `uploadedByUserId`, and `createdAt`.
-- Accept only image MIME types needed for MVP.
-- Enforce reasonable byte-size limits.
+- Store `storageId`, `fileName`, `mimeType`, `byteSize`, optional `pixelWidth`/`pixelHeight`, `uploadedByUserId`, and `createdAt`.
+- Persist storage IDs and metadata only. Do not persist generated signed URLs.
+- Accept only `image/png`, `image/jpeg`, and `image/webp`.
+- Enforce an 8 MB byte-size limit.
 - `deleteTemplateAsset` rejects if any template in the same organization references the asset in its scene document.
+- `updateTemplate` rejects static `assetId` references that are missing or belong to another organization.
 - Dynamic club logos are not inserted into `templateAssets`.
 
 ### Frontend Scope
@@ -1163,8 +1194,10 @@ Implement:
 
 - Assets panel.
 - Upload button using Convex Storage upload flow.
-- Asset list with thumbnails or file names.
-- Insert selected asset as an `Image` node.
+- Asset grid with preview-only image tiles.
+- Asset delete affordance shown as a hover/focus trash icon on each tile.
+- Drag an asset tile onto the canvas to insert it as an `Image` node.
+- Inserted static image nodes preserve the uploaded image's intrinsic dimensions. For older asset rows without stored dimensions, the editor measures the generated image URL before creating the node.
 - `SceneImage` component using `use-image`.
 - Hydration from `assetId` to signed URL.
 - Add image selection, drag, resize, and property editing.
@@ -1172,13 +1205,20 @@ Implement:
   - `cover`
   - `contain`
   - `fill`
-- Default background images to `cover`.
+- Background tab:
+  - No image: full-canvas background `Rect`, default white, editable color.
+  - Image: bottom `Image` node with `id: "background"` and `assetId`.
+  - Selecting the background node opens the Background tab, not the generic Options panel.
+  - Background images start at cover size while preserving source aspect ratio.
+  - Background images can be resized with transformer handles and repositioned by dragging.
+  - Background images can be removed, returning to a color background.
 
 Keep scope controlled:
 
 - No advanced cropping UI yet.
 - No image filters.
 - No delete-cascade from templates.
+- No general node deletion yet; delete/removal of normal image nodes remains Phase 5.
 
 ### Agent Testing Before User Handoff
 
@@ -1186,7 +1226,7 @@ Automated checks:
 
 - Unit tests for `calculateObjectFit`.
 - Unit tests for asset-reference scanning in scene documents.
-- Convex tests for asset save/list/delete rejection if test harness supports storage mocking.
+- Convex tests for asset save/list/delete rejection can be added later if storage mocking is introduced.
 - Type/lint/build checks.
 
 Browser checks:
@@ -1194,30 +1234,40 @@ Browser checks:
 - Open template editor.
 - Upload an image.
 - Confirm it appears in the assets panel.
-- Insert it into the canvas.
+- Drag it into the canvas.
+- Confirm its scene width/height match the original image dimensions.
 - Move and resize it.
 - Change object fit.
 - Save and refresh.
 - Confirm the image hydrates and renders.
+- Use the Background tab to select an image background.
+- Confirm selecting the background opens the Background tab.
+- Resize and reposition the background image.
+- Remove the background image and confirm the color background returns.
 - Try deleting the asset while it is still referenced.
 - Confirm deletion is rejected with clear feedback.
-- Remove the image node from the template, save, then delete the asset if that behavior is implemented in this phase.
 
 Database/storage checks:
 
 - Confirm `_storage` has the uploaded file.
 - Confirm `templateAssets` has one row with matching metadata.
+- Confirm `templateAssets.pixelWidth` and `templateAssets.pixelHeight` are set for new uploads.
 - Confirm `automationTemplates.sceneDocument` references the asset through `attrs.assetId`.
 - Confirm no raw image bytes or signed URLs are persisted in `sceneDocument`.
 
 User testing script:
 
-1. Upload a background or sponsor image.
-2. Add it to the template.
-3. Resize it.
-4. Save and refresh.
-5. Confirm the image remains visible.
-6. Try to delete the asset while it is used and confirm the app prevents it.
+1. Upload a sponsor image from the Assets tab.
+2. Drag it to the template.
+3. Confirm the image appears at its original dimensions.
+4. Resize it and change image fit.
+5. Save and refresh.
+6. Confirm the image remains visible.
+7. Try to delete the asset while it is used and confirm the app prevents it.
+8. Open the Background tab.
+9. Pick a background color.
+10. Pick or upload a background image.
+11. Resize and position the background image, then remove it and confirm the color background returns.
 
 Phase 4 is complete only when static images are stored in Convex Storage, referenced by `assetId`, and rehydrated after reload.
 
@@ -1233,7 +1283,6 @@ Extend validation if these attrs are added:
 
 - `overflowMode`
 - `textTransform`
-- `objectFit`
 - `visible`
 - `listening` or lock-related persisted attrs, if any
 - `name`
@@ -1271,6 +1320,7 @@ Implement:
   - visibility toggle
   - lock toggle
   - badge when `bindingKey` exists
+  - keep the canonical background node at the bottom or manage it through the Background tab rather than normal layer deletion
 - Undo/redo:
   - snapshot on drag end
   - transform end
@@ -1280,10 +1330,13 @@ Implement:
   - property commit
   - maximum history of 50
 - Keyboard shortcuts:
-  - delete selected node
+  - delete selected non-background node
   - undo
   - redo
   - save
+- Normal image node deletion:
+  - allow removing uploaded sponsor/logo image nodes from the scene
+  - after a template no longer references an asset and the template is saved, `deleteTemplateAsset` can delete the asset row and storage blob
 - Overlay layer:
   - center crosshair or safe-zone guides if useful
   - `listening={false}`
@@ -1495,7 +1548,7 @@ Browser checks:
 Database checks:
 
 - Confirm deleted template rows are gone.
-- Confirm `organizationAutomations.isEnabled` is unchanged after deleting templates.
+- Confirm `organizationAutomations.isGloballyEnabled` and `postingChannels` are unchanged after deleting templates.
 - Confirm asset reference rules still hold.
 - Confirm no cross-organization templates are visible.
 

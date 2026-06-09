@@ -92,7 +92,11 @@ export default defineSchema({
     fileName: v.string(),
     mimeType: v.string(),
     byteSize: v.number(),
+    pixelWidth: v.optional(v.number()),
+    pixelHeight: v.optional(v.number()),
     uploadedByUserId: v.string(),
     createdAt: v.number(),
-  }).index("by_organizationId", ["organizationId"]),
+  })
+    .index("by_organizationId", ["organizationId"])
+    .index("by_storageId", ["storageId"]),
 });

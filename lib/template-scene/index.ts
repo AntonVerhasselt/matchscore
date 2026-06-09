@@ -52,6 +52,20 @@ export type ImageBindingKey = (typeof IMAGE_BINDING_KEYS)[number];
 
 export type BindingPreviewMode = "design" | "preview";
 
+export type ObjectFitMode = "cover" | "contain" | "fill";
+
+export type ObjectFitRect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+export type ObjectFitResult = {
+  crop: ObjectFitRect;
+  render: ObjectFitRect;
+};
+
 const TEXT_BINDING_KEYS_BY_AUTOMATION_TYPE: Record<
   AutomationType,
   readonly TextBindingKey[]
@@ -216,6 +230,89 @@ export function resolveImageSource(
   return createPlaceholderCrestDataUrl(bindingKey, previewMode);
 }
 
+export function collectSceneAssetIds(rawSceneDocument: unknown): string[] {
+  const assetIds = new Set<string>();
+  collectAssetIdsFromUnknown(rawSceneDocument, assetIds);
+  return [...assetIds];
+}
+
+export function getObjectFitMode(value: unknown): ObjectFitMode {
+  return value === "contain" || value === "fill" ? value : "cover";
+}
+
+export function calculateObjectFit(
+  sourceWidth: number,
+  sourceHeight: number,
+  destinationWidth: number,
+  destinationHeight: number,
+  mode: ObjectFitMode,
+): ObjectFitResult {
+  if (
+    sourceWidth <= 0 ||
+    sourceHeight <= 0 ||
+    destinationWidth <= 0 ||
+    destinationHeight <= 0
+  ) {
+    return {
+      crop: { x: 0, y: 0, width: 1, height: 1 },
+      render: { x: 0, y: 0, width: destinationWidth, height: destinationHeight },
+    };
+  }
+
+  if (mode === "fill") {
+    return {
+      crop: { x: 0, y: 0, width: sourceWidth, height: sourceHeight },
+      render: { x: 0, y: 0, width: destinationWidth, height: destinationHeight },
+    };
+  }
+
+  if (mode === "contain") {
+    const scale = Math.min(
+      destinationWidth / sourceWidth,
+      destinationHeight / sourceHeight,
+    );
+    const renderWidth = sourceWidth * scale;
+    const renderHeight = sourceHeight * scale;
+
+    return {
+      crop: { x: 0, y: 0, width: sourceWidth, height: sourceHeight },
+      render: {
+        x: (destinationWidth - renderWidth) / 2,
+        y: (destinationHeight - renderHeight) / 2,
+        width: renderWidth,
+        height: renderHeight,
+      },
+    };
+  }
+
+  const sourceRatio = sourceWidth / sourceHeight;
+  const destinationRatio = destinationWidth / destinationHeight;
+
+  if (sourceRatio > destinationRatio) {
+    const cropWidth = sourceHeight * destinationRatio;
+    return {
+      crop: {
+        x: (sourceWidth - cropWidth) / 2,
+        y: 0,
+        width: cropWidth,
+        height: sourceHeight,
+      },
+      render: { x: 0, y: 0, width: destinationWidth, height: destinationHeight },
+    };
+  }
+
+  const cropHeight = sourceWidth / destinationRatio;
+  return {
+    crop: {
+      x: 0,
+      y: (sourceHeight - cropHeight) / 2,
+      width: sourceWidth,
+      height: cropHeight,
+    },
+    render: { x: 0, y: 0, width: destinationWidth, height: destinationHeight },
+  };
+}
+
 function parseSceneDocument(rawSceneDocument: unknown): {
   schemaVersion?: unknown;
   stage?: unknown;
@@ -350,6 +447,14 @@ function validateSceneNodeAttrs(
     if (hasBindingKey && !getImageBindingKey(attrs.bindingKey)) {
       throw new Error("Invalid image bindingKey");
     }
+    if (
+      attrs.objectFit !== undefined &&
+      attrs.objectFit !== "cover" &&
+      attrs.objectFit !== "contain" &&
+      attrs.objectFit !== "fill"
+    ) {
+      throw new Error("Invalid image objectFit");
+    }
     return;
   }
 
@@ -384,6 +489,28 @@ function asFiniteNumber(value: unknown): number | undefined {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function collectAssetIdsFromUnknown(value: unknown, assetIds: Set<string>) {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectAssetIdsFromUnknown(item, assetIds);
+    }
+    return;
+  }
+
+  if (!isPlainObject(value)) {
+    return;
+  }
+
+  const assetId = value.assetId;
+  if (typeof assetId === "string" && assetId.trim()) {
+    assetIds.add(assetId);
+  }
+
+  for (const child of Object.values(value)) {
+    collectAssetIdsFromUnknown(child, assetIds);
+  }
 }
 
 function stringAttr(attrs: SceneNodeAttrs, key: string): string | undefined {
