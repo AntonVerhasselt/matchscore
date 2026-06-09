@@ -1,7 +1,10 @@
 import type { CanvasPreset } from "./constants";
 import { CANVAS_PRESET_DIMENSIONS } from "./constants";
+import type { SceneDocument } from "../../lib/template-scene";
 
-export function createStarterSceneDocument(canvasPreset: CanvasPreset) {
+export function createStarterSceneDocument(
+  canvasPreset: CanvasPreset,
+): SceneDocument {
   const dimensions = CANVAS_PRESET_DIMENSIONS[canvasPreset];
 
   return {

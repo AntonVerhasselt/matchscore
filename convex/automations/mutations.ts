@@ -6,6 +6,7 @@ import {
   requireCurrentMembership,
 } from "./helpers";
 import { normalizePostingChannelStatuses } from "./constants";
+import { normalizeSceneDocument } from "../../lib/template-scene";
 import { createStarterSceneDocument } from "./scenes";
 import {
   automationTypeValidator,
@@ -117,6 +118,50 @@ export const createTemplate = mutation({
       createdAt: now,
       updatedAt: now,
     });
+  },
+});
+
+export const updateTemplate = mutation({
+  args: {
+    templateId: v.id("automationTemplates"),
+    name: v.string(),
+    sceneDocument: v.any(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { membership } = await requireCurrentMembership(ctx);
+    const template = await ctx.db.get(args.templateId);
+
+    if (!template || template.organizationId !== membership.organizationId) {
+      throw new ConvexError("Template not found");
+    }
+
+    const name = args.name.trim();
+    if (!name) {
+      throw new ConvexError("Template name is required");
+    }
+
+    let sceneDocument;
+    try {
+      sceneDocument = normalizeSceneDocument(
+        args.sceneDocument,
+        template.canvasPreset,
+      );
+    } catch (error) {
+      throw new ConvexError(
+        error instanceof Error ? error.message : "Invalid scene document",
+      );
+    }
+
+    await ctx.db.patch(template._id, {
+      name,
+      sceneDocument,
+      schemaVersion: 1,
+      updatedAt: Date.now(),
+      updatedByUserId: membership.userId,
+    });
+
+    return null;
   },
 });
 

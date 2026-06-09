@@ -335,13 +335,27 @@
       "editor": {
         "loading": "Editor laden…",
         "save": "Opslaan",
+        "saving": "Opslaan...",
         "saveSuccess": "Template opgeslagen.",
         "saveFailed": "Opslaan mislukt. Probeer het opnieuw.",
+        "savedChanges": "Opgeslagen",
+        "unsavedChanges": "Niet-opgeslagen wijzigingen",
         "newTemplate": "Nieuw template",
         "editTemplate": "Template bewerken ({id})",
         "placeholderTitle": "Template-editor komt binnenkort",
         "placeholderDescription": "De react-konva visuele editor verschijnt hier in fase 2. Dit template is al opgeslagen in de database.",
-        "notFound": "Template niet gevonden."
+        "notFound": "Template niet gevonden.",
+        "templateName": "Templatenaam",
+        "properties": "Eigenschappen",
+        "selectedNode": "Geselecteerd: {node}",
+        "noSelection": "Selecteer een vorm of tekstlaag om te bewerken.",
+        "x": "X",
+        "y": "Y",
+        "width": "Breedte",
+        "height": "Hoogte",
+        "fill": "Kleur",
+        "text": "Tekst",
+        "fontSize": "Tekstgrootte"
       }
     }
   },

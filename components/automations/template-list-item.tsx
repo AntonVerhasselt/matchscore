@@ -2,7 +2,7 @@
 
 import { Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useFormatter, useTranslations } from "next-intl";
+import { useFormatter, useNow, useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { api } from "@/convex/_generated/api";
@@ -29,6 +29,7 @@ export function TemplateListItem({
 }: TemplateListItemProps) {
   const t = useTranslations("app.automations.templates");
   const format = useFormatter();
+  const now = useNow();
   const deleteTemplate = useMutation(api.automations.mutations.deleteTemplate);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -61,7 +62,7 @@ export function TemplateListItem({
               {CANVAS_PRESET_LABELS[template.canvasPreset]}
             </Badge>
             <span className="text-xs text-muted-foreground">
-              {format.relativeTime(template.updatedAt)}
+              {format.relativeTime(template.updatedAt, now)}
             </span>
           </div>
         </div>

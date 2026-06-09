@@ -76,6 +76,7 @@ export default defineSchema({
     schemaVersion: v.number(),
     thumbnailStorageId: v.optional(v.id("_storage")),
     createdByUserId: v.string(),
+    updatedByUserId: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
   })

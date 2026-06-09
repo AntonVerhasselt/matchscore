@@ -335,13 +335,27 @@
       "editor": {
         "loading": "Loading editor…",
         "save": "Save",
+        "saving": "Saving...",
         "saveSuccess": "Template saved.",
         "saveFailed": "Couldn't save template. Please try again.",
+        "savedChanges": "Saved",
+        "unsavedChanges": "Unsaved changes",
         "newTemplate": "New template",
         "editTemplate": "Edit template ({id})",
         "placeholderTitle": "Template editor coming soon",
         "placeholderDescription": "The react-konva visual editor arrives here in phase 2. This template is already saved in the database.",
-        "notFound": "Template not found."
+        "notFound": "Template not found.",
+        "templateName": "Template name",
+        "properties": "Properties",
+        "selectedNode": "Selected: {node}",
+        "noSelection": "Select a shape or text layer to edit it.",
+        "x": "X",
+        "y": "Y",
+        "width": "Width",
+        "height": "Height",
+        "fill": "Color",
+        "text": "Text",
+        "fontSize": "Font size"
       }
     }
   },
