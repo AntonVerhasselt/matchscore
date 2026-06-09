@@ -317,6 +317,10 @@ export function calculateTextFit(
     fontFamily: string,
   ) => { width: number; height: number },
 ): number {
+  if (typeof measure !== "function") {
+    throw new TypeError("measure must be a function");
+  }
+
   if (maxWidth <= 0 || maxHeight <= 0 || baseFontSize <= 0) {
     return 1;
   }

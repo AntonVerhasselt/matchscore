@@ -90,7 +90,7 @@ export function isGoogleFontFamily(family: string): boolean {
 }
 
 export function shouldLoadGoogleFont(family: string): boolean {
-  return !isSystemFontFamily(family);
+  return !isSystemFontFamily(family) && isGoogleFontFamily(family);
 }
 
 export function encodeGoogleFontFamily(family: string): string {
@@ -154,8 +154,11 @@ export function collectSceneFontFamilies(stage: FontWalkNode): string[] {
   const walk = (node: FontWalkNode) => {
     if (node.className === "Text") {
       const family = node.attrs.fontFamily;
-      if (typeof family === "string" && family.length > 0) {
-        families.add(family);
+      if (typeof family === "string") {
+        const trimmedFamily = family.trim();
+        if (trimmedFamily.length > 0) {
+          families.add(trimmedFamily);
+        }
       }
     }
 

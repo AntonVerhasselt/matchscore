@@ -58,6 +58,6 @@ export function isValidKonvaFontStyle(value: unknown): value is KonvaFontStyle {
 
 export function isValidTextDecoration(
   value: unknown,
-): value is "" | "underline" {
+): value is "" | "underline" | undefined {
   return value === "" || value === "underline" || value === undefined;
 }

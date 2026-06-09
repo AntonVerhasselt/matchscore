@@ -378,32 +378,6 @@ export function StaticTemplateEditor({
     [sceneDocument],
   );
 
-  const undoSceneChange = useCallback(() => {
-    setHistory((currentHistory) => {
-      if (currentHistory.index <= 0) {
-        return currentHistory;
-      }
-
-      const nextIndex = currentHistory.index - 1;
-      setSceneDocument(currentHistory.entries[nextIndex] ?? null);
-      setIsDirty(true);
-      return { ...currentHistory, index: nextIndex };
-    });
-  }, []);
-
-  const redoSceneChange = useCallback(() => {
-    setHistory((currentHistory) => {
-      if (currentHistory.index >= currentHistory.entries.length - 1) {
-        return currentHistory;
-      }
-
-      const nextIndex = currentHistory.index + 1;
-      setSceneDocument(currentHistory.entries[nextIndex] ?? null);
-      setIsDirty(true);
-      return { ...currentHistory, index: nextIndex };
-    });
-  }, []);
-
   const deleteSelectedNode = useCallback(() => {
     if (!selectedNodeId || !selectedNode || isBackgroundNode(selectedNode)) {
       return;
@@ -505,6 +479,72 @@ export function StaticTemplateEditor({
     updateSceneAttrs(editingTextNodeId, { text: editingTextValue });
     cancelTextEditing();
   }, [cancelTextEditing, editingTextNodeId, editingTextValue, updateSceneAttrs]);
+
+  const undoSceneChange = useCallback(() => {
+    const flushed = flushInlineTextEditingState({
+      sceneDocument,
+      history,
+      editingTextNodeId,
+      editingTextValue,
+    });
+    if (flushed.didFlush) {
+      cancelTextEditing();
+    }
+
+    const workingHistory = flushed.history;
+    if (workingHistory.index <= 0) {
+      if (flushed.didFlush) {
+        setSceneDocument(flushed.sceneDocument);
+        setHistory(workingHistory);
+        setIsDirty(true);
+      }
+      return;
+    }
+
+    const nextIndex = workingHistory.index - 1;
+    setSceneDocument(workingHistory.entries[nextIndex] ?? null);
+    setHistory({ ...workingHistory, index: nextIndex });
+    setIsDirty(true);
+  }, [
+    cancelTextEditing,
+    editingTextNodeId,
+    editingTextValue,
+    history,
+    sceneDocument,
+  ]);
+
+  const redoSceneChange = useCallback(() => {
+    const flushed = flushInlineTextEditingState({
+      sceneDocument,
+      history,
+      editingTextNodeId,
+      editingTextValue,
+    });
+    if (flushed.didFlush) {
+      cancelTextEditing();
+    }
+
+    const workingHistory = flushed.history;
+    if (workingHistory.index >= workingHistory.entries.length - 1) {
+      if (flushed.didFlush) {
+        setSceneDocument(flushed.sceneDocument);
+        setHistory(workingHistory);
+        setIsDirty(true);
+      }
+      return;
+    }
+
+    const nextIndex = workingHistory.index + 1;
+    setSceneDocument(workingHistory.entries[nextIndex] ?? null);
+    setHistory({ ...workingHistory, index: nextIndex });
+    setIsDirty(true);
+  }, [
+    cancelTextEditing,
+    editingTextNodeId,
+    editingTextValue,
+    history,
+    sceneDocument,
+  ]);
 
   const uploadTemplateAsset = useCallback(
     async (file: File): Promise<TemplateAsset> => {
@@ -816,14 +856,27 @@ export function StaticTemplateEditor({
   );
 
   const handleSave = useCallback(async () => {
-    if (!sceneDocument) {
+    const flushed = flushInlineTextEditingState({
+      sceneDocument,
+      history,
+      editingTextNodeId,
+      editingTextValue,
+    });
+    const documentToSave = flushed.sceneDocument;
+    if (!documentToSave) {
       return;
+    }
+
+    if (flushed.didFlush) {
+      cancelTextEditing();
+      setSceneDocument(documentToSave);
+      setHistory(flushed.history);
     }
 
     setIsSaving(true);
     try {
       const normalizedSceneDocument = normalizeSceneDocument(
-        sceneDocument,
+        documentToSave,
         template.canvasPreset,
         backendAutomationType,
       );
@@ -845,6 +898,10 @@ export function StaticTemplateEditor({
     }
   }, [
     backendAutomationType,
+    cancelTextEditing,
+    editingTextNodeId,
+    editingTextValue,
+    history,
     sceneDocument,
     t,
     template._id,
@@ -1358,6 +1415,9 @@ function TextPanel({
                   text: getPresetPlaceholder(preset),
                 })
               }
+              onActivate={() =>
+                onTextPresetInsert(preset, getPresetPlaceholder(preset))
+              }
             />
           ))}
         </div>
@@ -1370,10 +1430,12 @@ function TextPresetCard({
   label,
   previewClassName,
   onDragStart,
+  onActivate,
 }: {
   label: string;
   previewClassName: string;
   onDragStart: (event: React.DragEvent<HTMLElement>) => void;
+  onActivate: () => void;
 }) {
   return (
     <div
@@ -1382,6 +1444,12 @@ function TextPresetCard({
       tabIndex={0}
       className="cursor-grab border bg-card px-3 py-2.5 text-left transition-colors hover:border-primary/50 active:cursor-grabbing"
       onDragStart={onDragStart}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onActivate();
+        }
+      }}
     >
       <span className={previewClassName}>{label}</span>
     </div>
@@ -3113,6 +3181,36 @@ function useStageScale(logicalWidth: number, logicalHeight: number) {
 
 function createInitialHistory(sceneDocument: SceneDocument | null): SceneHistory {
   return sceneDocument ? { entries: [sceneDocument], index: 0 } : { entries: [], index: -1 };
+}
+
+function flushInlineTextEditingState({
+  sceneDocument,
+  history,
+  editingTextNodeId,
+  editingTextValue,
+}: {
+  sceneDocument: SceneDocument | null;
+  history: SceneHistory;
+  editingTextNodeId: string | null;
+  editingTextValue: string;
+}): {
+  sceneDocument: SceneDocument | null;
+  history: SceneHistory;
+  didFlush: boolean;
+} {
+  if (!sceneDocument || !editingTextNodeId) {
+    return { sceneDocument, history, didFlush: false };
+  }
+
+  const nextSceneDocument = updateSceneNodeAttrs(sceneDocument, editingTextNodeId, {
+    text: editingTextValue,
+  });
+
+  return {
+    sceneDocument: nextSceneDocument,
+    history: pushHistoryEntry(history, nextSceneDocument),
+    didFlush: true,
+  };
 }
 
 function pushHistoryEntry(
