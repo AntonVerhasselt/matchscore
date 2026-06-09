@@ -8,6 +8,8 @@ import {
   Bold,
   Circle,
   Italic,
+  Minus,
+  Plus,
   Underline,
   Eye,
   EyeOff,
@@ -34,6 +36,7 @@ import useImage from "use-image";
 import {
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -118,6 +121,7 @@ import { FontPicker } from "@/components/template-editor/font-picker";
 
 const VARIABLE_DRAG_MIME = "application/x-matchscore-template-variable";
 const ASSET_DRAG_MIME = "application/x-matchscore-template-asset";
+const TEXT_PRESET_DRAG_MIME = "application/x-matchscore-template-text-preset";
 const BACKGROUND_NODE_ID = "background";
 const DEFAULT_BACKGROUND_FILL = "#ffffff";
 const MAX_HISTORY_ENTRIES = 50;
@@ -136,6 +140,23 @@ type VariableDragPayload =
   | { kind: "image"; bindingKey: ImageBindingKey };
 
 type AssetDragPayload = { assetId: Id<"templateAssets"> };
+
+type TextPresetKind = "heading" | "subheading" | "body";
+
+type TextPresetDragPayload = {
+  kind: "text-preset";
+  preset: TextPresetKind;
+  text: string;
+};
+
+const TEXT_PRESET_STYLES: Record<
+  TextPresetKind,
+  { fontSize: number; fontStyle?: string; lineHeight?: number }
+> = {
+  heading: { fontSize: 96, fontStyle: "bold", lineHeight: 1.1 },
+  subheading: { fontSize: 64, fontStyle: "bold", lineHeight: 1.15 },
+  body: { fontSize: 40, lineHeight: 1.2 },
+};
 
 type TemplateAsset = {
   _id: Id<"templateAssets">;
@@ -559,6 +580,32 @@ export function StaticTemplateEditor({
     [deleteTemplateAsset, t],
   );
 
+  const insertTextPresetNode = useCallback(
+    (
+      preset: TextPresetKind,
+      text: string,
+      point: { x: number; y: number },
+    ) => {
+      if (!sceneDocument) {
+        return;
+      }
+
+      const nodeId = `text-${preset}-${Date.now()}`;
+      const node = createFixedTextNode(
+        sceneDocument,
+        nodeId,
+        preset,
+        point,
+        text,
+      );
+
+      commitSceneDocument((current) => appendSceneNodeToFirstLayer(current, node));
+      setSelectedNodeId(nodeId);
+      setActivePanelTab("properties");
+    },
+    [commitSceneDocument, sceneDocument],
+  );
+
   const insertVariableNode = useCallback(
     (payload: VariableDragPayload, point: { x: number; y: number }) => {
       if (!sceneDocument) {
@@ -643,6 +690,39 @@ export function StaticTemplateEditor({
     setSelectedNodeId(BACKGROUND_NODE_ID);
   }, [replaceSceneDocument, sceneDocument]);
 
+  const handleTextPresetDragStart = useCallback(
+    (
+      event: React.DragEvent<HTMLElement>,
+      payload: TextPresetDragPayload,
+    ) => {
+      event.dataTransfer.effectAllowed = "copy";
+      event.dataTransfer.setData(TEXT_PRESET_DRAG_MIME, JSON.stringify(payload));
+    },
+    [],
+  );
+
+  const handleTextPresetInsert = useCallback(
+    (
+      preset: TextPresetKind,
+      text: string,
+      point?: { x: number; y: number },
+    ) => {
+      insertTextPresetNode(
+        preset,
+        text,
+        point ?? {
+          x: Math.round(stageDimensions.width / 2),
+          y: Math.round(stageDimensions.height / 2),
+        },
+      );
+    },
+    [
+      insertTextPresetNode,
+      stageDimensions.height,
+      stageDimensions.width,
+    ],
+  );
+
   const handleVariableDragStart = useCallback(
     (event: React.DragEvent<HTMLElement>, payload: VariableDragPayload) => {
       event.dataTransfer.effectAllowed = "copy";
@@ -686,6 +766,18 @@ export function StaticTemplateEditor({
         return;
       }
 
+      const textPresetPayload = parseTextPresetDragPayload(
+        event.dataTransfer.getData(TEXT_PRESET_DRAG_MIME),
+      );
+      if (textPresetPayload) {
+        const rect = stageFrameRef.current.getBoundingClientRect();
+        insertTextPresetNode(textPresetPayload.preset, textPresetPayload.text, {
+          x: Math.round((event.clientX - rect.left) / scale),
+          y: Math.round((event.clientY - rect.top) / scale),
+        });
+        return;
+      }
+
       const payload = parseVariableDragPayload(
         event.dataTransfer.getData(VARIABLE_DRAG_MIME),
       );
@@ -713,7 +805,14 @@ export function StaticTemplateEditor({
         });
       }
     },
-    [insertAssetNode, insertVariableNode, scale, sceneDocument, templateAssetsById],
+    [
+      insertAssetNode,
+      insertTextPresetNode,
+      insertVariableNode,
+      scale,
+      sceneDocument,
+      templateAssetsById,
+    ],
   );
 
   const handleSave = useCallback(async () => {
@@ -986,6 +1085,8 @@ export function StaticTemplateEditor({
             onLayerLockToggle={toggleLayerLock}
             onLayerDelete={deleteLayerNode}
             onNodeDelete={deleteSelectedNode}
+            onTextPresetDragStart={handleTextPresetDragStart}
+            onTextPresetInsert={handleTextPresetInsert}
             onVariableDragStart={handleVariableDragStart}
             onVariableActivate={handleVariableActivate}
             onAssetUpload={handleUploadAsset}
@@ -1021,6 +1122,8 @@ function EditorRightPanel({
   onLayerLockToggle,
   onLayerDelete,
   onNodeDelete,
+  onTextPresetDragStart,
+  onTextPresetInsert,
   onVariableDragStart,
   onVariableActivate,
   onAssetUpload,
@@ -1053,6 +1156,15 @@ function EditorRightPanel({
   onLayerLockToggle: (node: SceneNode) => void;
   onLayerDelete: (node: SceneNode) => void;
   onNodeDelete: () => void;
+  onTextPresetDragStart: (
+    event: React.DragEvent<HTMLElement>,
+    payload: TextPresetDragPayload,
+  ) => void;
+  onTextPresetInsert: (
+    preset: TextPresetKind,
+    text: string,
+    point?: { x: number; y: number },
+  ) => void;
   onVariableDragStart: (
     event: React.DragEvent<HTMLElement>,
     payload: VariableDragPayload,
@@ -1117,10 +1229,9 @@ function EditorRightPanel({
           />
         ) : null}
         {activeTab === "text" ? (
-          <PlaceholderPanel
-            title={t("textPanelTitle")}
-            description={t("textPanelDescription")}
-            icon={Type}
+          <TextPanel
+            onTextPresetDragStart={onTextPresetDragStart}
+            onTextPresetInsert={onTextPresetInsert}
           />
         ) : null}
         {activeTab === "shapes" ? <ShapesPanel /> : null}
@@ -1163,6 +1274,117 @@ function EditorRightPanel({
         ))}
       </nav>
     </>
+  );
+}
+
+function TextPanel({
+  onTextPresetDragStart,
+  onTextPresetInsert,
+}: {
+  onTextPresetDragStart: (
+    event: React.DragEvent<HTMLElement>,
+    payload: TextPresetDragPayload,
+  ) => void;
+  onTextPresetInsert: (
+    preset: TextPresetKind,
+    text: string,
+    point?: { x: number; y: number },
+  ) => void;
+}) {
+  const t = useTranslations("app.automations.editor");
+  const presets: Array<{
+    preset: TextPresetKind;
+    label: string;
+    previewClassName: string;
+  }> = [
+    {
+      preset: "heading",
+      label: t("textPresetHeading"),
+      previewClassName: "text-2xl font-bold leading-tight",
+    },
+    {
+      preset: "subheading",
+      label: t("textPresetSubheading"),
+      previewClassName: "text-lg font-bold leading-tight",
+    },
+    {
+      preset: "body",
+      label: t("textPresetBody"),
+      previewClassName: "text-sm font-normal",
+    },
+  ];
+
+  const getPresetPlaceholder = (preset: TextPresetKind) => {
+    switch (preset) {
+      case "heading":
+        return t("textPresetHeadingPlaceholder");
+      case "subheading":
+        return t("textPresetSubheadingPlaceholder");
+      case "body":
+        return t("textPresetBodyPlaceholder");
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      <PanelHeader
+        title={t("textPanelTitle")}
+        description={t("textPanelDescription")}
+      />
+
+      <Button
+        type="button"
+        className="h-10 w-full"
+        onClick={() =>
+          onTextPresetInsert("body", getPresetPlaceholder("body"))
+        }
+      >
+        <Type aria-hidden />
+        {t("textPanelAddTextBox")}
+      </Button>
+
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold">{t("textPresetStylesTitle")}</h3>
+        <div className="grid gap-2">
+          {presets.map(({ preset, label, previewClassName }) => (
+            <TextPresetCard
+              key={preset}
+              label={label}
+              previewClassName={previewClassName}
+              onDragStart={(event) =>
+                onTextPresetDragStart(event, {
+                  kind: "text-preset",
+                  preset,
+                  text: getPresetPlaceholder(preset),
+                })
+              }
+            />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function TextPresetCard({
+  label,
+  previewClassName,
+  onDragStart,
+}: {
+  label: string;
+  previewClassName: string;
+  onDragStart: (event: React.DragEvent<HTMLElement>) => void;
+}) {
+  return (
+    <div
+      draggable
+      role="button"
+      tabIndex={0}
+      className="cursor-grab border bg-card px-3 py-2.5 text-left transition-colors hover:border-primary/50 active:cursor-grabbing"
+      onDragStart={onDragStart}
+    >
+      <span className={previewClassName}>{label}</span>
+    </div>
   );
 }
 
@@ -1926,10 +2148,12 @@ function TextAlignmentControl({
   value,
   onChange,
   compact = false,
+  grid = false,
 }: {
   value: string;
   onChange: (align: "left" | "center" | "right") => void;
   compact?: boolean;
+  grid?: boolean;
 }) {
   const t = useTranslations("app.automations.editor");
   const options: Array<{
@@ -1942,6 +2166,26 @@ function TextAlignmentControl({
     { value: "right", icon: AlignRight, label: t("alignRight") },
   ];
 
+  if (grid) {
+    return (
+      <div className="grid grid-cols-3 gap-0.5">
+        {options.map(({ value: optionValue, icon: Icon, label }) => (
+          <Button
+            key={optionValue}
+            type="button"
+            variant={value === optionValue ? "default" : "outline"}
+            size="sm"
+            className="h-7 px-0"
+            aria-label={label}
+            onClick={() => onChange(optionValue)}
+          >
+            <Icon aria-hidden />
+          </Button>
+        ))}
+      </div>
+    );
+  }
+
   if (compact) {
     return (
       <div className="flex items-center gap-0.5">
@@ -1952,6 +2196,7 @@ function TextAlignmentControl({
             variant={value === optionValue ? "default" : "outline"}
             size="icon-xs"
             aria-label={label}
+            aria-pressed={value === optionValue}
             onClick={() => onChange(optionValue)}
           >
             <Icon aria-hidden />
@@ -1986,22 +2231,28 @@ function TextStyleToggles({
   bold,
   italic,
   underline,
+  uppercase,
   boldLabel,
   italicLabel,
   underlineLabel,
+  uppercaseLabel,
   onBoldToggle,
   onItalicToggle,
   onUnderlineToggle,
+  onUppercaseToggle,
 }: {
   bold: boolean;
   italic: boolean;
   underline: boolean;
+  uppercase: boolean;
   boldLabel: string;
   italicLabel: string;
   underlineLabel: string;
+  uppercaseLabel: string;
   onBoldToggle: () => void;
   onItalicToggle: () => void;
   onUnderlineToggle: () => void;
+  onUppercaseToggle: () => void;
 }) {
   return (
     <div className="flex items-center gap-0.5">
@@ -2035,6 +2286,18 @@ function TextStyleToggles({
       >
         <Underline aria-hidden />
       </Button>
+      <Button
+        type="button"
+        variant={uppercase ? "default" : "outline"}
+        size="icon-xs"
+        aria-label={uppercaseLabel}
+        aria-pressed={uppercase}
+        onClick={onUppercaseToggle}
+      >
+        <span aria-hidden className="text-[10px] font-bold leading-none">
+          <span className="font-normal">a</span>A
+        </span>
+      </Button>
     </div>
   );
 }
@@ -2066,6 +2329,130 @@ function PanelNumberInput({
         }
       }}
     />
+  );
+}
+
+function TextColorPicker({
+  value,
+  label,
+  onChange,
+}: {
+  value: string;
+  label: string;
+  onChange: (fill: string) => void;
+}) {
+  const inputId = useId();
+  const normalized = value || "#000000";
+
+  return (
+    <label
+      htmlFor={inputId}
+      className="flex h-10 w-full min-w-0 cursor-pointer items-center gap-3 border border-input bg-background px-2.5 transition-colors hover:bg-muted/40"
+    >
+      <span
+        aria-hidden
+        className="size-9 shrink-0 border border-border shadow-sm"
+        style={{ backgroundColor: normalized }}
+      />
+      <span className="min-w-0 flex-1 text-sm font-medium">{label}</span>
+      <span className="shrink-0 font-mono text-xs uppercase text-muted-foreground">
+        {normalized}
+      </span>
+      <input
+        id={inputId}
+        type="color"
+        value={normalized}
+        className="sr-only"
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </label>
+  );
+}
+
+function PanelStepperInput({
+  ariaLabel,
+  decreaseLabel,
+  increaseLabel,
+  value,
+  min,
+  max = 9999,
+  step = 1,
+  decimals = 0,
+  className,
+  onChange,
+}: {
+  ariaLabel: string;
+  decreaseLabel: string;
+  increaseLabel: string;
+  value: number;
+  min: number;
+  max?: number;
+  step?: number;
+  decimals?: number;
+  className?: string;
+  onChange: (value: number) => void;
+}) {
+  const roundValue = (nextValue: number) => {
+    if (decimals <= 0) {
+      return Math.round(nextValue);
+    }
+
+    const factor = 10 ** decimals;
+    return Math.round(nextValue * factor) / factor;
+  };
+
+  const clampValue = (nextValue: number) =>
+    roundValue(Math.min(max, Math.max(min, nextValue)));
+
+  const handleDecrease = () => {
+    onChange(clampValue(value - step));
+  };
+
+  const handleIncrease = () => {
+    onChange(clampValue(value + step));
+  };
+
+  return (
+    <div
+      className={
+        className ??
+        "flex h-8 w-full min-w-0 items-stretch overflow-hidden border border-input bg-background"
+      }
+    >
+      <button
+        type="button"
+        className="flex w-9 shrink-0 items-center justify-center border-r text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:bg-muted/80 disabled:pointer-events-none disabled:opacity-40"
+        aria-label={decreaseLabel}
+        disabled={value <= min}
+        onClick={handleDecrease}
+      >
+        <Minus className="size-4" aria-hidden />
+      </button>
+      <input
+        type="number"
+        aria-label={ariaLabel}
+        min={min}
+        max={max}
+        step={step}
+        value={Number.isFinite(value) ? value : min}
+        className="min-w-0 flex-1 border-0 bg-transparent px-1 text-center text-sm font-medium tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        onChange={(event) => {
+          const nextValue = Number(event.target.value);
+          if (Number.isFinite(nextValue)) {
+            onChange(clampValue(nextValue));
+          }
+        }}
+      />
+      <button
+        type="button"
+        className="flex w-9 shrink-0 items-center justify-center border-l text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:bg-muted/80 disabled:pointer-events-none disabled:opacity-40"
+        aria-label={increaseLabel}
+        disabled={value >= max}
+        onClick={handleIncrease}
+      >
+        <Plus className="size-4" aria-hidden />
+      </button>
+    </div>
   );
 }
 
@@ -2442,6 +2829,7 @@ function NodePropertiesPanel({
   const fontStyle = stringAttr(node.attrs, "fontStyle");
   const { bold, italic } = parseKonvaFontStyle(fontStyle);
   const underlined = getTextDecoration(stringAttr(node.attrs, "textDecoration")) === "underline";
+  const isUppercase = getTextTransform(node.attrs.textTransform) === "uppercase";
 
   return (
     <div className="min-w-0 space-y-2">
@@ -2532,20 +2920,31 @@ function NodePropertiesPanel({
               searchPlaceholder={t("fontSearchPlaceholder")}
               noResultsLabel={t("fontSearchNoResults")}
             />
-            <div className="flex min-w-0 flex-wrap items-center gap-1">
-              <PanelNumberInput
-                ariaLabel={t("fontSize")}
-                value={numberAttr(node.attrs, "fontSize", 48)}
-                min={1}
-                onChange={(value) => onChange({ fontSize: value })}
-              />
+            <PanelStepperInput
+              ariaLabel={t("fontSize")}
+              decreaseLabel={t("decreaseFontSize")}
+              increaseLabel={t("increaseFontSize")}
+              value={numberAttr(node.attrs, "fontSize", 48)}
+              min={1}
+              max={400}
+              step={1}
+              onChange={(value) => onChange({ fontSize: value })}
+            />
+            <TextColorPicker
+              label={t("fill")}
+              value={stringAttr(node.attrs, "fill") ?? "#000000"}
+              onChange={(fill) => onChange({ fill })}
+            />
+            <div className="flex min-w-0 flex-nowrap items-center gap-0.5 border border-input bg-muted/20 p-1.5">
               <TextStyleToggles
                 bold={bold}
                 italic={italic}
                 underline={underlined}
+                uppercase={isUppercase}
                 boldLabel={t("bold")}
                 italicLabel={t("italic")}
                 underlineLabel={t("underline")}
+                uppercaseLabel={t("textTransformUppercase")}
                 onBoldToggle={() =>
                   onChange({
                     fontStyle: buildKonvaFontStyle(!bold, italic),
@@ -2563,6 +2962,15 @@ function NodePropertiesPanel({
                     ),
                   })
                 }
+                onUppercaseToggle={() =>
+                  onChange({
+                    textTransform: isUppercase ? "none" : "uppercase",
+                  })
+                }
+              />
+              <div
+                aria-hidden
+                className="mx-0.5 h-6 w-px shrink-0 bg-border"
               />
               <TextAlignmentControl
                 compact
@@ -2570,40 +2978,7 @@ function NodePropertiesPanel({
                 onChange={(align) => onChange({ align })}
               />
             </div>
-            <div className="flex min-w-0 items-center gap-1">
-              <Input
-                type="color"
-                aria-label={t("fill")}
-                value={stringAttr(node.attrs, "fill") ?? "#000000"}
-                className="h-7 w-7 shrink-0 p-0"
-                onChange={(event) => onChange({ fill: event.target.value })}
-              />
-              <PanelNumberInput
-                ariaLabel={t("lineHeight")}
-                value={numberAttr(node.attrs, "lineHeight", 1)}
-                min={0.5}
-                className="h-7 w-11 shrink-0 px-1 text-xs"
-                onChange={(value) => onChange({ lineHeight: value })}
-              />
-              <Select
-                value={getTextTransform(node.attrs.textTransform)}
-                onValueChange={(value) =>
-                  onChange({ textTransform: value as TextTransform })
-                }
-              >
-                <SelectTrigger
-                  aria-label={t("textTransform")}
-                  className="h-7 min-w-0 flex-1 px-1.5 text-[11px]"
-                >
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">{t("textTransformNone")}</SelectItem>
-                  <SelectItem value="uppercase">
-                    {t("textTransformUppercase")}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex min-w-0 items-center gap-1.5">
               <Select
                 value={getTextOverflowMode(node.attrs.overflowMode)}
                 onValueChange={(value) =>
@@ -2612,7 +2987,7 @@ function NodePropertiesPanel({
               >
                 <SelectTrigger
                   aria-label={t("overflowMode")}
-                  className="h-7 min-w-0 flex-1 px-1.5 text-[11px]"
+                  className="h-7 min-w-0 flex-1 text-xs"
                 >
                   <SelectValue />
                 </SelectTrigger>
@@ -2623,6 +2998,18 @@ function NodePropertiesPanel({
                   <SelectItem value="fixed">{t("overflowFixed")}</SelectItem>
                 </SelectContent>
               </Select>
+              <PanelStepperInput
+                ariaLabel={t("lineHeight")}
+                decreaseLabel={t("decreaseLineHeight")}
+                increaseLabel={t("increaseLineHeight")}
+                value={numberAttr(node.attrs, "lineHeight", 1)}
+                min={0.5}
+                max={3}
+                step={0.1}
+                decimals={1}
+                className="flex h-7 w-[8.5rem] shrink-0 items-stretch overflow-hidden border border-input/70 bg-muted/10"
+                onChange={(value) => onChange({ lineHeight: value })}
+              />
             </div>
           </div>
         </>
@@ -2935,6 +3322,76 @@ function appendSceneNodeToFirstLayer(
       ],
     },
   };
+}
+
+function createFixedTextNode(
+  sceneDocument: SceneDocument,
+  nodeId: string,
+  preset: TextPresetKind,
+  point: { x: number; y: number },
+  text: string,
+): SceneNode {
+  const stageWidth = numberAttr(sceneDocument.stage.attrs, "width", 1080);
+  const stageHeight = numberAttr(sceneDocument.stage.attrs, "height", 1080);
+  const style = TEXT_PRESET_STYLES[preset];
+  const lineHeight = style.lineHeight ?? 1.2;
+  const width = Math.max(
+    estimateSingleLineTextWidth(text, style.fontSize),
+    Math.round(stageWidth * 0.35),
+  );
+  const height = Math.round(style.fontSize * lineHeight);
+  const x = point.x - Math.round(width / 2);
+  const y = point.y - Math.round(height / 2);
+  const minX = Math.min(0, stageWidth - width);
+  const maxX = Math.max(0, stageWidth - width);
+  const minY = Math.min(0, stageHeight - height);
+  const maxY = Math.max(0, stageHeight - height);
+
+  return {
+    className: "Text",
+    attrs: {
+      id: nodeId,
+      name: preset,
+      x: Math.round(clamp(x, minX, maxX)),
+      y: Math.round(clamp(y, minY, maxY)),
+      width,
+      height,
+      text,
+      fontSize: style.fontSize,
+      fontFamily: "Arial",
+      fontStyle: style.fontStyle ?? "normal",
+      lineHeight,
+      fill: "#111827",
+      align: "center",
+    },
+  };
+}
+
+function parseTextPresetDragPayload(raw: string): TextPresetDragPayload | null {
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<TextPresetDragPayload>;
+    if (
+      parsed.kind === "text-preset" &&
+      (parsed.preset === "heading" ||
+        parsed.preset === "subheading" ||
+        parsed.preset === "body") &&
+      typeof parsed.text === "string"
+    ) {
+      return {
+        kind: "text-preset",
+        preset: parsed.preset,
+        text: parsed.text,
+      };
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 }
 
 function createTextBindingNode(
