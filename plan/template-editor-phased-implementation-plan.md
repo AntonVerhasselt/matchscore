@@ -5,7 +5,7 @@
 > Branch context: `feature/club-automations-templates`  
 > Scope: Convex database design, automation/template APIs, react-konva editor, storage conventions, server render foundation, and phase-by-phase testing.  
 > Non-scope for MVP: match/calendar storage, actual scheduled posting, Meta/social posting, subscription/watermark enforcement, and `starting_eleven`.
-> Current implementation status: Phases 1-5 are implemented on `templates-phase-5`; Phases 6-7 remain planned work.
+> Current implementation status: Phases 1-5 are merged to `main`; Phases 6-7 remain planned work.
 
 This document combines the approved product/backend brief and the react-konva technical guide into one phased implementation plan. Each phase must produce a small integrated slice: backend state, frontend UI, automated checks, browser verification, and database verification. After a phase passes those checks, the implementer should stop and hand it to the user for manual testing before continuing.
 
@@ -79,7 +79,7 @@ These decisions are carried forward unchanged:
 | Permissions | Any organization member can manage automations and templates |
 | Watermark | Out of scope |
 | Scene storage | Inline `sceneDocument` object on template row |
-| Fonts | System fonts only for MVP |
+| Fonts | System fonts plus a curated Google Fonts catalog in the editor (Phase 5); server render still uses system fonts until custom font loading is added |
 | Konva features | Basic `Stage`, `Layer`, `Group`, `Rect`, `Text`, `Image` only |
 | Schema versioning | `schemaVersion: 1` on every template |
 | Thumbnail | Optional `thumbnailStorageId`, implement later |
@@ -495,6 +495,8 @@ lib/template-scene/
   types.ts
   canvas-presets.ts
   placeholders.ts
+  google-fonts.ts
+  text-style.ts
   normalize-scene-document.ts
   validate-scene-document.ts
   hydrate-scene.ts
@@ -819,7 +821,7 @@ The browser and server render paths must share:
 | Uppercase | `displayText()` |
 | Date/time | `formatBinding()` with `nl-BE` |
 | Gradients | Same Konva attrs |
-| Fonts | Same system font names |
+| Fonts | Same font family names; editor loads Google Fonts in browser, server render still system-only until `registerFont` is added |
 
 When custom fonts are added later, document the font list and use `registerFont()` on the server.
 
@@ -1275,7 +1277,7 @@ Phase 4 is complete only when static images are stored in Convex Storage, refere
 
 Goal: turn the basic editor into a practical Canva-like MVP while staying within the approved Konva subset.
 
-Implementation status: completed on `templates-phase-5`, with the deferred items noted below.
+Implementation status: completed and merged to `main` (PR #14), with the deferred items noted below. Phase 5 also delivered several extras originally scoped for Phase 7 or polish passes.
 
 ### Backend Scope
 
@@ -1307,12 +1309,14 @@ Implement:
   - Double-click editing applies to fixed text only.
   - Variable text nodes remain edited through the binding dropdown; double-clicking them should not silently convert them to fixed text.
 - Text style controls:
-  - font family from allowed system stacks
-  - font size
-  - fill color
-  - alignment
-  - line height if needed
+  - searchable font picker with curated Google Fonts catalog (~50 families) plus system fonts (`components/template-editor/font-picker.tsx`, `lib/template-scene/google-fonts.ts`)
+  - font size stepper with −/+ buttons
+  - prominent full-width color picker row (swatch, label, hex)
+  - bold, italic, underline, and uppercase (`aA`) toggles on one compact toolbar row
+  - left/center/right alignment as square icon buttons on the same row as style toggles
+  - line-height stepper on a secondary row paired with the overflow-mode select
   - uppercase transform through `attrs.textTransform`
+  - compact properties layout for text nodes: no width/height fields, no fixed↔variable mode toggle (fixed text edited on canvas; bound text keeps the binding dropdown only)
 - Text overflow modes:
   - `wrap`
   - `shrink`
@@ -1346,7 +1350,12 @@ Implement:
 - Normal image node deletion:
   - allow removing uploaded sponsor/logo image nodes from the scene via Delete/Backspace, the properties panel delete button, or the layer-row trash icon
   - after a template no longer references an asset and the template is saved, the existing Assets panel delete flow can remove the asset row and storage blob; there is no automatic asset cleanup on save
-- Do not add new text or shape insertion tools in Phase 5. Existing text and shape nodes can be edited, reordered, hidden, locked, and deleted, but new text/shape creation is deferred to Phase 7.
+- Text tab (delivered in Phase 5 as an extra; shapes tab remains deferred to Phase 7):
+  - "Add a text box" button inserts body text at canvas center
+  - draggable preset cards for heading (96px bold), subheading (64px bold), and body (40px)
+  - presets can be dropped onto the canvas at the drop position or activated with Enter/Space (inserts at center)
+  - new fixed-text nodes are created through `createFixedTextNode` and selected in the properties panel after insert
+- Shapes tab insertion (`Rect` presets) remains deferred to Phase 7.
 - Overlay layer:
   - center crosshair or safe-zone guides if useful
   - `listening={false}`
@@ -1376,10 +1385,13 @@ Browser checks:
 
 - Double-click text and edit with textarea overlay.
 - Commit with blur or Enter.
+- Open the Text tab; add a text box and drag heading/subheading/body presets onto the canvas.
+- Activate a text preset with Enter/Space and confirm it inserts at canvas center.
+- Change font family via the searchable picker; confirm Google Fonts load and keyboard navigation works.
 - Drag and resize several nodes.
 - Reorder layers.
 - Toggle visibility and lock.
-- Undo and redo each action.
+- Undo and redo each action (including while inline text editing is open).
 - Delete a node and undo it.
 - Save and refresh.
 - Confirm all persisted visual changes remain and non-persisted UI state is gone.
@@ -1394,27 +1406,52 @@ Database checks:
 User testing script:
 
 1. Edit text by double-clicking it.
-2. Add or select multiple layers.
-3. Reorder layers.
-4. Toggle visibility.
-5. Use undo and redo.
-6. Save and refresh.
-7. Confirm only the intended design state persisted.
+2. Open the Text tab; add a text box and drag a heading preset onto the canvas.
+3. Select the new text and try font, color, B/I/U, alignment, and overflow controls.
+4. Add or select multiple layers.
+5. Reorder layers.
+6. Toggle visibility.
+7. Use undo and redo.
+8. Save and refresh.
+9. Confirm only the intended design state persisted.
 
 Phase 5 is complete only when the editor feels usable for static layouts and the saved JSON remains clean.
 
 ### Phase 5 Implementation Notes
 
-Implemented in `components/template-editor/static-template-editor.tsx` and `lib/template-scene/index.ts`:
+Implemented in `components/template-editor/static-template-editor.tsx`, `components/template-editor/font-picker.tsx`, and `lib/template-scene/`:
+
+**Core Phase 5 scope**
 
 - Image `objectFit: "contain"` uses shared `calculateObjectFit` crop and render rectangles in `SceneImage`.
 - Fixed-text double-click editing via DOM textarea overlay; variable text stays binding-based.
-- Text controls: font family, size, fill, alignment, line height, uppercase transform, overflow modes (`wrap`, `shrink`, `ellipsis`, `fixed`).
+- Inline text edits are flushed into the scene document before undo, redo, or save so in-progress textarea content is not lost.
+- Text controls: searchable font picker, size/line-height steppers, prominent color row, B/I/U/uppercase + alignment toolbar, overflow modes (`wrap`, `shrink`, `ellipsis`, `fixed`).
 - Layer panel with select, drag reorder, visibility, lock, delete, and background handling.
 - Undo/redo with 50-entry cap; toolbar buttons plus Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z, and Cmd/Ctrl+Y.
 - Keyboard Delete/Backspace removes the selected non-background node; Cmd/Ctrl+S saves.
 - Node deletion from properties panel and layer rows.
 - Canvas drag/transform auto-selects the active node.
+
+**Text tab (extra — originally Phase 7)**
+
+- Replaced the Text tab placeholder with a working `TextPanel`.
+- "Add a text box" inserts a body preset at canvas center.
+- Draggable heading / subheading / body preset cards insert fixed `Text` nodes via `TEXT_PRESET_DRAG_MIME` and `createFixedTextNode`.
+- Keyboard users can activate presets with Enter/Space (same preset payload as drag; inserts at center).
+
+**Typography and font extras**
+
+- `lib/template-scene/google-fonts.ts`: curated catalog, lazy `loadGoogleFonts`, `searchTemplateFonts`, `collectSceneFontFamilies` (trimmed names), `shouldLoadGoogleFont` restricted to catalog entries.
+- `lib/template-scene/text-style.ts`: Konva font-style and underline helpers (`parseKonvaFontStyle`, `buildKonvaFontStyle`, `toggleUnderline`, validators).
+- `FontPicker`: keyboard navigation (ArrowUp/Down, Enter, Escape) and listbox ARIA (`role="listbox"`, `aria-activedescendant`, `aria-selected`).
+- Properties panel layout order: font → size → color → style/alignment toolbar → overflow + line height.
+
+**Validation and tests**
+
+- `calculateTextFit` rejects non-function `measure` arguments.
+- `isValidTextDecoration` type predicate includes `undefined`.
+- `convex/automations/scenes.test.ts`: 28 tests covering Phase 5 attrs, text style, fonts, and text-fit behavior.
 
 Deferred from the original Phase 5 scope:
 
@@ -1422,6 +1459,7 @@ Deferred from the original Phase 5 scope:
 - Debounced numeric property inputs.
 - Dedicated automated tests for reorder/history helpers.
 - Variable-binding badge in the layer list (removed during UX polish).
+- Shapes tab insertion tools (still Phase 7).
 
 ## Phase 6 - Server Render Parity Foundation
 
@@ -1544,8 +1582,8 @@ Implement or verify:
 
 Implement or verify:
 
-- Basic authoring insertion tools if still needed after Phase 5:
-  - add fixed text from the Text tab
+- Remaining authoring insertion tools after Phase 5:
+  - Text tab fixed-text insertion is done (add text box + heading/subheading/body presets)
   - add an allowed `Rect` shape from the Shapes tab
   - keep unsupported shapes such as `Circle`, `Line`, and `Path` out of the MVP unless the allowed Konva subset is intentionally expanded
 - Delete template dialog.
