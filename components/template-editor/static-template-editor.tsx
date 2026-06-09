@@ -1,9 +1,20 @@
 "use client";
 
-import { ArrowLeft, Save } from "lucide-react";
+import {
+  ArrowLeft,
+  Circle,
+  ImageIcon,
+  Save,
+  Shapes,
+  SlidersHorizontal,
+  Square,
+  Type,
+  UploadCloud,
+} from "lucide-react";
 import type Konva from "konva";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import useImage from "use-image";
 import {
   useCallback,
   useEffect,
@@ -14,6 +25,7 @@ import {
 } from "react";
 import {
   Group,
+  Image as KonvaImage,
   Layer,
   Rect,
   Stage,
@@ -24,19 +36,48 @@ import {
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
+  getAvailableImageBindingKeys,
+  getAvailableTextBindingKeys,
+  getImageBindingKey,
+  getTextBindingKey,
   normalizeSceneDocument,
+  resolveImageSource,
+  resolveTextContent,
+  type AutomationType,
+  type BindingPreviewMode,
+  type ImageBindingKey,
   type SceneDocument,
   type SceneNode,
   type SceneNodeAttrs,
+  type TextBindingKey,
 } from "@/lib/template-scene";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { AutomationTypeSlug, CanvasPreset } from "@/lib/automations/types";
+import {
+  toBackendAutomationType,
+  type AutomationTypeSlug,
+  type CanvasPreset,
+} from "@/lib/automations/types";
 import { CANVAS_PRESET_LABELS } from "@/lib/automations/canvas-presets";
 import { showErrorToast, showSuccessToast } from "@/lib/user-feedback";
 import { useMutation } from "convex/react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const VARIABLE_DRAG_MIME = "application/x-matchscore-template-variable";
+
+type EditorPanelTab = "variables" | "assets" | "text" | "shapes" | "properties";
+
+type VariableDragPayload =
+  | { kind: "text"; bindingKey: TextBindingKey }
+  | { kind: "image"; bindingKey: ImageBindingKey };
 
 type TemplateEditorTemplate = {
   _id: Id<"automationTemplates">;
@@ -58,10 +99,15 @@ export function StaticTemplateEditor({
 }: StaticTemplateEditorProps) {
   const t = useTranslations("app.automations");
   const updateTemplate = useMutation(api.automations.mutations.updateTemplate);
+  const backendAutomationType = toBackendAutomationType(automationType);
   const [templateName, setTemplateName] = useState(template.name);
   const [sceneDocument, setSceneDocument] = useState<SceneDocument | null>(() => {
     try {
-      return normalizeSceneDocument(template.sceneDocument, template.canvasPreset);
+      return normalizeSceneDocument(
+        template.sceneDocument,
+        template.canvasPreset,
+        backendAutomationType,
+      );
     } catch {
       return null;
     }
@@ -69,10 +115,15 @@ export function StaticTemplateEditor({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [previewMode, setPreviewMode] =
+    useState<BindingPreviewMode>("design");
+  const [activePanelTab, setActivePanelTab] =
+    useState<EditorPanelTab>("variables");
   const [titleInputWidth, setTitleInputWidth] = useState(40);
   const nodeRefs = useRef(new Map<string, Konva.Node>());
   const transformerRef = useRef<Konva.Transformer>(null);
   const titleMeasureRef = useRef<HTMLSpanElement>(null);
+  const stageFrameRef = useRef<HTMLDivElement>(null);
   const stageDimensions = sceneDocument
     ? {
         width: numberAttr(sceneDocument.stage.attrs, "width", 1080),
@@ -129,6 +180,73 @@ export function StaticTemplateEditor({
     [selectedNodeId, updateSceneAttrs],
   );
 
+  const selectNode = useCallback((nodeId: string) => {
+    setSelectedNodeId(nodeId);
+    setActivePanelTab("properties");
+  }, []);
+
+  const insertVariableNode = useCallback(
+    (payload: VariableDragPayload, point: { x: number; y: number }) => {
+      if (!sceneDocument) {
+        return;
+      }
+
+      const nodeId = `${payload.bindingKey}-${Date.now()}`;
+      const node =
+        payload.kind === "image"
+          ? createLogoNode(sceneDocument, nodeId, payload.bindingKey, point)
+          : createTextBindingNode(nodeId, payload.bindingKey, point);
+
+      setSceneDocument(appendSceneNodeToFirstLayer(sceneDocument, node));
+      setSelectedNodeId(nodeId);
+      setActivePanelTab("properties");
+      setIsDirty(true);
+    },
+    [sceneDocument],
+  );
+
+  const handleVariableDragStart = useCallback(
+    (event: React.DragEvent<HTMLElement>, payload: VariableDragPayload) => {
+      event.dataTransfer.effectAllowed = "copy";
+      event.dataTransfer.setData(VARIABLE_DRAG_MIME, JSON.stringify(payload));
+    },
+    [],
+  );
+
+  const handleVariableActivate = useCallback(
+    (payload: VariableDragPayload) => {
+      insertVariableNode(payload, {
+        x: Math.round(stageDimensions.width / 2),
+        y: Math.round(stageDimensions.height / 2),
+      });
+    },
+    [insertVariableNode, stageDimensions.height, stageDimensions.width],
+  );
+
+  const handleCanvasDrop = useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      if (!sceneDocument || !stageFrameRef.current) {
+        return;
+      }
+
+      const payload = parseVariableDragPayload(
+        event.dataTransfer.getData(VARIABLE_DRAG_MIME),
+      );
+      if (!payload) {
+        return;
+      }
+
+      const rect = stageFrameRef.current.getBoundingClientRect();
+      const point = {
+        x: Math.round((event.clientX - rect.left) / scale),
+        y: Math.round((event.clientY - rect.top) / scale),
+      };
+      insertVariableNode(payload, point);
+    },
+    [insertVariableNode, scale, sceneDocument],
+  );
+
   const handleSave = async () => {
     if (!sceneDocument) {
       return;
@@ -139,6 +257,7 @@ export function StaticTemplateEditor({
       const normalizedSceneDocument = normalizeSceneDocument(
         sceneDocument,
         template.canvasPreset,
+        backendAutomationType,
       );
       await updateTemplate({
         templateId: template._id,
@@ -205,6 +324,20 @@ export function StaticTemplateEditor({
           </span>
           <Button
             type="button"
+            variant="outline"
+            size="sm"
+            onClick={() =>
+              setPreviewMode((current) =>
+                current === "design" ? "preview" : "design",
+              )
+            }
+          >
+            {previewMode === "design"
+              ? t("editor.showPreviewMode")
+              : t("editor.showDesignMode")}
+          </Button>
+          <Button
+            type="button"
             size="sm"
             disabled={!isDirty || isSaving}
             onClick={() => void handleSave()}
@@ -221,11 +354,14 @@ export function StaticTemplateEditor({
           className="flex min-w-0 flex-1 items-center justify-center overflow-hidden bg-muted/30 p-6"
         >
           <div
+            ref={stageFrameRef}
             className="overflow-hidden border bg-background shadow-sm"
             style={{
               width: stageDimensions.width * scale,
               height: stageDimensions.height * scale,
             }}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={handleCanvasDrop}
           >
             <Stage
               width={stageDimensions.width}
@@ -248,7 +384,9 @@ export function StaticTemplateEditor({
                   key={nodeKey(node)}
                   node={node}
                   nodeRefs={nodeRefs}
-                  onSelect={setSelectedNodeId}
+                  automationType={backendAutomationType}
+                  previewMode={previewMode}
+                  onSelect={selectNode}
                   onChange={updateSceneAttrs}
                 />
               ))}
@@ -263,40 +401,358 @@ export function StaticTemplateEditor({
           </div>
         </main>
 
-        <aside className="flex w-80 shrink-0 flex-col gap-5 overflow-y-auto border-l bg-background p-4">
-          <section className="space-y-4">
-            <div>
-              <h2 className="text-sm font-semibold">
-                {t("editor.properties")}
-              </h2>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {selectedNode
-                  ? t("editor.selectedNode", { node: selectedNode.className })
-                  : t("editor.noSelection")}
-              </p>
-            </div>
-
-            {selectedNode ? (
-              <NodePropertiesPanel
-                node={selectedNode}
-                onChange={updateSelectedNodeAttrs}
-              />
-            ) : null}
-          </section>
+        <aside className="flex w-[23rem] shrink-0 border-l bg-background">
+          <EditorRightPanel
+            activeTab={activePanelTab}
+            selectedNode={selectedNode}
+            automationType={backendAutomationType}
+            previewMode={previewMode}
+            onTabChange={setActivePanelTab}
+            onVariableDragStart={handleVariableDragStart}
+            onVariableActivate={handleVariableActivate}
+            onPropertiesChange={updateSelectedNodeAttrs}
+          />
         </aside>
       </div>
     </>
   );
 }
 
+function EditorRightPanel({
+  activeTab,
+  selectedNode,
+  automationType,
+  previewMode,
+  onTabChange,
+  onVariableDragStart,
+  onVariableActivate,
+  onPropertiesChange,
+}: {
+  activeTab: EditorPanelTab;
+  selectedNode: SceneNode | null;
+  automationType: AutomationType;
+  previewMode: BindingPreviewMode;
+  onTabChange: (tab: EditorPanelTab) => void;
+  onVariableDragStart: (
+    event: React.DragEvent<HTMLElement>,
+    payload: VariableDragPayload,
+  ) => void;
+  onVariableActivate: (payload: VariableDragPayload) => void;
+  onPropertiesChange: (attrs: SceneNodeAttrs) => void;
+}) {
+  const t = useTranslations("app.automations.editor");
+  const tabs: Array<{
+    id: EditorPanelTab;
+    icon: React.ComponentType<{ className?: string }>;
+  }> = [
+    { id: "variables", icon: SlidersHorizontal },
+    { id: "assets", icon: UploadCloud },
+    { id: "text", icon: Type },
+    { id: "shapes", icon: Shapes },
+    { id: "properties", icon: SlidersHorizontal },
+  ];
+
+  return (
+    <>
+      <div className="min-w-0 flex-1 overflow-y-auto p-4">
+        {activeTab === "variables" ? (
+          <VariablesPanel
+            automationType={automationType}
+            onVariableDragStart={onVariableDragStart}
+            onVariableActivate={onVariableActivate}
+          />
+        ) : null}
+        {activeTab === "assets" ? (
+          <PlaceholderPanel
+            title={t("assetsPanelTitle")}
+            description={t("assetsPanelDescription")}
+            icon={UploadCloud}
+          />
+        ) : null}
+        {activeTab === "text" ? (
+          <PlaceholderPanel
+            title={t("textPanelTitle")}
+            description={t("textPanelDescription")}
+            icon={Type}
+          />
+        ) : null}
+        {activeTab === "shapes" ? <ShapesPanel /> : null}
+        {activeTab === "properties" ? (
+          <PropertiesPanelShell
+            selectedNode={selectedNode}
+            automationType={automationType}
+            previewMode={previewMode}
+            onChange={onPropertiesChange}
+          />
+        ) : null}
+      </div>
+      <nav className="flex w-20 shrink-0 flex-col border-l bg-muted/30 py-2">
+        {tabs.map(({ id, icon: Icon }) => (
+          <button
+            key={id}
+            type="button"
+            className={
+              activeTab === id
+                ? "flex flex-col items-center gap-1 border-r-2 border-primary bg-primary/10 px-2 py-3 text-[11px] font-semibold text-primary shadow-sm"
+                : "flex flex-col items-center gap-1 border-r-2 border-transparent px-2 py-3 text-[11px] font-medium text-muted-foreground hover:bg-background/70 hover:text-foreground"
+            }
+            onClick={() => onTabChange(id)}
+          >
+            <Icon className="size-4" aria-hidden />
+            {t(`panelTabs.${id}`)}
+          </button>
+        ))}
+      </nav>
+    </>
+  );
+}
+
+function VariablesPanel({
+  automationType,
+  onVariableDragStart,
+  onVariableActivate,
+}: {
+  automationType: AutomationType;
+  onVariableDragStart: (
+    event: React.DragEvent<HTMLElement>,
+    payload: VariableDragPayload,
+  ) => void;
+  onVariableActivate: (payload: VariableDragPayload) => void;
+}) {
+  const t = useTranslations("app.automations.editor");
+
+  return (
+    <div className="space-y-6">
+      <PanelHeader
+        title={t("variablesPanelTitle")}
+        description={t("variablesPanelDescription")}
+      />
+
+      <section className="space-y-3">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {t("textVariables")}
+        </h3>
+        <div className="grid gap-2">
+          {getAvailableTextBindingKeys(automationType).map((bindingKey) => (
+            <VariableCard
+              key={bindingKey}
+              title={t(`bindings.${bindingKey}`)}
+              description={`{{ ${bindingKey} }}`}
+              icon={Type}
+              onDragStart={(event) =>
+                onVariableDragStart(event, { kind: "text", bindingKey })
+              }
+              onActivate={() =>
+                onVariableActivate({ kind: "text", bindingKey })
+              }
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          {t("logoVariables")}
+        </h3>
+        <div className="grid gap-2">
+          {getAvailableImageBindingKeys().map((bindingKey) => (
+            <VariableCard
+              key={bindingKey}
+              title={t(`bindings.${bindingKey}`)}
+              description={t("dragLogoVariable")}
+              icon={ImageIcon}
+              onDragStart={(event) =>
+                onVariableDragStart(event, { kind: "image", bindingKey })
+              }
+              onActivate={() =>
+                onVariableActivate({ kind: "image", bindingKey })
+              }
+            />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function VariableCard({
+  title,
+  description,
+  icon: Icon,
+  onDragStart,
+  onActivate,
+}: {
+  title: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+  onDragStart: (event: React.DragEvent<HTMLElement>) => void;
+  onActivate: () => void;
+}) {
+  return (
+    <div
+      draggable
+      role="button"
+      tabIndex={0}
+      className="group flex cursor-grab items-center gap-3 border bg-card p-3 text-left shadow-sm transition-colors hover:border-primary/50 active:cursor-grabbing"
+      onDragStart={onDragStart}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onActivate();
+        }
+      }}
+    >
+      <div className="flex size-10 shrink-0 items-center justify-center bg-muted text-muted-foreground group-hover:text-foreground">
+        <Icon className="size-4" aria-hidden />
+      </div>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium">{title}</p>
+        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+          {description}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function PropertiesPanelShell({
+  selectedNode,
+  automationType,
+  previewMode,
+  onChange,
+}: {
+  selectedNode: SceneNode | null;
+  automationType: AutomationType;
+  previewMode: BindingPreviewMode;
+  onChange: (attrs: SceneNodeAttrs) => void;
+}) {
+  const t = useTranslations("app.automations.editor");
+
+  if (!selectedNode) {
+    return (
+      <PlaceholderPanel
+        title={t("propertiesPanelTitle")}
+        description={t("propertiesPanelEmpty")}
+        icon={SlidersHorizontal}
+      />
+    );
+  }
+
+  const textBindingKey =
+    selectedNode.className === "Text"
+      ? getTextBindingKey(selectedNode.attrs.bindingKey, automationType)
+      : null;
+  const imageBindingKey =
+    selectedNode.className === "Image"
+      ? getImageBindingKey(selectedNode.attrs.bindingKey)
+      : null;
+  const selectedLabel =
+    (textBindingKey ? t(`bindings.${textBindingKey}`) : null) ??
+    (imageBindingKey ? t(`bindings.${imageBindingKey}`) : null) ??
+    stringAttr(selectedNode.attrs, "name") ??
+    selectedNode.className;
+
+  return (
+    <div className="space-y-5">
+      <div className="border bg-muted/30 p-3">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {t("selectedItem")}
+        </p>
+        <h2 className="mt-1 text-base font-semibold">{selectedLabel}</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {t("selectedNode", { node: selectedNode.className })}
+        </p>
+      </div>
+      <NodePropertiesPanel
+        node={selectedNode}
+        automationType={automationType}
+        previewMode={previewMode}
+        onChange={onChange}
+      />
+    </div>
+  );
+}
+
+function ShapesPanel() {
+  const t = useTranslations("app.automations.editor");
+  return (
+    <div className="space-y-5">
+      <PanelHeader
+        title={t("shapesPanelTitle")}
+        description={t("shapesPanelDescription")}
+      />
+      <div className="grid grid-cols-2 gap-3">
+        <ShapePreview icon={Square} label={t("shapeSquare")} />
+        <ShapePreview icon={Circle} label={t("shapeCircle")} />
+      </div>
+    </div>
+  );
+}
+
+function ShapePreview({
+  icon: Icon,
+  label,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+}) {
+  return (
+    <div className="flex h-24 flex-col items-center justify-center gap-2 border border-dashed bg-muted/30 text-muted-foreground">
+      <Icon className="size-7" aria-hidden />
+      <span className="text-xs font-medium">{label}</span>
+    </div>
+  );
+}
+
+function PlaceholderPanel({
+  title,
+  description,
+  icon: Icon,
+}: {
+  title: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
+  return (
+    <div className="space-y-5">
+      <PanelHeader title={title} description={description} />
+      <div className="flex min-h-40 flex-col items-center justify-center border border-dashed bg-muted/30 p-6 text-center text-muted-foreground">
+        <Icon className="mb-3 size-8" aria-hidden />
+        <p className="text-sm">{description}</p>
+      </div>
+    </div>
+  );
+}
+
+function PanelHeader({
+  title,
+  description,
+}: {
+  title: string;
+  description: string;
+}) {
+  return (
+    <div>
+      <h2 className="text-base font-semibold">{title}</h2>
+      <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+        {description}
+      </p>
+    </div>
+  );
+}
+
 function SceneNodeRenderer({
   node,
   nodeRefs,
+  automationType,
+  previewMode,
   onSelect,
   onChange,
 }: {
   node: SceneNode;
   nodeRefs: React.MutableRefObject<Map<string, Konva.Node>>;
+  automationType: AutomationType;
+  previewMode: BindingPreviewMode;
   onSelect: (nodeId: string) => void;
   onChange: (nodeId: string, attrs: SceneNodeAttrs) => void;
 }) {
@@ -306,6 +762,8 @@ function SceneNodeRenderer({
       key={nodeKey(child)}
       node={child}
       nodeRefs={nodeRefs}
+      automationType={automationType}
+      previewMode={previewMode}
       onSelect={onSelect}
       onChange={onChange}
     />
@@ -372,7 +830,7 @@ function SceneNodeRenderer({
         y={numberAttr(node.attrs, "y", 0)}
         width={numberAttr(node.attrs, "width", 300)}
         height={optionalNumberAttr(node.attrs, "height")}
-        text={stringAttr(node.attrs, "text") ?? ""}
+        text={resolveTextContent(node.attrs, automationType, previewMode)}
         fontSize={numberAttr(node.attrs, "fontSize", 48)}
         fontFamily={stringAttr(node.attrs, "fontFamily") ?? "Arial"}
         fontStyle={stringAttr(node.attrs, "fontStyle") ?? "normal"}
@@ -382,19 +840,90 @@ function SceneNodeRenderer({
     );
   }
 
+  if (node.className === "Image") {
+    return (
+      <SceneImage
+        {...sharedProps}
+        attrs={node.attrs}
+        previewMode={previewMode}
+      />
+    );
+  }
+
   return null;
+}
+
+function SceneImage({
+  attrs,
+  previewMode,
+  ...sharedProps
+}: {
+  attrs: SceneNodeAttrs;
+  previewMode: BindingPreviewMode;
+  id?: string;
+  ref?: (node: Konva.Node | null) => void;
+  draggable?: boolean;
+  onClick?: () => void;
+  onTap?: () => void;
+  onDragEnd?: (event: Konva.KonvaEventObject<DragEvent>) => void;
+  onTransformEnd?: (event: Konva.KonvaEventObject<Event>) => void;
+}) {
+  const src = resolveImageSource(attrs, previewMode);
+  const [image] = useImage(src ?? "", "anonymous");
+  const x = numberAttr(attrs, "x", 0);
+  const y = numberAttr(attrs, "y", 0);
+  const width = numberAttr(attrs, "width", 160);
+  const height = numberAttr(attrs, "height", 160);
+
+  if (!src || !image) {
+    return (
+      <Rect
+        {...sharedProps}
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        fill="#e5e7eb"
+      />
+    );
+  }
+
+  return (
+    <KonvaImage
+      {...sharedProps}
+      x={x}
+      y={y}
+      width={width}
+      height={height}
+      image={image}
+    />
+  );
 }
 
 function NodePropertiesPanel({
   node,
+  automationType,
+  previewMode,
   onChange,
 }: {
   node: SceneNode;
+  automationType: AutomationType;
+  previewMode: BindingPreviewMode;
   onChange: (attrs: SceneNodeAttrs) => void;
 }) {
   const t = useTranslations("app.automations.editor");
   const isText = node.className === "Text";
+  const isImage = node.className === "Image";
   const supportsFill = node.className === "Rect" || node.className === "Text";
+  const textBindingKey = isText
+    ? getTextBindingKey(node.attrs.bindingKey, automationType)
+    : null;
+  const availableTextBindingKeys = isText
+    ? getAvailableTextBindingKeys(automationType)
+    : [];
+  const hasTextBindingOptions = availableTextBindingKeys.length > 0;
+  const imageBindingKey = isImage ? getImageBindingKey(node.attrs.bindingKey) : null;
+  const contentMode = textBindingKey ? "variable" : "fixed";
 
   return (
     <div className="space-y-4">
@@ -428,14 +957,86 @@ function NodePropertiesPanel({
 
       {isText ? (
         <>
-          <div className="space-y-2">
-            <Label htmlFor="node-text">{t("text")}</Label>
-            <Input
-              id="node-text"
-              value={stringAttr(node.attrs, "text") ?? ""}
-              onChange={(event) => onChange({ text: event.target.value })}
-            />
+          <div className="space-y-3 border-t pt-4">
+            <div>
+              <h3 className="text-sm font-medium">{t("content")}</h3>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t("contentDescription")}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="text-content-mode">{t("contentMode")}</Label>
+              <Select
+                value={contentMode}
+                onValueChange={(value) => {
+                  if (value === "fixed") {
+                    onChange({
+                      bindingKey: undefined,
+                      text: resolveTextContent(node.attrs, automationType, "design"),
+                    });
+                    return;
+                  }
+
+                  const nextBindingKey =
+                    textBindingKey ?? availableTextBindingKeys[0];
+                  if (!nextBindingKey) {
+                    return;
+                  }
+                  onChange({
+                    bindingKey: nextBindingKey,
+                    text: undefined,
+                  });
+                }}
+              >
+                <SelectTrigger id="text-content-mode" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fixed">{t("fixedText")}</SelectItem>
+                  <SelectItem value="variable" disabled={!hasTextBindingOptions}>
+                    {t("variable")}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {textBindingKey ? (
+              <div className="space-y-2">
+                <Label htmlFor="text-binding-key">{t("variableBinding")}</Label>
+                <Select
+                  value={textBindingKey}
+                  onValueChange={(value) =>
+                    onChange({ bindingKey: value as TextBindingKey, text: undefined })
+                  }
+                >
+                  <SelectTrigger id="text-binding-key" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableTextBindingKeys.map((bindingKey) => (
+                      <SelectItem key={bindingKey} value={bindingKey}>
+                        {t(`bindings.${bindingKey}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {t("resolvedPreview", {
+                    value: resolveTextContent(node.attrs, automationType, previewMode),
+                  })}
+                </p>
+              </div>
+            ) : null}
           </div>
+          {!textBindingKey ? (
+            <div className="space-y-2">
+              <Label htmlFor="node-text">{t("text")}</Label>
+              <Input
+                id="node-text"
+                value={stringAttr(node.attrs, "text") ?? ""}
+                onChange={(event) => onChange({ text: event.target.value })}
+              />
+            </div>
+          ) : null}
           <NumberField
             label={t("fontSize")}
             value={numberAttr(node.attrs, "fontSize", 48)}
@@ -443,6 +1044,40 @@ function NodePropertiesPanel({
             onChange={(value) => onChange({ fontSize: value })}
           />
         </>
+      ) : null}
+
+      {isImage && imageBindingKey ? (
+        <div className="space-y-3 border-t pt-4">
+          <div>
+            <h3 className="text-sm font-medium">{t("content")}</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t("imageContentDescription")}
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="image-binding-key">{t("variableBinding")}</Label>
+            <Select
+              value={imageBindingKey}
+              onValueChange={(value) =>
+                onChange({
+                  bindingKey: value as ImageBindingKey,
+                  assetId: undefined,
+                })
+              }
+            >
+              <SelectTrigger id="image-binding-key" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {getAvailableImageBindingKeys().map((bindingKey) => (
+                  <SelectItem key={bindingKey} value={bindingKey}>
+                    {t(`bindings.${bindingKey}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       ) : null}
     </div>
   );
@@ -541,7 +1176,7 @@ function updateNodeAttrs(
   const currentNodeId = stringAttr(node.attrs, "id");
   const nextNode =
     currentNodeId === nodeId
-      ? { ...node, attrs: { ...node.attrs, ...attrs } }
+      ? { ...node, attrs: mergeSceneNodeAttrs(node.attrs, attrs) }
       : node;
 
   if (!node.children) {
@@ -552,6 +1187,145 @@ function updateNodeAttrs(
     ...nextNode,
     children: node.children.map((child) => updateNodeAttrs(child, nodeId, attrs)),
   };
+}
+
+function mergeSceneNodeAttrs(
+  currentAttrs: SceneNodeAttrs,
+  nextAttrs: SceneNodeAttrs,
+): SceneNodeAttrs {
+  const merged = { ...currentAttrs };
+  for (const [key, value] of Object.entries(nextAttrs)) {
+    if (value === undefined) {
+      delete merged[key];
+    } else {
+      merged[key] = value;
+    }
+  }
+  return merged;
+}
+
+function appendSceneNodeToFirstLayer(
+  sceneDocument: SceneDocument,
+  nodeToAppend: SceneNode,
+): SceneDocument {
+  let hasAppended = false;
+  const children = sceneDocument.stage.children?.map((child) => {
+    if (!hasAppended && child.className === "Layer") {
+      hasAppended = true;
+      return {
+        ...child,
+        children: [...(child.children ?? []), nodeToAppend],
+      };
+    }
+    return child;
+  });
+
+  if (hasAppended && children) {
+    return {
+      ...sceneDocument,
+      stage: {
+        ...sceneDocument.stage,
+        children,
+      },
+    };
+  }
+
+  return {
+    ...sceneDocument,
+    stage: {
+      ...sceneDocument.stage,
+      children: [
+        ...(sceneDocument.stage.children ?? []),
+        { className: "Layer", attrs: {}, children: [nodeToAppend] },
+      ],
+    },
+  };
+}
+
+function createTextBindingNode(
+  nodeId: string,
+  bindingKey: TextBindingKey,
+  point: { x: number; y: number },
+): SceneNode {
+  const fontSize = 52;
+  const token = `{{ ${bindingKey} }}`;
+
+  return {
+    className: "Text",
+    attrs: {
+      id: nodeId,
+      name: bindingKey,
+      x: point.x,
+      y: point.y,
+      width: estimateSingleLineTextWidth(token, fontSize),
+      fontSize,
+      fontFamily: "Arial",
+      fill: "#ffffff",
+      bindingKey,
+    },
+  };
+}
+
+function estimateSingleLineTextWidth(text: string, fontSize: number): number {
+  return Math.ceil(text.length * fontSize * 0.62 + fontSize);
+}
+
+function createLogoNode(
+  sceneDocument: SceneDocument,
+  nodeId: string,
+  bindingKey: ImageBindingKey,
+  point?: { x: number; y: number },
+): SceneNode {
+  const stageWidth = numberAttr(sceneDocument.stage.attrs, "width", 1080);
+  const stageHeight = numberAttr(sceneDocument.stage.attrs, "height", 1080);
+  const size = Math.round(Math.min(stageWidth, stageHeight) * 0.16);
+  const x = point ? point.x - Math.round(size / 2) : stageWidth / 2 - size / 2;
+  const y = point ? point.y - Math.round(size / 2) : stageHeight / 2 - size / 2;
+
+  return {
+    className: "Image",
+    attrs: {
+      id: nodeId,
+      name: bindingKey,
+      x: Math.round(Math.max(0, Math.min(x, stageWidth - size))),
+      y: Math.round(Math.max(0, Math.min(y, stageHeight - size))),
+      width: size,
+      height: size,
+      bindingKey,
+    },
+  };
+}
+
+function parseVariableDragPayload(rawPayload: string): VariableDragPayload | null {
+  if (!rawPayload) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(rawPayload) as Partial<VariableDragPayload>;
+    if (
+      parsed.kind === "text" &&
+      typeof parsed.bindingKey === "string"
+    ) {
+      return {
+        kind: "text",
+        bindingKey: parsed.bindingKey as TextBindingKey,
+      };
+    }
+    if (
+      parsed.kind === "image" &&
+      typeof parsed.bindingKey === "string"
+    ) {
+      return {
+        kind: "image",
+        bindingKey: parsed.bindingKey as ImageBindingKey,
+      };
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 }
 
 function bakeNodeTransform(node: Konva.Node): SceneNodeAttrs {

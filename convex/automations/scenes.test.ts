@@ -8,7 +8,12 @@ import {
   normalizePostingChannelStatuses,
   POSTING_CHANNELS,
 } from "./constants";
-import { normalizeSceneDocument } from "../../lib/template-scene";
+import {
+  getAvailableTextBindingKeys,
+  resolveImageSource,
+  resolveTextContent,
+  normalizeSceneDocument,
+} from "../../lib/template-scene";
 import { createStarterSceneDocument } from "./scenes";
 
 describe("automation phase 1 foundations", () => {
@@ -146,6 +151,7 @@ describe("automation phase 1 foundations", () => {
         },
       },
       "instagram_square",
+      "match_announcement",
     );
 
     expect(scene.stage.children?.[0]?.children).toHaveLength(2);
@@ -158,9 +164,9 @@ describe("automation phase 1 foundations", () => {
       attrs: { x: 100, y: 100, radius: 50 },
     });
 
-    expect(() => normalizeSceneDocument(scene, "instagram_square")).toThrow(
-      "Unsupported scene node class",
-    );
+    expect(() =>
+      normalizeSceneDocument(scene, "instagram_square", "match_announcement"),
+    ).toThrow("Unsupported scene node class");
   });
 
   test("accepts image nodes with exactly one external content reference", () => {
@@ -177,7 +183,11 @@ describe("automation phase 1 foundations", () => {
       },
     });
 
-    const normalized = normalizeSceneDocument(scene, "instagram_square");
+    const normalized = normalizeSceneDocument(
+      scene,
+      "instagram_square",
+      "match_announcement",
+    );
 
     expect(normalized.stage.children?.[0]?.children?.[2]).toMatchObject({
       className: "Image",
@@ -228,13 +238,25 @@ describe("automation phase 1 foundations", () => {
     });
 
     expect(() =>
-      normalizeSceneDocument(withoutReference, "instagram_square"),
+      normalizeSceneDocument(
+        withoutReference,
+        "instagram_square",
+        "match_announcement",
+      ),
     ).toThrow("Image nodes require exactly one assetId or bindingKey");
     expect(() =>
-      normalizeSceneDocument(withBothReferences, "instagram_square"),
+      normalizeSceneDocument(
+        withBothReferences,
+        "instagram_square",
+        "match_announcement",
+      ),
     ).toThrow("Image nodes require exactly one assetId or bindingKey");
     expect(() =>
-      normalizeSceneDocument(withEmptyReference, "instagram_square"),
+      normalizeSceneDocument(
+        withEmptyReference,
+        "instagram_square",
+        "match_announcement",
+      ),
     ).toThrow("Image nodes require exactly one assetId or bindingKey");
   });
 
@@ -247,7 +269,11 @@ describe("automation phase 1 foundations", () => {
     textNode.attrs.draggable = true;
     textNode.attrs.isSelected = true;
 
-    const normalized = normalizeSceneDocument(scene, "instagram_square");
+    const normalized = normalizeSceneDocument(
+      scene,
+      "instagram_square",
+      "match_announcement",
+    );
     const normalizedTextNode = normalized.stage.children?.[0]?.children?.[1];
 
     expect(normalizedTextNode?.attrs.draggable).toBeUndefined();
@@ -265,11 +291,15 @@ describe("automation phase 1 foundations", () => {
     rectWithFilter.attrs.filters = ["Blur"];
     rectWithSceneFunc.attrs.sceneFunc = () => null;
 
-    expect(() => normalizeSceneDocument(withFilter, "instagram_square")).toThrow(
-      "Unsupported scene node attrs",
-    );
     expect(() =>
-      normalizeSceneDocument(withSceneFunc, "instagram_square"),
+      normalizeSceneDocument(withFilter, "instagram_square", "match_announcement"),
+    ).toThrow("Unsupported scene node attrs");
+    expect(() =>
+      normalizeSceneDocument(
+        withSceneFunc,
+        "instagram_square",
+        "match_announcement",
+      ),
     ).toThrow("Unsupported scene node attrs");
   });
 
@@ -284,7 +314,11 @@ describe("automation phase 1 foundations", () => {
     rect.attrs.scaleX = 2;
     rect.attrs.scaleY = 3;
 
-    const normalized = normalizeSceneDocument(scene, "instagram_square");
+    const normalized = normalizeSceneDocument(
+      scene,
+      "instagram_square",
+      "match_announcement",
+    );
     const normalizedRect = normalized.stage.children?.[0]?.children?.[0];
 
     expect(normalizedRect?.attrs.width).toBe(200);
@@ -298,8 +332,151 @@ describe("automation phase 1 foundations", () => {
     scene.stage.attrs.width = 1200;
     scene.stage.attrs.height = 630;
 
-    expect(() => normalizeSceneDocument(scene, "instagram_square")).toThrow(
-      "Scene document dimensions do not match canvas preset",
+    expect(() =>
+      normalizeSceneDocument(scene, "instagram_square", "match_announcement"),
+    ).toThrow("Scene document dimensions do not match canvas preset");
+  });
+
+  test("filters text binding keys by automation type", () => {
+    expect(getAvailableTextBindingKeys("match_announcement")).toEqual([
+      "homeClubName",
+      "awayClubName",
+      "homeAwayClubNames",
+      "matchAddress",
+      "matchDateTime",
+    ]);
+    expect(getAvailableTextBindingKeys("match_result")).toContain("score");
+  });
+
+  test("resolves fixed and bound text content", () => {
+    expect(
+      resolveTextContent(
+        { text: "Static title" },
+        "match_announcement",
+        "design",
+      ),
+    ).toBe("Static title");
+    expect(
+      resolveTextContent(
+        { bindingKey: "homeClubName" },
+        "match_announcement",
+        "design",
+      ),
+    ).toBe("{{ homeClubName }}");
+    expect(
+      resolveTextContent(
+        { bindingKey: "homeAwayClubNames" },
+        "match_announcement",
+        "design",
+      ),
+    ).toBe("{{ homeClubName }} - {{ awayClubName }}");
+    expect(
+      resolveTextContent(
+        { bindingKey: "homeAwayClubNames" },
+        "match_announcement",
+        "preview",
+      ),
+    ).toBe("KFC Eendracht - Sporting Zuid");
+    expect(
+      resolveTextContent(
+        { bindingKey: "homeClubName" },
+        "match_announcement",
+        "preview",
+      ),
+    ).toBe("KFC Eendracht");
+  });
+
+  test("validates text binding keys for automation type", () => {
+    const announcementScene = createStarterSceneDocument("instagram_square");
+    const announcementText = announcementScene.stage.children?.[0]?.children?.[1];
+    if (!announcementText) {
+      throw new Error("Expected starter text node");
+    }
+    announcementText.attrs.bindingKey = "score";
+
+    expect(() =>
+      normalizeSceneDocument(
+        announcementScene,
+        "instagram_square",
+        "match_announcement",
+      ),
+    ).toThrow("Invalid text bindingKey for automation type");
+
+    const resultScene = createStarterSceneDocument("instagram_square");
+    const resultText = resultScene.stage.children?.[0]?.children?.[1];
+    if (!resultText) {
+      throw new Error("Expected starter text node");
+    }
+    resultText.attrs.bindingKey = "score";
+
+    const normalized = normalizeSceneDocument(
+      resultScene,
+      "instagram_square",
+      "match_result",
     );
+    const normalizedText = normalized.stage.children?.[0]?.children?.[1];
+
+    expect(normalizedText?.attrs.bindingKey).toBe("score");
+    expect(normalizedText?.attrs.text).toBeUndefined();
+  });
+
+  test("rejects binding keys on unsupported node classes", () => {
+    const scene = createStarterSceneDocument("instagram_square");
+    const rect = scene.stage.children?.[0]?.children?.[0];
+    if (!rect) {
+      throw new Error("Expected starter rect node");
+    }
+    rect.attrs.bindingKey = "homeClubName";
+
+    expect(() =>
+      normalizeSceneDocument(scene, "instagram_square", "match_announcement"),
+    ).toThrow("bindingKey is only supported on Text and Image nodes");
+  });
+
+  test("validates dynamic image bindings and resolves placeholder sources", () => {
+    const scene = createStarterSceneDocument("instagram_square");
+    scene.stage.children?.[0]?.children?.push({
+      className: "Image",
+      attrs: {
+        id: "home-logo",
+        x: 40,
+        y: 40,
+        width: 160,
+        height: 160,
+        bindingKey: "homeClubLogo",
+      },
+    });
+
+    const normalized = normalizeSceneDocument(
+      scene,
+      "instagram_square",
+      "match_announcement",
+    );
+    const normalizedImage = normalized.stage.children?.[0]?.children?.[2];
+
+    expect(normalizedImage?.attrs.bindingKey).toBe("homeClubLogo");
+    expect(normalizedImage?.attrs.assetId).toBeUndefined();
+    expect(
+      resolveImageSource({ bindingKey: "homeClubLogo" }, "design"),
+    ).toContain("data:image/svg+xml");
+  });
+
+  test("rejects text binding keys on image nodes", () => {
+    const scene = createStarterSceneDocument("instagram_square");
+    scene.stage.children?.[0]?.children?.push({
+      className: "Image",
+      attrs: {
+        id: "invalid-image",
+        x: 40,
+        y: 40,
+        width: 160,
+        height: 160,
+        bindingKey: "homeClubName",
+      },
+    });
+
+    expect(() =>
+      normalizeSceneDocument(scene, "instagram_square", "match_announcement"),
+    ).toThrow("Invalid image bindingKey");
   });
 });

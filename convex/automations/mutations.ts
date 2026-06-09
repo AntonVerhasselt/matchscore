@@ -146,6 +146,7 @@ export const updateTemplate = mutation({
       sceneDocument = normalizeSceneDocument(
         args.sceneDocument,
         template.canvasPreset,
+        template.automationType,
       );
     } catch (error) {
       throw new ConvexError(
