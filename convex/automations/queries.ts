@@ -2,11 +2,15 @@ import { v } from "convex/values";
 import { query } from "../_generated/server";
 import {
   AUTOMATION_TYPES,
+  TEMPLATE_COUNT_CAP,
   getEffectivePostingChannelStatuses,
   normalizePostingChannelStatuses,
   type PostingChannelStatuses,
 } from "./constants";
-import { requireCurrentMembership } from "./helpers";
+import {
+  getPrimaryOrganizationAutomation,
+  requireCurrentMembership,
+} from "./helpers";
 import {
   automationTemplateDetailValidator,
   automationTemplateSummaryValidator,
@@ -23,6 +27,7 @@ const automationSummaryValidator = v.object({
   updatedAt: v.number(),
   updatedByUserId: v.union(v.string(), v.null()),
   templateCount: v.number(),
+  templateCountIsCapped: v.boolean(),
 });
 
 type LegacyAutomationStatusFields = {
@@ -37,17 +42,12 @@ export const listAutomations = query({
   handler: async (ctx) => {
     const { membership } = await requireCurrentMembership(ctx);
 
-    const automations = await ctx.db
-      .query("organizationAutomations")
-      .withIndex("by_organizationId", (q) =>
-        q.eq("organizationId", membership.organizationId),
-      )
-      .take(AUTOMATION_TYPES.length);
-
     const results = [];
     for (const automationType of AUTOMATION_TYPES) {
-      const automation = automations.find(
-        (item) => item.automationType === automationType,
+      const automation = await getPrimaryOrganizationAutomation(
+        ctx,
+        membership.organizationId,
+        automationType,
       );
       if (!automation) {
         continue;
@@ -60,14 +60,15 @@ export const listAutomations = query({
         automationStatus.postingChannels,
       );
 
-      const templates = await ctx.db
+      const templatesForCount = await ctx.db
         .query("automationTemplates")
         .withIndex("by_organizationId_and_automationType", (q) =>
           q
             .eq("organizationId", membership.organizationId)
             .eq("automationType", automationType),
         )
-        .take(1000);
+        .take(TEMPLATE_COUNT_CAP + 1);
+      const templateCountIsCapped = templatesForCount.length > TEMPLATE_COUNT_CAP;
 
       results.push({
         _id: automation._id,
@@ -80,7 +81,8 @@ export const listAutomations = query({
         ),
         updatedAt: automation.updatedAt,
         updatedByUserId: automation.updatedByUserId ?? null,
-        templateCount: templates.length,
+        templateCount: Math.min(templatesForCount.length, TEMPLATE_COUNT_CAP),
+        templateCountIsCapped,
       });
     }
 

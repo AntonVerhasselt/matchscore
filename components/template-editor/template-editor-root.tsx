@@ -38,7 +38,9 @@ export default function TemplateEditorRoot({
   }
 
   const slug = automationType as AutomationTypeSlug;
+  const isLoadingTemplate = !isNew && template === undefined;
   const isMatchingRoute =
+    isNew ||
     template === undefined ||
     template === null ||
     template.automationType === toBackendAutomationType(slug);
@@ -55,7 +57,7 @@ export default function TemplateEditorRoot({
       </header>
 
       <div className="flex flex-1 flex-col items-center justify-center bg-muted/30 p-8 text-center">
-        {template === undefined ? (
+        {isLoadingTemplate ? (
           <p className="text-sm text-muted-foreground">{t("editor.loading")}</p>
         ) : template === null || !isMatchingRoute ? (
           <p className="text-sm text-muted-foreground">{t("editor.notFound")}</p>
@@ -66,11 +68,15 @@ export default function TemplateEditorRoot({
               {t("editor.placeholderDescription")}
             </p>
             <div className="mt-5 flex flex-wrap justify-center gap-2">
-              <Badge variant="secondary">{template.name}</Badge>
-              <Badge variant="outline">{t(`types.${slug}.title`)}</Badge>
-              <Badge variant="outline">
-                {CANVAS_PRESET_LABELS[template.canvasPreset]}
+              <Badge variant="secondary">
+                {template?.name ?? t("editor.newTemplate")}
               </Badge>
+              <Badge variant="outline">{t(`types.${slug}.title`)}</Badge>
+              {template ? (
+                <Badge variant="outline">
+                  {CANVAS_PRESET_LABELS[template.canvasPreset]}
+                </Badge>
+              ) : null}
             </div>
           </>
         )}

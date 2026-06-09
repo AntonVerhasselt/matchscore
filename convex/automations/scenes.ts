@@ -8,7 +8,7 @@ export function createStarterSceneDocument(canvasPreset: CanvasPreset) {
     schemaVersion: 1,
     stage: {
       className: "Stage",
-      attrs: dimensions,
+      attrs: { ...dimensions },
       children: [
         {
           className: "Layer",

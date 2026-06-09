@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { mutation } from "../_generated/server";
 import {
   ensureOrganizationAutomations,
+  getPrimaryOrganizationAutomation,
   requireCurrentMembership,
 } from "./helpers";
 import { normalizePostingChannelStatuses } from "./constants";
@@ -32,14 +33,11 @@ export const setAutomationGlobalEnabled = mutation({
     const { user, membership } = await requireCurrentMembership(ctx);
     await ensureOrganizationAutomations(ctx, membership.organizationId, user._id);
 
-    const automation = await ctx.db
-      .query("organizationAutomations")
-      .withIndex("by_organizationId_and_automationType", (q) =>
-        q
-          .eq("organizationId", membership.organizationId)
-          .eq("automationType", args.automationType),
-      )
-      .unique();
+    const automation = await getPrimaryOrganizationAutomation(
+      ctx,
+      membership.organizationId,
+      args.automationType,
+    );
 
     if (!automation) {
       throw new ConvexError("Automation not found");
@@ -67,14 +65,11 @@ export const setAutomationPostingChannelEnabled = mutation({
     const { user, membership } = await requireCurrentMembership(ctx);
     await ensureOrganizationAutomations(ctx, membership.organizationId, user._id);
 
-    const automation = await ctx.db
-      .query("organizationAutomations")
-      .withIndex("by_organizationId_and_automationType", (q) =>
-        q
-          .eq("organizationId", membership.organizationId)
-          .eq("automationType", args.automationType),
-      )
-      .unique();
+    const automation = await getPrimaryOrganizationAutomation(
+      ctx,
+      membership.organizationId,
+      args.automationType,
+    );
 
     if (!automation) {
       throw new ConvexError("Automation not found");

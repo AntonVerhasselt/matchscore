@@ -21,8 +21,13 @@ export default function AutomationsPage() {
 
   useEffect(() => {
     if (automations && !hasEnsuredAutomationsRef.current) {
-      hasEnsuredAutomationsRef.current = true;
-      void ensureAutomations({});
+      void ensureAutomations({})
+        .then(() => {
+          hasEnsuredAutomationsRef.current = true;
+        })
+        .catch((error) => {
+          console.error("Failed to ensure organization automations:", error);
+        });
     }
   }, [automations, ensureAutomations]);
 

@@ -280,7 +280,7 @@
       "backToTemplates": "Retour aux modèles",
       "manageTemplates": "Gérer les modèles",
       "connectedAccounts": "Comptes connectés",
-      "enabled": "Active",
+      "enabled": "Activée",
       "disabled": "En pause",
       "toggleAutomation": "Activer ou désactiver {type}",
       "toggleSuccess": "Automatisation mise à jour.",
@@ -314,7 +314,9 @@
         "createSuccess": "Modèle créé.",
         "createFailed": "Impossible de créer le modèle. Veuillez réessayer.",
         "shortCount": "{count, plural, =0 {Aucun modèle} one {# modèle} other {# modèles}}",
+        "cappedShortCount": "{count}+ modèles",
         "meta": "{count, plural, =0 {Aucun modèle} one {# modèle} other {# modèles}} · {status}",
+        "cappedMeta": "{count}+ modèles · {status}",
         "statusActive": "Automatisation active",
         "statusInactive": "Automatisation en pause",
         "empty": {

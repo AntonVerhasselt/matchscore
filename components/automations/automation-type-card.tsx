@@ -58,6 +58,7 @@ type PlatformBlockProps = {
   platform: SocialPlatform;
   automationType: AutomationTypeSlug;
   automation?: AutomationSummary;
+  isSavingGlobalStatus: boolean;
   savingPostingChannel: PostingChannel | null;
   onPostingChannelChange: (
     postingChannel: PostingChannel,
@@ -69,11 +70,13 @@ function PlatformBlock({
   platform,
   automationType,
   automation,
+  isSavingGlobalStatus,
   savingPostingChannel,
   onPostingChannelChange,
 }: PlatformBlockProps) {
   const tSocial = useTranslations("app.automations.social");
   const isGloballyEnabled = automation?.isGloballyEnabled ?? true;
+  const isAnyPostingChannelSaving = savingPostingChannel !== null;
 
   return (
     <div>
@@ -112,7 +115,8 @@ function PlatformBlock({
                 disabled={
                   !automation ||
                   !isGloballyEnabled ||
-                  savingPostingChannel === postingChannel
+                  isSavingGlobalStatus ||
+                  isAnyPostingChannelSaving
                 }
                 onCheckedChange={(checked) =>
                   onPostingChannelChange(postingChannel, checked)
@@ -153,8 +157,16 @@ export function AutomationTypeCard({
 
   const isGloballyEnabled = automation?.isGloballyEnabled ?? true;
   const templateCount = automation?.templateCount ?? 0;
+  const isAnyPostingChannelSaving = savingPostingChannel !== null;
+  const templateCountLabel = automation?.templateCountIsCapped
+    ? t("templates.cappedShortCount", { count: templateCount })
+    : t("templates.shortCount", { count: templateCount });
 
   const handleGlobalStatusChange = async (checked: boolean) => {
+    if (!automation || isSavingGlobalStatus || isAnyPostingChannelSaving) {
+      return;
+    }
+
     setIsSavingGlobalStatus(true);
 
     try {
@@ -174,6 +186,15 @@ export function AutomationTypeCard({
     postingChannel: PostingChannel,
     checked: boolean,
   ) => {
+    if (
+      !automation ||
+      !isGloballyEnabled ||
+      isSavingGlobalStatus ||
+      isAnyPostingChannelSaving
+    ) {
+      return;
+    }
+
     setSavingPostingChannel(postingChannel);
 
     try {
@@ -215,7 +236,9 @@ export function AutomationTypeCard({
                 <Switch
                   id={`${automationType}-global-status`}
                   checked={isGloballyEnabled}
-                  disabled={!automation || isSavingGlobalStatus}
+                  disabled={
+                    !automation || isSavingGlobalStatus || isAnyPostingChannelSaving
+                  }
                   onCheckedChange={(checked) =>
                     void handleGlobalStatusChange(checked)
                   }
@@ -231,7 +254,7 @@ export function AutomationTypeCard({
                     {isGloballyEnabled ? t("enabled") : t("disabled")}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    {t("templates.shortCount", { count: templateCount })}
+                    {templateCountLabel}
                   </span>
                 </Label>
               </div>
@@ -258,6 +281,7 @@ export function AutomationTypeCard({
                 platform={platform}
                 automationType={automationType}
                 automation={automation}
+                isSavingGlobalStatus={isSavingGlobalStatus}
                 savingPostingChannel={savingPostingChannel}
                 onPostingChannelChange={(postingChannel, checked) =>
                   void handlePostingChannelChange(postingChannel, checked)

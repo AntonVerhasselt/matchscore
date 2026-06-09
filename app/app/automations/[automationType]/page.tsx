@@ -34,9 +34,19 @@ export default function AutomationTemplatesPage() {
   );
 
   const templateRows = templates ?? [];
+  const templateCount = automation?.templateCount ?? templateRows.length;
   const statusLabel = (automation?.isGloballyEnabled ?? true)
     ? t("templates.statusActive")
     : t("templates.statusInactive");
+  const metaDescription = automation?.templateCountIsCapped
+    ? t("templates.cappedMeta", {
+        count: templateCount,
+        status: statusLabel,
+      })
+    : t("templates.meta", {
+        count: templateCount,
+        status: statusLabel,
+      });
 
   if (!isValidAutomationType) {
     notFound();
@@ -53,10 +63,7 @@ export default function AutomationTemplatesPage() {
       <AppPageHeader
         className="mb-4"
         title={t(`types.${slug}.title`)}
-        description={t("templates.meta", {
-          count: templateRows.length,
-          status: statusLabel,
-        })}
+        description={metaDescription}
       />
 
       <CreateTemplateButton

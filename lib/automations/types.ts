@@ -50,6 +50,7 @@ export type AutomationSummary = {
   updatedAt: number;
   updatedByUserId: string | null;
   templateCount: number;
+  templateCountIsCapped: boolean;
 };
 
 export type AutomationTemplateSummary = {

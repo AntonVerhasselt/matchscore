@@ -1,5 +1,7 @@
 export const AUTOMATION_TYPES = ["match_announcement", "match_result"] as const;
 
+export const TEMPLATE_COUNT_CAP = 1000;
+
 export const CANVAS_PRESETS = [
   "instagram_square",
   "instagram_portrait",

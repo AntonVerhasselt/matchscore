@@ -314,7 +314,9 @@
         "createSuccess": "Vorlage erstellt.",
         "createFailed": "Vorlage konnte nicht erstellt werden. Bitte versuche es erneut.",
         "shortCount": "{count, plural, =0 {Keine Vorlagen} one {# Vorlage} other {# Vorlagen}}",
+        "cappedShortCount": "{count}+ Vorlagen",
         "meta": "{count, plural, =0 {Keine Vorlagen} one {# Vorlage} other {# Vorlagen}} · {status}",
+        "cappedMeta": "{count}+ Vorlagen · {status}",
         "statusActive": "Automatisierung aktiv",
         "statusInactive": "Automatisierung pausiert",
         "empty": {

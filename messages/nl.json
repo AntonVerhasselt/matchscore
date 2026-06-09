@@ -314,7 +314,9 @@
         "createSuccess": "Template aangemaakt.",
         "createFailed": "Template aanmaken mislukt. Probeer het opnieuw.",
         "shortCount": "{count, plural, =0 {Geen templates} one {# template} other {# templates}}",
+        "cappedShortCount": "{count}+ templates",
         "meta": "{count, plural, =0 {Geen templates} one {# template} other {# templates}} · {status}",
+        "cappedMeta": "{count}+ templates · {status}",
         "statusActive": "Automatisering actief",
         "statusInactive": "Automatisering gepauzeerd",
         "empty": {

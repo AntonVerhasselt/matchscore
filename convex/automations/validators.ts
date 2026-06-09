@@ -1,28 +1,33 @@
 import { v } from "convex/values";
+import {
+  AUTOMATION_TYPES,
+  CANVAS_PRESETS,
+  POSTING_CHANNELS,
+} from "./constants";
 
 export const automationTypeValidator = v.union(
-  v.literal("match_announcement"),
-  v.literal("match_result"),
+  v.literal(AUTOMATION_TYPES[0]),
+  v.literal(AUTOMATION_TYPES[1]),
 );
 
 export const canvasPresetValidator = v.union(
-  v.literal("instagram_square"),
-  v.literal("instagram_portrait"),
-  v.literal("facebook_landscape"),
+  v.literal(CANVAS_PRESETS[0]),
+  v.literal(CANVAS_PRESETS[1]),
+  v.literal(CANVAS_PRESETS[2]),
 );
 
 export const postingChannelValidator = v.union(
-  v.literal("facebookPagePost"),
-  v.literal("facebookPageStory"),
-  v.literal("instagramProfilePost"),
-  v.literal("instagramProfileStory"),
+  v.literal(POSTING_CHANNELS[0]),
+  v.literal(POSTING_CHANNELS[1]),
+  v.literal(POSTING_CHANNELS[2]),
+  v.literal(POSTING_CHANNELS[3]),
 );
 
 export const postingChannelStatusesValidator = v.object({
-  facebookPagePost: v.boolean(),
-  facebookPageStory: v.boolean(),
-  instagramProfilePost: v.boolean(),
-  instagramProfileStory: v.boolean(),
+  [POSTING_CHANNELS[0]]: v.boolean(),
+  [POSTING_CHANNELS[1]]: v.boolean(),
+  [POSTING_CHANNELS[2]]: v.boolean(),
+  [POSTING_CHANNELS[3]]: v.boolean(),
 });
 
 export const automationTemplateSummaryValidator = v.object({
