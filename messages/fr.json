@@ -335,13 +335,27 @@
       "editor": {
         "loading": "Chargement de l'éditeur…",
         "save": "Enregistrer",
+        "saving": "Enregistrement...",
         "saveSuccess": "Modèle enregistré.",
         "saveFailed": "Impossible d'enregistrer le modèle. Veuillez réessayer.",
+        "savedChanges": "Enregistré",
+        "unsavedChanges": "Modifications non enregistrées",
         "newTemplate": "Nouveau modèle",
         "editTemplate": "Modifier le modèle ({id})",
         "placeholderTitle": "Éditeur de modèles bientôt disponible",
         "placeholderDescription": "L'éditeur visuel react-konva apparaîtra ici en phase 2. Ce modèle est déjà enregistré dans la base de données.",
-        "notFound": "Modèle introuvable."
+        "notFound": "Modèle introuvable.",
+        "templateName": "Nom du modèle",
+        "properties": "Propriétés",
+        "selectedNode": "Sélection : {node}",
+        "noSelection": "Sélectionnez une forme ou un calque de texte à modifier.",
+        "x": "X",
+        "y": "Y",
+        "width": "Largeur",
+        "height": "Hauteur",
+        "fill": "Couleur",
+        "text": "Texte",
+        "fontSize": "Taille du texte"
       }
     }
   },

@@ -335,13 +335,27 @@
       "editor": {
         "loading": "Editor wird geladen…",
         "save": "Speichern",
+        "saving": "Wird gespeichert...",
         "saveSuccess": "Vorlage gespeichert.",
         "saveFailed": "Speichern fehlgeschlagen. Bitte versuche es erneut.",
+        "savedChanges": "Gespeichert",
+        "unsavedChanges": "Nicht gespeicherte Änderungen",
         "newTemplate": "Neue Vorlage",
         "editTemplate": "Vorlage bearbeiten ({id})",
         "placeholderTitle": "Vorlagen-Editor kommt bald",
         "placeholderDescription": "Der visuelle react-konva-Editor erscheint hier in Phase 2. Diese Vorlage ist bereits in der Datenbank gespeichert.",
-        "notFound": "Vorlage nicht gefunden."
+        "notFound": "Vorlage nicht gefunden.",
+        "templateName": "Vorlagenname",
+        "properties": "Eigenschaften",
+        "selectedNode": "Ausgewählt: {node}",
+        "noSelection": "Wähle eine Form oder Textebene aus, um sie zu bearbeiten.",
+        "x": "X",
+        "y": "Y",
+        "width": "Breite",
+        "height": "Höhe",
+        "fill": "Farbe",
+        "text": "Text",
+        "fontSize": "Schriftgröße"
       }
     }
   },
