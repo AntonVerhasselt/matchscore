@@ -11,7 +11,9 @@ import {
 import {
   getAvailableTextBindingKeys,
   calculateObjectFit,
+  calculateTextFit,
   collectSceneAssetIds,
+  displayText,
   resolveImageSource,
   resolveTextContent,
   normalizeSceneDocument,
@@ -270,6 +272,8 @@ describe("automation phase 1 foundations", () => {
     }
     textNode.attrs.draggable = true;
     textNode.attrs.isSelected = true;
+    textNode.attrs.listening = false;
+    textNode.attrs.overlayLayer = true;
 
     const normalized = normalizeSceneDocument(
       scene,
@@ -280,6 +284,8 @@ describe("automation phase 1 foundations", () => {
 
     expect(normalizedTextNode?.attrs.draggable).toBeUndefined();
     expect(normalizedTextNode?.attrs.isSelected).toBeUndefined();
+    expect(normalizedTextNode?.attrs.listening).toBeUndefined();
+    expect(normalizedTextNode?.attrs.overlayLayer).toBeUndefined();
   });
 
   test("rejects filters and custom scene functions", () => {
@@ -388,6 +394,115 @@ describe("automation phase 1 foundations", () => {
     ).toBe("KFC Eendracht");
   });
 
+  test("applies uppercase text transform to fixed and bound text", () => {
+    expect(displayText("Matchscore", { textTransform: "uppercase" })).toBe(
+      "MATCHSCORE",
+    );
+    expect(
+      resolveTextContent(
+        { bindingKey: "homeClubName", textTransform: "uppercase" },
+        "match_announcement",
+        "preview",
+      ),
+    ).toBe("KFC EENDRACHT");
+  });
+
+  test("validates phase 5 text and layer attrs", () => {
+    const scene = createStarterSceneDocument("instagram_square");
+    const textNode = scene.stage.children?.[0]?.children?.[1];
+    if (!textNode) {
+      throw new Error("Expected starter text node");
+    }
+    textNode.attrs.name = "Headline";
+    textNode.attrs.visible = false;
+    textNode.attrs.locked = true;
+    textNode.attrs.overflowMode = "shrink";
+    textNode.attrs.textTransform = "uppercase";
+    textNode.attrs.align = "center";
+    textNode.attrs.lineHeight = 1.2;
+    textNode.attrs.fontFamily = "Montserrat";
+    textNode.attrs.fontStyle = "bold italic";
+    textNode.attrs.textDecoration = "underline";
+
+    const normalized = normalizeSceneDocument(
+      scene,
+      "instagram_square",
+      "match_announcement",
+    );
+    const normalizedText = normalized.stage.children?.[0]?.children?.[1];
+
+    expect(normalizedText?.attrs).toMatchObject({
+      name: "Headline",
+      visible: false,
+      locked: true,
+      overflowMode: "shrink",
+      textTransform: "uppercase",
+      align: "center",
+      lineHeight: 1.2,
+      fontFamily: "Montserrat",
+      fontStyle: "bold italic",
+      textDecoration: "underline",
+    });
+  });
+
+  test("rejects invalid phase 5 attrs", () => {
+    const invalidTextTransform = createStarterSceneDocument("instagram_square");
+    const invalidVisible = createStarterSceneDocument("instagram_square");
+    const invalidRectOverflow = createStarterSceneDocument("instagram_square");
+    const textNode = invalidTextTransform.stage.children?.[0]?.children?.[1];
+    const visibleNode = invalidVisible.stage.children?.[0]?.children?.[1];
+    const rectNode = invalidRectOverflow.stage.children?.[0]?.children?.[0];
+    if (!textNode || !visibleNode || !rectNode) {
+      throw new Error("Expected starter nodes");
+    }
+    textNode.attrs.textTransform = "lowercase";
+    visibleNode.attrs.visible = "no";
+    rectNode.attrs.overflowMode = "wrap";
+
+    expect(() =>
+      normalizeSceneDocument(
+        invalidTextTransform,
+        "instagram_square",
+        "match_announcement",
+      ),
+    ).toThrow("Invalid textTransform");
+    expect(() =>
+      normalizeSceneDocument(
+        invalidVisible,
+        "instagram_square",
+        "match_announcement",
+      ),
+    ).toThrow("Scene node visible attr must be a boolean");
+    expect(() =>
+      normalizeSceneDocument(
+        invalidRectOverflow,
+        "instagram_square",
+        "match_announcement",
+      ),
+    ).toThrow("overflowMode is only supported on Text nodes");
+  });
+
+  test("rejects invalid text style attrs", () => {
+    const scene = createStarterSceneDocument("instagram_square");
+    const textNode = scene.stage.children?.[0]?.children?.[1];
+    if (!textNode) {
+      throw new Error("Expected starter text node");
+    }
+    textNode.attrs.fontStyle = "oblique";
+    textNode.attrs.textDecoration = "line-through";
+
+    expect(() =>
+      normalizeSceneDocument(scene, "instagram_square", "match_announcement"),
+    ).toThrow("Invalid text fontStyle");
+
+    textNode.attrs.fontStyle = "bold";
+    textNode.attrs.textDecoration = "line-through";
+
+    expect(() =>
+      normalizeSceneDocument(scene, "instagram_square", "match_announcement"),
+    ).toThrow("Invalid text textDecoration");
+  });
+
   test("validates text binding keys for automation type", () => {
     const announcementScene = createStarterSceneDocument("instagram_square");
     const announcementText = announcementScene.stage.children?.[0]?.children?.[1];
@@ -494,6 +609,22 @@ describe("automation phase 1 foundations", () => {
       crop: { x: 0, y: 0, width: 2000, height: 1000 },
       render: { x: 0, y: 270, width: 1080, height: 540 },
     });
+  });
+
+  test("calculates text shrink-to-fit with a mock measure function", () => {
+    const fontSize = calculateTextFit(
+      "Matchscore",
+      "Arial",
+      120,
+      24,
+      48,
+      (text, size) => ({
+        width: text.length * size * 0.5,
+        height: size,
+      }),
+    );
+
+    expect(fontSize).toBe(24);
   });
 
   test("collects static asset references from scene documents", () => {
