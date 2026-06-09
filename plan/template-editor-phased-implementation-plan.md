@@ -348,7 +348,7 @@ Rules:
 - Dynamic text and image content is represented by `attrs.bindingKey`.
 - Static image content is represented by `attrs.assetId`.
 - Do not use `{{mustache}}` syntax in text.
-- The property panel should show "Inhoud" with fixed text/image versus variable binding.
+- The property panel should show "Inhoud" for editable content. In Phase 3, text nodes support fixed text versus variable text bindings, and dynamic logo `Image` nodes support variable image bindings. Fixed/static uploaded image content remains Phase 4.
 - Binding dropdown options must be filtered by automation type.
 - `score` is invalid for `match_announcement`.
 
@@ -950,7 +950,7 @@ Install and wire client-only editor dependencies:
 
 - `konva`
 - `react-konva`
-- `use-image` if not deferred to Phase 4
+- `use-image` can be deferred until Phase 3 dynamic logo placeholders or Phase 4 static image uploads.
 
 Implement:
 
@@ -964,13 +964,12 @@ Implement:
 - Resize/rotate with `Transformer`.
 - Bake transform scale into width/height on transform end.
 - Basic property panel for selected node:
-  - x
-  - y
   - width
   - height
   - fill for rects/text
   - text value for text nodes
   - font size for text nodes
+- Do not add numeric `x`/`y` fields to the user-facing property panel. Positioning is handled by drag and drop.
 - Save button calls `updateTemplate`.
 - Reloading the page loads the saved scene from Convex.
 - Dirty state in the toolbar.
@@ -1073,11 +1072,18 @@ Implement:
   - Variable
 - If variable is selected, show a second dropdown of bindings filtered by automation type.
 - Canvas displays the placeholder value immediately when a binding is selected.
-- Add simple `Image` support for dynamic logo placeholders if image nodes are needed here; static uploaded images remain Phase 4.
+- Add simple `Image` support for dynamic logo placeholders in Phase 3:
+  - render `Image` nodes whose source is a valid image `bindingKey`
+  - add minimal editor controls to insert home/away logo placeholder nodes
+  - allow selection, drag, resize, save, and reload for these dynamic logo nodes
+  - store the logo source as `attrs.bindingKey`, never as a resolved URL or image bytes
+  - keep static uploaded images and `assetId` insertion for Phase 4
+- If `use-image` was not installed in Phase 2, install it for Phase 3 image hydration.
 - Preview/design toggle:
   - Design mode can show placeholders.
   - Preview mode can show richer mock fixture values.
 - Ensure the saved scene stores the `bindingKey` and not the resolved text as the source of truth for dynamic content.
+- Ensure the scene update helper can remove attrs when switching between fixed and variable content, so stale `text`, `assetId`, or `bindingKey` values are not accidentally persisted.
 
 Important UX rule:
 
@@ -1090,6 +1096,7 @@ Automated checks:
 - Unit tests for binding validation.
 - Unit tests that available binding keys differ by automation type.
 - Unit tests for `resolveTextContent`.
+- Unit tests for dynamic image binding validation and placeholder resolution.
 - Normalizer tests for `assetId`/`bindingKey` exclusivity.
 - Type/lint checks.
 
@@ -1105,12 +1112,14 @@ Browser checks:
 - Open a `match_result` template.
 - Confirm `score` is available.
 - Bind a text node to `score`, save, and reload.
+- Insert a dynamic home or away logo placeholder, save, refresh, and confirm it still renders as a placeholder image.
 - Toggle preview mode if implemented and confirm mock values render.
 
 Database checks:
 
 - Confirm bound text nodes persist `attrs.bindingKey`.
 - Confirm dynamic placeholder text is not incorrectly persisted as a static replacement unless the fixed text mode is selected.
+- Confirm bound logo image nodes persist `attrs.bindingKey` and do not persist a signed URL, raw image data, or `assetId`.
 - Confirm invalid bindings are rejected by the mutation, not just hidden in the UI.
 
 User testing script:
@@ -1120,9 +1129,10 @@ User testing script:
 3. Set content to variable `homeClubName`.
 4. Save and refresh.
 5. Confirm the placeholder remains and the binding dropdown still shows the selected binding.
-6. Repeat on a match result template with `score`.
+6. Insert a home or away logo placeholder and confirm it survives save/reload.
+7. Repeat on a match result template with `score`.
 
-Phase 3 is complete only when variable bindings survive save/reload and invalid bindings cannot be saved.
+Phase 3 is complete only when text and dynamic logo variable bindings survive save/reload and invalid bindings cannot be saved.
 
 ## Phase 4 - Static Asset Uploads and Image Nodes
 

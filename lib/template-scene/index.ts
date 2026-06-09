@@ -3,6 +3,8 @@ type CanvasPreset =
   | "instagram_portrait"
   | "facebook_landscape";
 
+export type AutomationType = "match_announcement" | "match_result";
+
 const CANVAS_PRESET_DIMENSIONS: Record<
   CanvasPreset,
   { width: number; height: number }
@@ -33,6 +35,62 @@ export type SceneDocument = {
   stage: SceneNode;
 };
 
+export const TEXT_BINDING_KEYS = [
+  "homeClubName",
+  "awayClubName",
+  "homeAwayClubNames",
+  "matchAddress",
+  "matchDateTime",
+  "score",
+] as const;
+
+export type TextBindingKey = (typeof TEXT_BINDING_KEYS)[number];
+
+export const IMAGE_BINDING_KEYS = ["homeClubLogo", "awayClubLogo"] as const;
+
+export type ImageBindingKey = (typeof IMAGE_BINDING_KEYS)[number];
+
+export type BindingPreviewMode = "design" | "preview";
+
+const TEXT_BINDING_KEYS_BY_AUTOMATION_TYPE: Record<
+  AutomationType,
+  readonly TextBindingKey[]
+> = {
+  match_announcement: [
+    "homeClubName",
+    "awayClubName",
+    "homeAwayClubNames",
+    "matchAddress",
+    "matchDateTime",
+  ],
+  match_result: [
+    "homeClubName",
+    "awayClubName",
+    "homeAwayClubNames",
+    "matchAddress",
+    "matchDateTime",
+    "score",
+  ],
+};
+
+const TEXT_BINDING_DESIGN_VALUES: Record<TextBindingKey, string> = {
+  homeClubName: "{{ homeClubName }}",
+  awayClubName: "{{ awayClubName }}",
+  homeAwayClubNames: "{{ homeClubName }} - {{ awayClubName }}",
+  matchAddress: "{{ matchAddress }}",
+  matchDateTime: "{{ matchDateTime }}",
+  score: "{{ score }}",
+};
+
+const TEXT_BINDING_PREVIEW_VALUES: Record<TextBindingKey, string> = {
+  homeClubName: "KFC Eendracht",
+  awayClubName: "Sporting Zuid",
+  homeAwayClubNames: "KFC Eendracht - Sporting Zuid",
+  matchAddress: "Sportpark De Klavers, Veldstraat 12",
+  matchDateTime: "za 15 mrt. 2025, 20:00",
+  score: "2 - 1",
+};
+
 const ALLOWED_NODE_CLASSES = new Set<SceneNodeClassName>([
   "Stage",
   "Layer",
@@ -61,6 +119,7 @@ const EDITOR_ONLY_ATTRS = new Set([
 export function normalizeSceneDocument(
   rawSceneDocument: unknown,
   canvasPreset: CanvasPreset,
+  automationType: AutomationType,
 ): SceneDocument {
   const sceneDocument = parseSceneDocument(rawSceneDocument);
   const dimensions = CANVAS_PRESET_DIMENSIONS[canvasPreset];
@@ -69,7 +128,7 @@ export function normalizeSceneDocument(
     throw new Error("Unsupported scene document schema version");
   }
 
-  const stage = normalizeSceneNode(sceneDocument.stage);
+  const stage = normalizeSceneNode(sceneDocument.stage, automationType);
   if (stage.className !== "Stage") {
     throw new Error("Scene document root must be a Stage");
   }
@@ -90,8 +149,71 @@ export function normalizeSceneDocument(
 export function validateSceneDocument(
   rawSceneDocument: unknown,
   canvasPreset: CanvasPreset,
+  automationType: AutomationType,
 ): SceneDocument {
-  return normalizeSceneDocument(rawSceneDocument, canvasPreset);
+  return normalizeSceneDocument(rawSceneDocument, canvasPreset, automationType);
+}
+
+export function getAvailableTextBindingKeys(
+  automationType: AutomationType,
+): readonly TextBindingKey[] {
+  return TEXT_BINDING_KEYS_BY_AUTOMATION_TYPE[automationType];
+}
+
+export function getAvailableImageBindingKeys(): readonly ImageBindingKey[] {
+  return IMAGE_BINDING_KEYS;
+}
+
+export function getTextBindingKey(
+  value: unknown,
+  automationType: AutomationType,
+): TextBindingKey | null {
+  if (
+    typeof value === "string" &&
+    getAvailableTextBindingKeys(automationType).includes(value as TextBindingKey)
+  ) {
+    return value as TextBindingKey;
+  }
+
+  return null;
+}
+
+export function getImageBindingKey(value: unknown): ImageBindingKey | null {
+  if (
+    typeof value === "string" &&
+    IMAGE_BINDING_KEYS.includes(value as ImageBindingKey)
+  ) {
+    return value as ImageBindingKey;
+  }
+
+  return null;
+}
+
+export function resolveTextContent(
+  attrs: SceneNodeAttrs,
+  automationType: AutomationType,
+  previewMode: BindingPreviewMode,
+): string {
+  const bindingKey = getTextBindingKey(attrs.bindingKey, automationType);
+  if (!bindingKey) {
+    return stringAttr(attrs, "text") ?? "";
+  }
+
+  return previewMode === "preview"
+    ? TEXT_BINDING_PREVIEW_VALUES[bindingKey]
+    : TEXT_BINDING_DESIGN_VALUES[bindingKey];
+}
+
+export function resolveImageSource(
+  attrs: SceneNodeAttrs,
+  previewMode: BindingPreviewMode,
+): string | null {
+  const bindingKey = getImageBindingKey(attrs.bindingKey);
+  if (!bindingKey) {
+    return null;
+  }
+
+  return createPlaceholderCrestDataUrl(bindingKey, previewMode);
 }
 
 function parseSceneDocument(rawSceneDocument: unknown): {
@@ -114,7 +236,10 @@ function parseSceneDocument(rawSceneDocument: unknown): {
   return rawSceneDocument;
 }
 
-function normalizeSceneNode(rawNode: unknown): SceneNode {
+function normalizeSceneNode(
+  rawNode: unknown,
+  automationType: AutomationType,
+): SceneNode {
   if (!isPlainObject(rawNode)) {
     throw new Error("Scene node must be an object");
   }
@@ -129,12 +254,16 @@ function normalizeSceneNode(rawNode: unknown): SceneNode {
     throw new Error("Scene node attrs must be an object");
   }
 
-  const attrs = normalizeSceneNodeAttrs(rawAttrs);
-  validateSceneNodeAttrs(className, attrs);
+  const attrs = normalizeSceneNodeAttrsForClass(
+    className,
+    normalizeSceneNodeAttrs(rawAttrs),
+    automationType,
+  );
+  validateSceneNodeAttrs(className, attrs, automationType);
 
   const rawChildren = rawNode.children;
   const children = Array.isArray(rawChildren)
-    ? rawChildren.map((child) => normalizeSceneNode(child))
+    ? rawChildren.map((child) => normalizeSceneNode(child, automationType))
     : undefined;
 
   return children
@@ -177,18 +306,58 @@ function normalizeSceneNodeAttrs(
   return attrs;
 }
 
+function normalizeSceneNodeAttrsForClass(
+  className: SceneNodeClassName,
+  attrs: SceneNodeAttrs,
+  automationType: AutomationType,
+): SceneNodeAttrs {
+  if (className === "Text" && getTextBindingKey(attrs.bindingKey, automationType)) {
+    const nextAttrs = { ...attrs };
+    delete nextAttrs.text;
+    return nextAttrs;
+  }
+
+  return attrs;
+}
+
 function validateSceneNodeAttrs(
   className: SceneNodeClassName,
   attrs: SceneNodeAttrs,
+  automationType: AutomationType,
 ) {
-  if (className !== "Image") {
+  const hasAssetId = isNonEmptyString(attrs.assetId);
+  const hasBindingKey = isNonEmptyString(attrs.bindingKey);
+
+  if (className === "Text") {
+    if (hasAssetId) {
+      throw new Error("assetId is only supported on Image nodes");
+    }
+    if (
+      hasBindingKey &&
+      !getAvailableTextBindingKeys(automationType).includes(
+        attrs.bindingKey as TextBindingKey,
+      )
+    ) {
+      throw new Error("Invalid text bindingKey for automation type");
+    }
     return;
   }
 
-  const hasAssetId = isNonEmptyString(attrs.assetId);
-  const hasBindingKey = isNonEmptyString(attrs.bindingKey);
-  if (hasAssetId === hasBindingKey) {
-    throw new Error("Image nodes require exactly one assetId or bindingKey");
+  if (className === "Image") {
+    if (hasAssetId === hasBindingKey) {
+      throw new Error("Image nodes require exactly one assetId or bindingKey");
+    }
+    if (hasBindingKey && !getImageBindingKey(attrs.bindingKey)) {
+      throw new Error("Invalid image bindingKey");
+    }
+    return;
+  }
+
+  if (hasAssetId) {
+    throw new Error("assetId is only supported on Image nodes");
+  }
+  if (hasBindingKey) {
+    throw new Error("bindingKey is only supported on Text and Image nodes");
   }
 }
 
@@ -215,4 +384,28 @@ function asFiniteNumber(value: unknown): number | undefined {
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function stringAttr(attrs: SceneNodeAttrs, key: string): string | undefined {
+  const value = attrs[key];
+  return typeof value === "string" ? value : undefined;
+}
+
+function createPlaceholderCrestDataUrl(
+  bindingKey: ImageBindingKey,
+  previewMode: BindingPreviewMode,
+): string {
+  const isHome = bindingKey === "homeClubLogo";
+  const primary = isHome
+    ? previewMode === "preview"
+      ? "#2563eb"
+      : "#1d4ed8"
+    : previewMode === "preview"
+      ? "#dc2626"
+      : "#b91c1c";
+  const secondary = isHome ? "#dbeafe" : "#fee2e2";
+  const label = isHome ? "HOME" : "AWAY";
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240"><rect width="240" height="240" fill="${secondary}"/><path d="M120 20 198 52v62c0 52-32 91-78 106-46-15-78-54-78-106V52l78-32Z" fill="${primary}"/><path d="M120 48 172 70v42c0 36-20 62-52 76-32-14-52-40-52-76V70l52-22Z" fill="#fff" fill-opacity=".92"/><text x="120" y="132" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="700" fill="${primary}">${label}</text></svg>`;
+
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
