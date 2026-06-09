@@ -1,9 +1,23 @@
 "use client";
 
 import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
   ArrowLeft,
+  Bold,
   Circle,
+  Italic,
+  Minus,
+  Plus,
+  Underline,
+  Eye,
+  EyeOff,
+  GripVertical,
   ImageIcon,
+  Layers,
+  Lock,
+  Redo2,
   Save,
   Shapes,
   SlidersHorizontal,
@@ -11,6 +25,8 @@ import {
   Palette,
   Trash2,
   Type,
+  Undo2,
+  Unlock,
   UploadCloud,
 } from "lucide-react";
 import type Konva from "konva";
@@ -20,6 +36,7 @@ import useImage from "use-image";
 import {
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -42,9 +59,18 @@ import {
   getAvailableTextBindingKeys,
   getImageBindingKey,
   getObjectFitMode,
+  getTextOverflowMode,
+  getTextTransform,
   getTextBindingKey,
+  buildKonvaFontStyle,
   calculateObjectFit,
+  calculateTextFit,
+  getTextDecoration,
+  collectSceneFontFamilies,
+  loadGoogleFonts,
   normalizeSceneDocument,
+  parseKonvaFontStyle,
+  toggleUnderline,
   resolveImageSource,
   resolveTextContent,
   type AutomationType,
@@ -55,6 +81,8 @@ import {
   type SceneNode,
   type SceneNodeAttrs,
   type TextBindingKey,
+  type TextOverflowMode,
+  type TextTransform,
 } from "@/lib/template-scene";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -89,15 +117,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { FontPicker } from "@/components/template-editor/font-picker";
 
 const VARIABLE_DRAG_MIME = "application/x-matchscore-template-variable";
 const ASSET_DRAG_MIME = "application/x-matchscore-template-asset";
+const TEXT_PRESET_DRAG_MIME = "application/x-matchscore-template-text-preset";
 const BACKGROUND_NODE_ID = "background";
 const DEFAULT_BACKGROUND_FILL = "#ffffff";
+const MAX_HISTORY_ENTRIES = 50;
 
 type EditorPanelTab =
   | "variables"
   | "assets"
+  | "layers"
   | "text"
   | "shapes"
   | "background"
@@ -108,6 +140,23 @@ type VariableDragPayload =
   | { kind: "image"; bindingKey: ImageBindingKey };
 
 type AssetDragPayload = { assetId: Id<"templateAssets"> };
+
+type TextPresetKind = "heading" | "subheading" | "body";
+
+type TextPresetDragPayload = {
+  kind: "text-preset";
+  preset: TextPresetKind;
+  text: string;
+};
+
+const TEXT_PRESET_STYLES: Record<
+  TextPresetKind,
+  { fontSize: number; fontStyle?: string; lineHeight?: number }
+> = {
+  heading: { fontSize: 96, fontStyle: "bold", lineHeight: 1.1 },
+  subheading: { fontSize: 64, fontStyle: "bold", lineHeight: 1.15 },
+  body: { fontSize: 40, lineHeight: 1.2 },
+};
 
 type TemplateAsset = {
   _id: Id<"templateAssets">;
@@ -126,6 +175,11 @@ type TemplateEditorTemplate = {
   name: string;
   canvasPreset: CanvasPreset;
   sceneDocument: unknown;
+};
+
+type SceneHistory = {
+  entries: SceneDocument[];
+  index: number;
 };
 
 type StaticTemplateEditorProps = {
@@ -152,8 +206,7 @@ export function StaticTemplateEditor({
   );
   const templateAssets = useQuery(api.templateAssets.queries.listTemplateAssets);
   const backendAutomationType = toBackendAutomationType(automationType);
-  const [templateName, setTemplateName] = useState(template.name);
-  const [sceneDocument, setSceneDocument] = useState<SceneDocument | null>(() => {
+  const initialSceneDocument = useMemo(() => {
     try {
       return normalizeSceneDocument(
         template.sceneDocument,
@@ -163,7 +216,13 @@ export function StaticTemplateEditor({
     } catch {
       return null;
     }
-  });
+  }, [backendAutomationType, template.canvasPreset, template.sceneDocument]);
+  const [templateName, setTemplateName] = useState(template.name);
+  const [sceneDocument, setSceneDocument] =
+    useState<SceneDocument | null>(initialSceneDocument);
+  const [history, setHistory] = useState(() =>
+    createInitialHistory(initialSceneDocument),
+  );
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -175,10 +234,13 @@ export function StaticTemplateEditor({
   const [deletingAssetId, setDeletingAssetId] =
     useState<Id<"templateAssets"> | null>(null);
   const [titleInputWidth, setTitleInputWidth] = useState(40);
+  const [editingTextNodeId, setEditingTextNodeId] = useState<string | null>(null);
+  const [editingTextValue, setEditingTextValue] = useState("");
   const nodeRefs = useRef(new Map<string, Konva.Node>());
   const transformerRef = useRef<Konva.Transformer>(null);
   const titleMeasureRef = useRef<HTMLSpanElement>(null);
   const stageFrameRef = useRef<HTMLDivElement>(null);
+  const textEditorRef = useRef<HTMLTextAreaElement>(null);
   const stageDimensions = sceneDocument
     ? {
         width: numberAttr(sceneDocument.stage.attrs, "width", 1080),
@@ -196,6 +258,15 @@ export function StaticTemplateEditor({
         : null,
     [sceneDocument, selectedNodeId],
   );
+
+  useEffect(() => {
+    if (!sceneDocument) {
+      return;
+    }
+
+    loadGoogleFonts(collectSceneFontFamilies(sceneDocument.stage));
+  }, [sceneDocument]);
+
   const templateAssetRows = useMemo(() => templateAssets ?? [], [templateAssets]);
   const templateAssetsById = useMemo(
     () =>
@@ -208,6 +279,19 @@ export function StaticTemplateEditor({
     () => (sceneDocument ? findBackgroundNode(sceneDocument) : null),
     [sceneDocument],
   );
+  const contentLayerNodes = useMemo(
+    () => (sceneDocument ? getContentLayerChildren(sceneDocument) : []),
+    [sceneDocument],
+  );
+  const editingTextNode = useMemo(
+    () =>
+      sceneDocument && editingTextNodeId
+        ? findSceneNodeById(sceneDocument.stage, editingTextNodeId)
+        : null,
+    [editingTextNodeId, sceneDocument],
+  );
+  const canUndo = history.index > 0;
+  const canRedo = history.index >= 0 && history.index < history.entries.length - 1;
 
   useEffect(() => {
     const transformer = transformerRef.current;
@@ -217,29 +301,57 @@ export function StaticTemplateEditor({
 
     const selectedKonvaNode =
       selectedNode &&
-      isBackgroundNode(selectedNode) &&
-      selectedNode.className !== "Image"
-        ? null
-        : selectedNodeId
+      !isLockedNode(selectedNode) &&
+      selectedNodeId !== editingTextNodeId &&
+      !(isBackgroundNode(selectedNode) && selectedNode.className !== "Image")
+        ? selectedNodeId
           ? nodeRefs.current.get(selectedNodeId)
-          : null;
+          : null
+        : null;
     transformer.nodes(selectedKonvaNode ? [selectedKonvaNode] : []);
     transformer.getLayer()?.batchDraw();
-  }, [sceneDocument, selectedNode, selectedNodeId]);
+  }, [editingTextNodeId, sceneDocument, selectedNode, selectedNodeId]);
 
   useLayoutEffect(() => {
     const measuredWidth = titleMeasureRef.current?.offsetWidth ?? 0;
     setTitleInputWidth(Math.max(Math.ceil(measuredWidth) + 10, 40));
   }, [templateName]);
 
-  const updateSceneAttrs = useCallback(
-    (nodeId: string, attrs: SceneNodeAttrs) => {
-      setSceneDocument((current) =>
-        current ? updateSceneNodeAttrs(current, nodeId, attrs) : current,
-      );
-      setIsDirty(true);
+  useEffect(() => {
+    if (editingTextNodeId) {
+      textEditorRef.current?.focus();
+      textEditorRef.current?.select();
+    }
+  }, [editingTextNodeId]);
+
+  const commitSceneDocument = useCallback(
+    (
+      nextSceneDocument:
+        | SceneDocument
+        | ((current: SceneDocument) => SceneDocument),
+    ) => {
+      setSceneDocument((current) => {
+        if (!current) {
+          return current;
+        }
+
+        const next =
+          typeof nextSceneDocument === "function"
+            ? nextSceneDocument(current)
+            : nextSceneDocument;
+        setHistory((currentHistory) => pushHistoryEntry(currentHistory, next));
+        setIsDirty(true);
+        return next;
+      });
     },
     [],
+  );
+
+  const updateSceneAttrs = useCallback(
+    (nodeId: string, attrs: SceneNodeAttrs) => {
+      commitSceneDocument((current) => updateSceneNodeAttrs(current, nodeId, attrs));
+    },
+    [commitSceneDocument],
   );
 
   const updateSelectedNodeAttrs = useCallback(
@@ -252,23 +364,7 @@ export function StaticTemplateEditor({
     [selectedNodeId, updateSceneAttrs],
   );
 
-  const replaceSceneDocument = useCallback(
-    (
-      nextSceneDocument:
-        | SceneDocument
-        | ((current: SceneDocument) => SceneDocument),
-    ) => {
-      setSceneDocument((current) => {
-        if (typeof nextSceneDocument === "function") {
-          return current ? nextSceneDocument(current) : current;
-        }
-
-        return nextSceneDocument;
-      });
-      setIsDirty(true);
-    },
-    [],
-  );
+  const replaceSceneDocument = commitSceneDocument;
 
   const selectNode = useCallback(
     (nodeId: string) => {
@@ -281,6 +377,174 @@ export function StaticTemplateEditor({
     },
     [sceneDocument],
   );
+
+  const deleteSelectedNode = useCallback(() => {
+    if (!selectedNodeId || !selectedNode || isBackgroundNode(selectedNode)) {
+      return;
+    }
+
+    commitSceneDocument((current) => removeSceneNode(current, selectedNodeId));
+    setSelectedNodeId(null);
+    setEditingTextNodeId(null);
+  }, [commitSceneDocument, selectedNode, selectedNodeId]);
+
+  const deleteLayerNode = useCallback(
+    (node: SceneNode) => {
+      const nodeId = stringAttr(node.attrs, "id");
+      if (!nodeId || isBackgroundNode(node)) {
+        return;
+      }
+
+      commitSceneDocument((current) => removeSceneNode(current, nodeId));
+      if (selectedNodeId === nodeId) {
+        setSelectedNodeId(null);
+      }
+      if (editingTextNodeId === nodeId) {
+        setEditingTextNodeId(null);
+      }
+    },
+    [commitSceneDocument, editingTextNodeId, selectedNodeId],
+  );
+
+  const reorderLayerNode = useCallback(
+    (
+      draggedNodeId: string,
+      targetNodeId: string,
+      placement: "above" | "below",
+    ) => {
+      if (draggedNodeId === targetNodeId) {
+        return;
+      }
+
+      commitSceneDocument((current) =>
+        reorderContentLayerNode(current, draggedNodeId, targetNodeId, placement),
+      );
+    },
+    [commitSceneDocument],
+  );
+
+  const toggleLayerVisibility = useCallback(
+    (node: SceneNode) => {
+      const nodeId = stringAttr(node.attrs, "id");
+      if (!nodeId || isBackgroundNode(node)) {
+        return;
+      }
+      updateSceneAttrs(nodeId, { visible: node.attrs.visible === false });
+    },
+    [updateSceneAttrs],
+  );
+
+  const toggleLayerLock = useCallback(
+    (node: SceneNode) => {
+      const nodeId = stringAttr(node.attrs, "id");
+      if (!nodeId || isBackgroundNode(node)) {
+        return;
+      }
+      updateSceneAttrs(nodeId, { locked: node.attrs.locked !== true });
+    },
+    [updateSceneAttrs],
+  );
+
+  const startTextEditing = useCallback(
+    (nodeId: string) => {
+      const node = sceneDocument
+        ? findSceneNodeById(sceneDocument.stage, nodeId)
+        : null;
+      if (
+        !node ||
+        node.className !== "Text" ||
+        getTextBindingKey(node.attrs.bindingKey, backendAutomationType) ||
+        isLockedNode(node)
+      ) {
+        return;
+      }
+
+      setSelectedNodeId(nodeId);
+      setEditingTextNodeId(nodeId);
+      setEditingTextValue(stringAttr(node.attrs, "text") ?? "");
+    },
+    [backendAutomationType, sceneDocument],
+  );
+
+  const cancelTextEditing = useCallback(() => {
+    setEditingTextNodeId(null);
+    setEditingTextValue("");
+  }, []);
+
+  const commitTextEditing = useCallback(() => {
+    if (!editingTextNodeId) {
+      return;
+    }
+
+    updateSceneAttrs(editingTextNodeId, { text: editingTextValue });
+    cancelTextEditing();
+  }, [cancelTextEditing, editingTextNodeId, editingTextValue, updateSceneAttrs]);
+
+  const undoSceneChange = useCallback(() => {
+    const flushed = flushInlineTextEditingState({
+      sceneDocument,
+      history,
+      editingTextNodeId,
+      editingTextValue,
+    });
+    if (flushed.didFlush) {
+      cancelTextEditing();
+    }
+
+    const workingHistory = flushed.history;
+    if (workingHistory.index <= 0) {
+      if (flushed.didFlush) {
+        setSceneDocument(flushed.sceneDocument);
+        setHistory(workingHistory);
+        setIsDirty(true);
+      }
+      return;
+    }
+
+    const nextIndex = workingHistory.index - 1;
+    setSceneDocument(workingHistory.entries[nextIndex] ?? null);
+    setHistory({ ...workingHistory, index: nextIndex });
+    setIsDirty(true);
+  }, [
+    cancelTextEditing,
+    editingTextNodeId,
+    editingTextValue,
+    history,
+    sceneDocument,
+  ]);
+
+  const redoSceneChange = useCallback(() => {
+    const flushed = flushInlineTextEditingState({
+      sceneDocument,
+      history,
+      editingTextNodeId,
+      editingTextValue,
+    });
+    if (flushed.didFlush) {
+      cancelTextEditing();
+    }
+
+    const workingHistory = flushed.history;
+    if (workingHistory.index >= workingHistory.entries.length - 1) {
+      if (flushed.didFlush) {
+        setSceneDocument(flushed.sceneDocument);
+        setHistory(workingHistory);
+        setIsDirty(true);
+      }
+      return;
+    }
+
+    const nextIndex = workingHistory.index + 1;
+    setSceneDocument(workingHistory.entries[nextIndex] ?? null);
+    setHistory({ ...workingHistory, index: nextIndex });
+    setIsDirty(true);
+  }, [
+    cancelTextEditing,
+    editingTextNodeId,
+    editingTextValue,
+    history,
+    sceneDocument,
+  ]);
 
   const uploadTemplateAsset = useCallback(
     async (file: File): Promise<TemplateAsset> => {
@@ -356,6 +620,32 @@ export function StaticTemplateEditor({
     [deleteTemplateAsset, t],
   );
 
+  const insertTextPresetNode = useCallback(
+    (
+      preset: TextPresetKind,
+      text: string,
+      point: { x: number; y: number },
+    ) => {
+      if (!sceneDocument) {
+        return;
+      }
+
+      const nodeId = `text-${preset}-${Date.now()}`;
+      const node = createFixedTextNode(
+        sceneDocument,
+        nodeId,
+        preset,
+        point,
+        text,
+      );
+
+      commitSceneDocument((current) => appendSceneNodeToFirstLayer(current, node));
+      setSelectedNodeId(nodeId);
+      setActivePanelTab("properties");
+    },
+    [commitSceneDocument, sceneDocument],
+  );
+
   const insertVariableNode = useCallback(
     (payload: VariableDragPayload, point: { x: number; y: number }) => {
       if (!sceneDocument) {
@@ -368,12 +658,11 @@ export function StaticTemplateEditor({
           ? createLogoNode(sceneDocument, nodeId, payload.bindingKey, point)
           : createTextBindingNode(nodeId, payload.bindingKey, point);
 
-      setSceneDocument(appendSceneNodeToFirstLayer(sceneDocument, node));
+      commitSceneDocument((current) => appendSceneNodeToFirstLayer(current, node));
       setSelectedNodeId(nodeId);
       setActivePanelTab("properties");
-      setIsDirty(true);
     },
-    [sceneDocument],
+    [commitSceneDocument, sceneDocument],
   );
 
   const insertAssetNode = useCallback(
@@ -392,21 +681,16 @@ export function StaticTemplateEditor({
 
       const nodeId = `asset-${asset._id}-${Date.now()}`;
 
-      setSceneDocument((current) => {
-        if (!current) {
-          return current;
-        }
-
-        return appendSceneNodeToFirstLayer(
+      commitSceneDocument((current) =>
+        appendSceneNodeToFirstLayer(
           current,
           createAssetImageNode(current, nodeId, asset, dimensions, point),
-        );
-      });
+        ),
+      );
       setSelectedNodeId(nodeId);
       setActivePanelTab("properties");
-      setIsDirty(true);
     },
-    [sceneDocument, t],
+    [commitSceneDocument, sceneDocument, t],
   );
 
   const setBackgroundColor = useCallback(
@@ -445,6 +729,39 @@ export function StaticTemplateEditor({
     replaceSceneDocument(removeSceneBackgroundImage(sceneDocument));
     setSelectedNodeId(BACKGROUND_NODE_ID);
   }, [replaceSceneDocument, sceneDocument]);
+
+  const handleTextPresetDragStart = useCallback(
+    (
+      event: React.DragEvent<HTMLElement>,
+      payload: TextPresetDragPayload,
+    ) => {
+      event.dataTransfer.effectAllowed = "copy";
+      event.dataTransfer.setData(TEXT_PRESET_DRAG_MIME, JSON.stringify(payload));
+    },
+    [],
+  );
+
+  const handleTextPresetInsert = useCallback(
+    (
+      preset: TextPresetKind,
+      text: string,
+      point?: { x: number; y: number },
+    ) => {
+      insertTextPresetNode(
+        preset,
+        text,
+        point ?? {
+          x: Math.round(stageDimensions.width / 2),
+          y: Math.round(stageDimensions.height / 2),
+        },
+      );
+    },
+    [
+      insertTextPresetNode,
+      stageDimensions.height,
+      stageDimensions.width,
+    ],
+  );
 
   const handleVariableDragStart = useCallback(
     (event: React.DragEvent<HTMLElement>, payload: VariableDragPayload) => {
@@ -489,6 +806,18 @@ export function StaticTemplateEditor({
         return;
       }
 
+      const textPresetPayload = parseTextPresetDragPayload(
+        event.dataTransfer.getData(TEXT_PRESET_DRAG_MIME),
+      );
+      if (textPresetPayload) {
+        const rect = stageFrameRef.current.getBoundingClientRect();
+        insertTextPresetNode(textPresetPayload.preset, textPresetPayload.text, {
+          x: Math.round((event.clientX - rect.left) / scale),
+          y: Math.round((event.clientY - rect.top) / scale),
+        });
+        return;
+      }
+
       const payload = parseVariableDragPayload(
         event.dataTransfer.getData(VARIABLE_DRAG_MIME),
       );
@@ -516,18 +845,38 @@ export function StaticTemplateEditor({
         });
       }
     },
-    [insertAssetNode, insertVariableNode, scale, sceneDocument, templateAssetsById],
+    [
+      insertAssetNode,
+      insertTextPresetNode,
+      insertVariableNode,
+      scale,
+      sceneDocument,
+      templateAssetsById,
+    ],
   );
 
-  const handleSave = async () => {
-    if (!sceneDocument) {
+  const handleSave = useCallback(async () => {
+    const flushed = flushInlineTextEditingState({
+      sceneDocument,
+      history,
+      editingTextNodeId,
+      editingTextValue,
+    });
+    const documentToSave = flushed.sceneDocument;
+    if (!documentToSave) {
       return;
+    }
+
+    if (flushed.didFlush) {
+      cancelTextEditing();
+      setSceneDocument(documentToSave);
+      setHistory(flushed.history);
     }
 
     setIsSaving(true);
     try {
       const normalizedSceneDocument = normalizeSceneDocument(
-        sceneDocument,
+        documentToSave,
         template.canvasPreset,
         backendAutomationType,
       );
@@ -537,6 +886,9 @@ export function StaticTemplateEditor({
         sceneDocument: normalizedSceneDocument,
       });
       setSceneDocument(normalizedSceneDocument);
+      setHistory((currentHistory) =>
+        replaceCurrentHistoryEntry(currentHistory, normalizedSceneDocument),
+      );
       setIsDirty(false);
       showSuccessToast(t("editor.saveSuccess"));
     } catch {
@@ -544,7 +896,69 @@ export function StaticTemplateEditor({
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [
+    backendAutomationType,
+    cancelTextEditing,
+    editingTextNodeId,
+    editingTextValue,
+    history,
+    sceneDocument,
+    t,
+    template._id,
+    template.canvasPreset,
+    templateName,
+    updateTemplate,
+  ]);
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (isEditableShortcutTarget(event.target)) {
+        return;
+      }
+
+      const isModifierPressed = event.metaKey || event.ctrlKey;
+      const key = event.key.toLowerCase();
+
+      if (isModifierPressed && key === "s") {
+        event.preventDefault();
+        if (isDirty && !isSaving) {
+          void handleSave();
+        }
+        return;
+      }
+
+      if (isModifierPressed && key === "z") {
+        event.preventDefault();
+        if (event.shiftKey) {
+          redoSceneChange();
+        } else {
+          undoSceneChange();
+        }
+        return;
+      }
+
+      if (isModifierPressed && key === "y") {
+        event.preventDefault();
+        redoSceneChange();
+        return;
+      }
+
+      if (event.key === "Delete" || event.key === "Backspace") {
+        event.preventDefault();
+        deleteSelectedNode();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    deleteSelectedNode,
+    handleSave,
+    isDirty,
+    isSaving,
+    redoSceneChange,
+    undoSceneChange,
+  ]);
 
   if (!sceneDocument) {
     return (
@@ -594,6 +1008,28 @@ export function StaticTemplateEditor({
           <span className="text-xs text-muted-foreground">
             {isDirty ? t("editor.unsavedChanges") : t("editor.savedChanges")}
           </span>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              disabled={!canUndo}
+              aria-label={t("editor.undo")}
+              onClick={undoSceneChange}
+            >
+              <Undo2 aria-hidden />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              disabled={!canRedo}
+              aria-label={t("editor.redo")}
+              onClick={redoSceneChange}
+            >
+              <Redo2 aria-hidden />
+            </Button>
+          </div>
           <Button
             type="button"
             variant="outline"
@@ -627,7 +1063,7 @@ export function StaticTemplateEditor({
         >
           <div
             ref={stageFrameRef}
-            className="overflow-hidden border bg-background shadow-sm"
+            className="relative overflow-hidden border bg-background shadow-sm"
             style={{
               width: stageDimensions.width * scale,
               height: stageDimensions.height * scale,
@@ -659,7 +1095,9 @@ export function StaticTemplateEditor({
                   automationType={backendAutomationType}
                   previewMode={previewMode}
                   templateAssetsById={templateAssetsById}
+                  editingTextNodeId={editingTextNodeId}
                   onSelect={selectNode}
+                  onTextEditStart={startTextEditing}
                   onChange={updateSceneAttrs}
                 />
               ))}
@@ -671,6 +1109,17 @@ export function StaticTemplateEditor({
                 />
               </Layer>
             </Stage>
+            {editingTextNode ? (
+              <EditableTextOverlay
+                node={editingTextNode}
+                scale={scale}
+                value={editingTextValue}
+                textareaRef={textEditorRef}
+                onChange={setEditingTextValue}
+                onCommit={commitTextEditing}
+                onCancel={cancelTextEditing}
+              />
+            ) : null}
           </div>
         </main>
 
@@ -679,12 +1128,22 @@ export function StaticTemplateEditor({
             activeTab={activePanelTab}
             selectedNode={selectedNode}
             backgroundNode={backgroundNode}
+            contentLayerNodes={contentLayerNodes}
+            selectedNodeId={selectedNodeId}
             templateAssets={templateAssetRows}
             isUploadingAsset={isUploadingAsset}
             deletingAssetId={deletingAssetId}
             automationType={backendAutomationType}
             previewMode={previewMode}
             onTabChange={setActivePanelTab}
+            onNodeSelect={selectNode}
+            onLayerReorder={reorderLayerNode}
+            onLayerVisibilityToggle={toggleLayerVisibility}
+            onLayerLockToggle={toggleLayerLock}
+            onLayerDelete={deleteLayerNode}
+            onNodeDelete={deleteSelectedNode}
+            onTextPresetDragStart={handleTextPresetDragStart}
+            onTextPresetInsert={handleTextPresetInsert}
             onVariableDragStart={handleVariableDragStart}
             onVariableActivate={handleVariableActivate}
             onAssetUpload={handleUploadAsset}
@@ -706,12 +1165,22 @@ function EditorRightPanel({
   activeTab,
   selectedNode,
   backgroundNode,
+  contentLayerNodes,
+  selectedNodeId,
   templateAssets,
   isUploadingAsset,
   deletingAssetId,
   automationType,
   previewMode,
   onTabChange,
+  onNodeSelect,
+  onLayerReorder,
+  onLayerVisibilityToggle,
+  onLayerLockToggle,
+  onLayerDelete,
+  onNodeDelete,
+  onTextPresetDragStart,
+  onTextPresetInsert,
   onVariableDragStart,
   onVariableActivate,
   onAssetUpload,
@@ -726,12 +1195,33 @@ function EditorRightPanel({
   activeTab: EditorPanelTab;
   selectedNode: SceneNode | null;
   backgroundNode: SceneNode | null;
+  contentLayerNodes: SceneNode[];
+  selectedNodeId: string | null;
   templateAssets: TemplateAsset[];
   isUploadingAsset: boolean;
   deletingAssetId: Id<"templateAssets"> | null;
   automationType: AutomationType;
   previewMode: BindingPreviewMode;
   onTabChange: (tab: EditorPanelTab) => void;
+  onNodeSelect: (nodeId: string) => void;
+  onLayerReorder: (
+    draggedNodeId: string,
+    targetNodeId: string,
+    placement: "above" | "below",
+  ) => void;
+  onLayerVisibilityToggle: (node: SceneNode) => void;
+  onLayerLockToggle: (node: SceneNode) => void;
+  onLayerDelete: (node: SceneNode) => void;
+  onNodeDelete: () => void;
+  onTextPresetDragStart: (
+    event: React.DragEvent<HTMLElement>,
+    payload: TextPresetDragPayload,
+  ) => void;
+  onTextPresetInsert: (
+    preset: TextPresetKind,
+    text: string,
+    point?: { x: number; y: number },
+  ) => void;
   onVariableDragStart: (
     event: React.DragEvent<HTMLElement>,
     payload: VariableDragPayload,
@@ -756,6 +1246,7 @@ function EditorRightPanel({
   }> = [
     { id: "variables", icon: SlidersHorizontal },
     { id: "assets", icon: UploadCloud },
+    { id: "layers", icon: Layers },
     { id: "text", icon: Type },
     { id: "shapes", icon: Shapes },
     { id: "background", icon: Palette },
@@ -764,7 +1255,7 @@ function EditorRightPanel({
 
   return (
     <>
-      <div className="min-w-0 flex-1 overflow-y-auto p-4">
+      <div className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-3">
         {activeTab === "variables" ? (
           <VariablesPanel
             automationType={automationType}
@@ -783,11 +1274,21 @@ function EditorRightPanel({
             onAssetDelete={onAssetDelete}
           />
         ) : null}
+        {activeTab === "layers" ? (
+          <LayersPanel
+            nodes={contentLayerNodes}
+            selectedNodeId={selectedNodeId}
+            onSelect={onNodeSelect}
+            onReorder={onLayerReorder}
+            onVisibilityToggle={onLayerVisibilityToggle}
+            onLockToggle={onLayerLockToggle}
+            onDelete={onLayerDelete}
+          />
+        ) : null}
         {activeTab === "text" ? (
-          <PlaceholderPanel
-            title={t("textPanelTitle")}
-            description={t("textPanelDescription")}
-            icon={Type}
+          <TextPanel
+            onTextPresetDragStart={onTextPresetDragStart}
+            onTextPresetInsert={onTextPresetInsert}
           />
         ) : null}
         {activeTab === "shapes" ? <ShapesPanel /> : null}
@@ -808,6 +1309,7 @@ function EditorRightPanel({
             automationType={automationType}
             previewMode={previewMode}
             onChange={onPropertiesChange}
+            onDelete={onNodeDelete}
           />
         ) : null}
       </div>
@@ -829,6 +1331,128 @@ function EditorRightPanel({
         ))}
       </nav>
     </>
+  );
+}
+
+function TextPanel({
+  onTextPresetDragStart,
+  onTextPresetInsert,
+}: {
+  onTextPresetDragStart: (
+    event: React.DragEvent<HTMLElement>,
+    payload: TextPresetDragPayload,
+  ) => void;
+  onTextPresetInsert: (
+    preset: TextPresetKind,
+    text: string,
+    point?: { x: number; y: number },
+  ) => void;
+}) {
+  const t = useTranslations("app.automations.editor");
+  const presets: Array<{
+    preset: TextPresetKind;
+    label: string;
+    previewClassName: string;
+  }> = [
+    {
+      preset: "heading",
+      label: t("textPresetHeading"),
+      previewClassName: "text-2xl font-bold leading-tight",
+    },
+    {
+      preset: "subheading",
+      label: t("textPresetSubheading"),
+      previewClassName: "text-lg font-bold leading-tight",
+    },
+    {
+      preset: "body",
+      label: t("textPresetBody"),
+      previewClassName: "text-sm font-normal",
+    },
+  ];
+
+  const getPresetPlaceholder = (preset: TextPresetKind) => {
+    switch (preset) {
+      case "heading":
+        return t("textPresetHeadingPlaceholder");
+      case "subheading":
+        return t("textPresetSubheadingPlaceholder");
+      case "body":
+        return t("textPresetBodyPlaceholder");
+    }
+  };
+
+  return (
+    <div className="space-y-5">
+      <PanelHeader
+        title={t("textPanelTitle")}
+        description={t("textPanelDescription")}
+      />
+
+      <Button
+        type="button"
+        className="h-10 w-full"
+        onClick={() =>
+          onTextPresetInsert("body", getPresetPlaceholder("body"))
+        }
+      >
+        <Type aria-hidden />
+        {t("textPanelAddTextBox")}
+      </Button>
+
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold">{t("textPresetStylesTitle")}</h3>
+        <div className="grid gap-2">
+          {presets.map(({ preset, label, previewClassName }) => (
+            <TextPresetCard
+              key={preset}
+              label={label}
+              previewClassName={previewClassName}
+              onDragStart={(event) =>
+                onTextPresetDragStart(event, {
+                  kind: "text-preset",
+                  preset,
+                  text: getPresetPlaceholder(preset),
+                })
+              }
+              onActivate={() =>
+                onTextPresetInsert(preset, getPresetPlaceholder(preset))
+              }
+            />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function TextPresetCard({
+  label,
+  previewClassName,
+  onDragStart,
+  onActivate,
+}: {
+  label: string;
+  previewClassName: string;
+  onDragStart: (event: React.DragEvent<HTMLElement>) => void;
+  onActivate: () => void;
+}) {
+  return (
+    <div
+      draggable
+      role="button"
+      tabIndex={0}
+      className="cursor-grab border bg-card px-3 py-2.5 text-left transition-colors hover:border-primary/50 active:cursor-grabbing"
+      onDragStart={onDragStart}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onActivate();
+        }
+      }}
+    >
+      <span className={previewClassName}>{label}</span>
+    </div>
   );
 }
 
@@ -952,6 +1576,214 @@ function AssetsPanel({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function LayersPanel({
+  nodes,
+  selectedNodeId,
+  onSelect,
+  onReorder,
+  onVisibilityToggle,
+  onLockToggle,
+  onDelete,
+}: {
+  nodes: SceneNode[];
+  selectedNodeId: string | null;
+  onSelect: (nodeId: string) => void;
+  onReorder: (
+    draggedNodeId: string,
+    targetNodeId: string,
+    placement: "above" | "below",
+  ) => void;
+  onVisibilityToggle: (node: SceneNode) => void;
+  onLockToggle: (node: SceneNode) => void;
+  onDelete: (node: SceneNode) => void;
+}) {
+  const t = useTranslations("app.automations.editor");
+  const [draggedNodeId, setDraggedNodeId] = useState<string | null>(null);
+  const [dropIndicator, setDropIndicator] = useState<{
+    nodeId: string;
+    placement: "above" | "below";
+  } | null>(null);
+  const visibleNodes = nodes.filter((node) => stringAttr(node.attrs, "id"));
+  const displayNodes = [...visibleNodes].reverse();
+
+  return (
+    <div className="space-y-5">
+      <PanelHeader
+        title={t("layersPanelTitle")}
+        description={t("layersPanelDescription")}
+      />
+      <div className="space-y-2">
+        {displayNodes.map((node) => {
+          const nodeId = stringAttr(node.attrs, "id");
+          if (!nodeId) {
+            return null;
+          }
+          const isBackground = isBackgroundNode(node);
+          const isSelected = selectedNodeId === nodeId;
+          const isVisible = node.attrs.visible !== false;
+          const isLocked = node.attrs.locked === true;
+          const isDropTarget = dropIndicator?.nodeId === nodeId;
+
+          return (
+            <div
+              key={nodeId}
+              onDragOver={(event) => {
+                if (draggedNodeId && draggedNodeId !== nodeId) {
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = "move";
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  setDropIndicator({
+                    nodeId,
+                    placement:
+                      event.clientY < rect.top + rect.height / 2
+                        ? "above"
+                        : "below",
+                  });
+                }
+              }}
+              onDragLeave={() => {
+                if (dropIndicator?.nodeId === nodeId) {
+                  setDropIndicator(null);
+                }
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                if (draggedNodeId && draggedNodeId !== nodeId) {
+                  onReorder(
+                    draggedNodeId,
+                    nodeId,
+                    dropIndicator?.nodeId === nodeId
+                      ? dropIndicator.placement
+                      : "above",
+                  );
+                }
+                setDraggedNodeId(null);
+                setDropIndicator(null);
+              }}
+              className="relative"
+            >
+              {isDropTarget && dropIndicator.placement === "above" ? (
+                <LayerDropIndicator />
+              ) : null}
+              <div
+                draggable={!isBackground}
+                aria-label={!isBackground ? t("dragLayer") : undefined}
+                onClick={() => onSelect(nodeId)}
+                onDragStart={(event) => {
+                  if (isBackground) {
+                    return;
+                  }
+
+                  event.dataTransfer.effectAllowed = "move";
+                  event.dataTransfer.setData("text/plain", nodeId);
+                  setDraggedNodeId(nodeId);
+                }}
+                onDragEnd={() => {
+                  setDraggedNodeId(null);
+                  setDropIndicator(null);
+                }}
+                className={
+                  isSelected
+                    ? "cursor-grab border border-primary bg-primary/10 p-2 active:cursor-grabbing"
+                    : isBackground
+                      ? "border bg-card p-2"
+                      : "cursor-grab border bg-card p-2 active:cursor-grabbing"
+                }
+              >
+              <div className="flex items-center gap-2">
+                <div
+                  className={
+                    isBackground
+                      ? "flex size-8 shrink-0 items-center justify-center text-muted-foreground/40"
+                      : "flex size-8 shrink-0 items-center justify-center text-muted-foreground"
+                  }
+                >
+                  <GripVertical aria-hidden />
+                </div>
+                <button
+                  type="button"
+                  className="min-w-0 flex-1 text-left"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onSelect(nodeId);
+                  }}
+                >
+                  <span className="block truncate text-sm font-medium">
+                    {getLayerLabel(node)}
+                  </span>
+                  <span className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>{node.className}</span>
+                    {isBackground ? (
+                      <Badge variant="outline">{t("backgroundLayer")}</Badge>
+                    ) : null}
+                  </span>
+                </button>
+                <div className="flex shrink-0 items-center -space-x-1.5">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    disabled={isBackground}
+                    aria-label={isVisible ? t("hideLayer") : t("showLayer")}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onVisibilityToggle(node);
+                    }}
+                  >
+                    {isVisible ? <Eye aria-hidden /> : <EyeOff aria-hidden />}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    disabled={isBackground}
+                    aria-label={isLocked ? t("unlockLayer") : t("lockLayer")}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onLockToggle(node);
+                    }}
+                  >
+                    {isLocked ? <Lock aria-hidden /> : <Unlock aria-hidden />}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    disabled={isBackground}
+                    aria-label={t("deleteLayer")}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onDelete(node);
+                    }}
+                  >
+                    <Trash2 aria-hidden />
+                  </Button>
+                </div>
+              </div>
+              </div>
+              {isDropTarget && dropIndicator.placement === "below" ? (
+                <LayerDropIndicator />
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function LayerDropIndicator() {
+  return (
+    <div
+      className="my-1 flex items-center gap-2"
+      aria-hidden
+    >
+      <div className="size-2 rounded-full bg-primary" />
+      <div className="h-0.5 flex-1 bg-primary" />
     </div>
   );
 }
@@ -1276,11 +2108,13 @@ function PropertiesPanelShell({
   automationType,
   previewMode,
   onChange,
+  onDelete,
 }: {
   selectedNode: SceneNode | null;
   automationType: AutomationType;
   previewMode: BindingPreviewMode;
   onChange: (attrs: SceneNodeAttrs) => void;
+  onDelete: () => void;
 }) {
   const t = useTranslations("app.automations.editor");
 
@@ -1309,21 +2143,19 @@ function PropertiesPanelShell({
     selectedNode.className;
 
   return (
-    <div className="space-y-5">
-      <div className="border bg-muted/30 p-3">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+    <div className="min-w-0 space-y-2">
+      <div className="border bg-muted/30 p-2">
+        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           {t("selectedItem")}
         </p>
-        <h2 className="mt-1 text-base font-semibold">{selectedLabel}</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {t("selectedNode", { node: selectedNode.className })}
-        </p>
+        <h2 className="truncate text-sm font-semibold">{selectedLabel}</h2>
       </div>
       <NodePropertiesPanel
         node={selectedNode}
         automationType={automationType}
         previewMode={previewMode}
         onChange={onChange}
+        onDelete={onDelete}
       />
     </div>
   );
@@ -1380,6 +2212,388 @@ function PlaceholderPanel({
   );
 }
 
+function TextAlignmentControl({
+  value,
+  onChange,
+  compact = false,
+  grid = false,
+}: {
+  value: string;
+  onChange: (align: "left" | "center" | "right") => void;
+  compact?: boolean;
+  grid?: boolean;
+}) {
+  const t = useTranslations("app.automations.editor");
+  const options: Array<{
+    value: "left" | "center" | "right";
+    icon: React.ComponentType<{ className?: string }>;
+    label: string;
+  }> = [
+    { value: "left", icon: AlignLeft, label: t("alignLeft") },
+    { value: "center", icon: AlignCenter, label: t("alignCenter") },
+    { value: "right", icon: AlignRight, label: t("alignRight") },
+  ];
+
+  if (grid) {
+    return (
+      <div className="grid grid-cols-3 gap-0.5">
+        {options.map(({ value: optionValue, icon: Icon, label }) => (
+          <Button
+            key={optionValue}
+            type="button"
+            variant={value === optionValue ? "default" : "outline"}
+            size="sm"
+            className="h-7 px-0"
+            aria-label={label}
+            onClick={() => onChange(optionValue)}
+          >
+            <Icon aria-hidden />
+          </Button>
+        ))}
+      </div>
+    );
+  }
+
+  if (compact) {
+    return (
+      <div className="flex items-center gap-0.5">
+        {options.map(({ value: optionValue, icon: Icon, label }) => (
+          <Button
+            key={optionValue}
+            type="button"
+            variant={value === optionValue ? "default" : "outline"}
+            size="icon-xs"
+            aria-label={label}
+            aria-pressed={value === optionValue}
+            onClick={() => onChange(optionValue)}
+          >
+            <Icon aria-hidden />
+          </Button>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label>{t("alignment")}</Label>
+      <div className="grid grid-cols-3 gap-2">
+        {options.map(({ value: optionValue, icon: Icon, label }) => (
+          <Button
+            key={optionValue}
+            type="button"
+            variant={value === optionValue ? "default" : "outline"}
+            size="sm"
+            aria-label={label}
+            onClick={() => onChange(optionValue)}
+          >
+            <Icon aria-hidden />
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TextStyleToggles({
+  bold,
+  italic,
+  underline,
+  uppercase,
+  boldLabel,
+  italicLabel,
+  underlineLabel,
+  uppercaseLabel,
+  onBoldToggle,
+  onItalicToggle,
+  onUnderlineToggle,
+  onUppercaseToggle,
+}: {
+  bold: boolean;
+  italic: boolean;
+  underline: boolean;
+  uppercase: boolean;
+  boldLabel: string;
+  italicLabel: string;
+  underlineLabel: string;
+  uppercaseLabel: string;
+  onBoldToggle: () => void;
+  onItalicToggle: () => void;
+  onUnderlineToggle: () => void;
+  onUppercaseToggle: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-0.5">
+      <Button
+        type="button"
+        variant={bold ? "default" : "outline"}
+        size="icon-xs"
+        aria-label={boldLabel}
+        aria-pressed={bold}
+        onClick={onBoldToggle}
+      >
+        <Bold aria-hidden />
+      </Button>
+      <Button
+        type="button"
+        variant={italic ? "default" : "outline"}
+        size="icon-xs"
+        aria-label={italicLabel}
+        aria-pressed={italic}
+        onClick={onItalicToggle}
+      >
+        <Italic aria-hidden />
+      </Button>
+      <Button
+        type="button"
+        variant={underline ? "default" : "outline"}
+        size="icon-xs"
+        aria-label={underlineLabel}
+        aria-pressed={underline}
+        onClick={onUnderlineToggle}
+      >
+        <Underline aria-hidden />
+      </Button>
+      <Button
+        type="button"
+        variant={uppercase ? "default" : "outline"}
+        size="icon-xs"
+        aria-label={uppercaseLabel}
+        aria-pressed={uppercase}
+        onClick={onUppercaseToggle}
+      >
+        <span aria-hidden className="text-[10px] font-bold leading-none">
+          <span className="font-normal">a</span>A
+        </span>
+      </Button>
+    </div>
+  );
+}
+
+function PanelNumberInput({
+  ariaLabel,
+  value,
+  min,
+  className,
+  onChange,
+}: {
+  ariaLabel: string;
+  value: number;
+  min?: number;
+  className?: string;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <Input
+      type="number"
+      aria-label={ariaLabel}
+      min={min}
+      value={Number.isFinite(value) ? value : 0}
+      className={className ?? "h-7 w-12 shrink-0 px-1.5 text-xs"}
+      onChange={(event) => {
+        const nextValue = Number(event.target.value);
+        if (Number.isFinite(nextValue)) {
+          onChange(nextValue);
+        }
+      }}
+    />
+  );
+}
+
+function TextColorPicker({
+  value,
+  label,
+  onChange,
+}: {
+  value: string;
+  label: string;
+  onChange: (fill: string) => void;
+}) {
+  const inputId = useId();
+  const normalized = value || "#000000";
+
+  return (
+    <label
+      htmlFor={inputId}
+      className="flex h-10 w-full min-w-0 cursor-pointer items-center gap-3 border border-input bg-background px-2.5 transition-colors hover:bg-muted/40"
+    >
+      <span
+        aria-hidden
+        className="size-9 shrink-0 border border-border shadow-sm"
+        style={{ backgroundColor: normalized }}
+      />
+      <span className="min-w-0 flex-1 text-sm font-medium">{label}</span>
+      <span className="shrink-0 font-mono text-xs uppercase text-muted-foreground">
+        {normalized}
+      </span>
+      <input
+        id={inputId}
+        type="color"
+        value={normalized}
+        className="sr-only"
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </label>
+  );
+}
+
+function PanelStepperInput({
+  ariaLabel,
+  decreaseLabel,
+  increaseLabel,
+  value,
+  min,
+  max = 9999,
+  step = 1,
+  decimals = 0,
+  className,
+  onChange,
+}: {
+  ariaLabel: string;
+  decreaseLabel: string;
+  increaseLabel: string;
+  value: number;
+  min: number;
+  max?: number;
+  step?: number;
+  decimals?: number;
+  className?: string;
+  onChange: (value: number) => void;
+}) {
+  const roundValue = (nextValue: number) => {
+    if (decimals <= 0) {
+      return Math.round(nextValue);
+    }
+
+    const factor = 10 ** decimals;
+    return Math.round(nextValue * factor) / factor;
+  };
+
+  const clampValue = (nextValue: number) =>
+    roundValue(Math.min(max, Math.max(min, nextValue)));
+
+  const handleDecrease = () => {
+    onChange(clampValue(value - step));
+  };
+
+  const handleIncrease = () => {
+    onChange(clampValue(value + step));
+  };
+
+  return (
+    <div
+      className={
+        className ??
+        "flex h-8 w-full min-w-0 items-stretch overflow-hidden border border-input bg-background"
+      }
+    >
+      <button
+        type="button"
+        className="flex w-9 shrink-0 items-center justify-center border-r text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:bg-muted/80 disabled:pointer-events-none disabled:opacity-40"
+        aria-label={decreaseLabel}
+        disabled={value <= min}
+        onClick={handleDecrease}
+      >
+        <Minus className="size-4" aria-hidden />
+      </button>
+      <input
+        type="number"
+        aria-label={ariaLabel}
+        min={min}
+        max={max}
+        step={step}
+        value={Number.isFinite(value) ? value : min}
+        className="min-w-0 flex-1 border-0 bg-transparent px-1 text-center text-sm font-medium tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        onChange={(event) => {
+          const nextValue = Number(event.target.value);
+          if (Number.isFinite(nextValue)) {
+            onChange(clampValue(nextValue));
+          }
+        }}
+      />
+      <button
+        type="button"
+        className="flex w-9 shrink-0 items-center justify-center border-l text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:bg-muted/80 disabled:pointer-events-none disabled:opacity-40"
+        aria-label={increaseLabel}
+        disabled={value >= max}
+        onClick={handleIncrease}
+      >
+        <Plus className="size-4" aria-hidden />
+      </button>
+    </div>
+  );
+}
+
+function EditableTextOverlay({
+  node,
+  scale,
+  value,
+  textareaRef,
+  onChange,
+  onCommit,
+  onCancel,
+}: {
+  node: SceneNode;
+  scale: number;
+  value: string;
+  textareaRef: React.RefObject<HTMLTextAreaElement | null>;
+  onChange: (value: string) => void;
+  onCommit: () => void;
+  onCancel: () => void;
+}) {
+  const x = numberAttr(node.attrs, "x", 0);
+  const y = numberAttr(node.attrs, "y", 0);
+  const width = numberAttr(node.attrs, "width", 300);
+  const height = numberAttr(
+    node.attrs,
+    "height",
+    numberAttr(node.attrs, "fontSize", 48) * 1.4,
+  );
+  const fontSize = numberAttr(node.attrs, "fontSize", 48);
+  const lineHeight = numberAttr(node.attrs, "lineHeight", 1);
+  const fontFamily = stringAttr(node.attrs, "fontFamily") ?? "Arial";
+  const { bold, italic } = parseKonvaFontStyle(
+    stringAttr(node.attrs, "fontStyle"),
+  );
+
+  return (
+    <textarea
+      ref={textareaRef}
+      value={value}
+      className="absolute z-10 resize-none border border-primary bg-background p-0 outline-none ring-2 ring-primary/25"
+      style={{
+        left: x * scale,
+        top: y * scale,
+        width: width * scale,
+        height: height * scale,
+        color: stringAttr(node.attrs, "fill") ?? "#111827",
+        fontSize: fontSize * scale,
+        fontFamily,
+        fontWeight: bold ? 700 : 400,
+        fontStyle: italic ? "italic" : "normal",
+        textDecoration: getTextDecoration(
+          stringAttr(node.attrs, "textDecoration"),
+        ),
+        lineHeight,
+        textAlign: getCssTextAlign(node.attrs.align),
+      }}
+      onChange={(event) => onChange(event.target.value)}
+      onBlur={onCommit}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          onCancel();
+          return;
+        }
+        if (event.key === "Enter" && !event.shiftKey) {
+          event.preventDefault();
+          onCommit();
+        }
+      }}
+    />
+  );
+}
+
 function PanelHeader({
   title,
   description,
@@ -1403,7 +2617,9 @@ function SceneNodeRenderer({
   automationType,
   previewMode,
   templateAssetsById,
+  editingTextNodeId,
   onSelect,
+  onTextEditStart,
   onChange,
 }: {
   node: SceneNode;
@@ -1411,11 +2627,15 @@ function SceneNodeRenderer({
   automationType: AutomationType;
   previewMode: BindingPreviewMode;
   templateAssetsById: Map<string, TemplateAsset>;
+  editingTextNodeId: string | null;
   onSelect: (nodeId: string) => void;
+  onTextEditStart: (nodeId: string) => void;
   onChange: (nodeId: string, attrs: SceneNodeAttrs) => void;
 }) {
   const nodeId = stringAttr(node.attrs, "id");
   const isBackground = isBackgroundNode(node);
+  const isVisible = node.attrs.visible !== false;
+  const isLocked = isLockedNode(node);
   const children = node.children?.map((child) => (
     <SceneNodeRenderer
       key={nodeKey(child)}
@@ -1424,10 +2644,15 @@ function SceneNodeRenderer({
       automationType={automationType}
       previewMode={previewMode}
       templateAssetsById={templateAssetsById}
+      editingTextNodeId={editingTextNodeId}
       onSelect={onSelect}
+      onTextEditStart={onTextEditStart}
       onChange={onChange}
     />
   ));
+  if (!isVisible) {
+    return null;
+  }
   const sharedProps = nodeId
     ? {
         id: nodeId,
@@ -1438,9 +2663,11 @@ function SceneNodeRenderer({
             nodeRefs.current.delete(nodeId);
           }
         },
-        draggable: isBackground ? node.className === "Image" : true,
+        draggable: !isLocked && (isBackground ? node.className === "Image" : true),
         onClick: () => onSelect(nodeId),
         onTap: () => onSelect(nodeId),
+        onDragStart: () => onSelect(nodeId),
+        onTransformStart: () => onSelect(nodeId),
         onDragEnd: (event: Konva.KonvaEventObject<DragEvent>) => {
           onChange(nodeId, {
             x: Math.round(event.target.x()),
@@ -1483,19 +2710,46 @@ function SceneNodeRenderer({
   }
 
   if (node.className === "Text") {
+    const text = resolveTextContent(node.attrs, automationType, previewMode);
+    const baseFontSize = numberAttr(node.attrs, "fontSize", 48);
+    const fontFamily = stringAttr(node.attrs, "fontFamily") ?? "Arial";
+    const lineHeight = numberAttr(node.attrs, "lineHeight", 1);
+    const overflowMode = getTextOverflowMode(node.attrs.overflowMode);
+    const width = numberAttr(node.attrs, "width", 300);
+    const height = optionalNumberAttr(node.attrs, "height");
+    const fontSize =
+      overflowMode === "shrink" && height
+        ? calculateTextFit(
+            text,
+            fontFamily,
+            width,
+            height,
+            baseFontSize,
+            measureTextForFit,
+          )
+        : baseFontSize;
+
     return (
       <KonvaText
         {...sharedProps}
         x={numberAttr(node.attrs, "x", 0)}
         y={numberAttr(node.attrs, "y", 0)}
-        width={numberAttr(node.attrs, "width", 300)}
-        height={optionalNumberAttr(node.attrs, "height")}
-        text={resolveTextContent(node.attrs, automationType, previewMode)}
-        fontSize={numberAttr(node.attrs, "fontSize", 48)}
-        fontFamily={stringAttr(node.attrs, "fontFamily") ?? "Arial"}
+        width={width}
+        height={height}
+        visible={nodeId !== editingTextNodeId}
+        text={overflowMode === "ellipsis" ? ellipsizeText(text, width, fontSize) : text}
+        fontSize={fontSize}
+        fontFamily={fontFamily}
         fontStyle={stringAttr(node.attrs, "fontStyle") ?? "normal"}
+        textDecoration={getTextDecoration(
+          stringAttr(node.attrs, "textDecoration"),
+        )}
         fill={stringAttr(node.attrs, "fill") ?? "#ffffff"}
         align={stringAttr(node.attrs, "align") ?? "left"}
+        lineHeight={lineHeight}
+        wrap={overflowMode === "fixed" || overflowMode === "ellipsis" ? "none" : "word"}
+        onDblClick={() => nodeId && onTextEditStart(nodeId)}
+        onDblTap={() => nodeId && onTextEditStart(nodeId)}
       />
     );
   }
@@ -1544,39 +2798,71 @@ function SceneImage({
 
   if (!src || !image) {
     return (
-      <Rect
+      <Group
         {...sharedProps}
         x={x}
         y={y}
         width={width}
         height={height}
-        fill="#e5e7eb"
-      />
+        clipX={0}
+        clipY={0}
+        clipWidth={width}
+        clipHeight={height}
+      >
+        <Rect
+          x={0}
+          y={0}
+          width={width}
+          height={height}
+          fill="#e5e7eb"
+        />
+      </Group>
     );
   }
 
   const naturalWidth = image.naturalWidth || image.width || 1;
   const naturalHeight = image.naturalHeight || image.height || 1;
-  const crop = isBackgroundNodeAttrs(attrs)
-    ? { x: 0, y: 0, width: naturalWidth, height: naturalHeight }
+  const fit = isBackgroundNodeAttrs(attrs)
+    ? {
+        crop: { x: 0, y: 0, width: naturalWidth, height: naturalHeight },
+        render: { x: 0, y: 0, width, height },
+      }
     : calculateObjectFit(
         naturalWidth,
         naturalHeight,
         width,
         height,
         objectFit,
-      ).crop;
+      );
 
   return (
-    <KonvaImage
+    <Group
       {...sharedProps}
       x={x}
       y={y}
       width={width}
       height={height}
-      image={image}
-      crop={crop}
-    />
+      clipX={0}
+      clipY={0}
+      clipWidth={width}
+      clipHeight={height}
+    >
+      <Rect
+        x={0}
+        y={0}
+        width={width}
+        height={height}
+        fill="rgba(0,0,0,0)"
+      />
+      <KonvaImage
+        x={fit.render.x}
+        y={fit.render.y}
+        width={fit.render.width}
+        height={fit.render.height}
+        image={image}
+        crop={fit.crop}
+      />
+    </Group>
   );
 }
 
@@ -1585,11 +2871,13 @@ function NodePropertiesPanel({
   automationType,
   previewMode,
   onChange,
+  onDelete,
 }: {
   node: SceneNode;
   automationType: AutomationType;
   previewMode: BindingPreviewMode;
   onChange: (attrs: SceneNodeAttrs) => void;
+  onDelete: () => void;
 }) {
   const t = useTranslations("app.automations.editor");
   const isText = node.className === "Text";
@@ -1602,129 +2890,196 @@ function NodePropertiesPanel({
   const availableTextBindingKeys = isText
     ? getAvailableTextBindingKeys(automationType)
     : [];
-  const hasTextBindingOptions = availableTextBindingKeys.length > 0;
   const imageBindingKey = isImage ? getImageBindingKey(node.attrs.bindingKey) : null;
   const imageAssetId = isImage ? stringAttr(node.attrs, "assetId") : null;
-  const contentMode = textBindingKey ? "variable" : "fixed";
+  const canDelete = !isBackgroundNode(node);
+
+  const fontStyle = stringAttr(node.attrs, "fontStyle");
+  const { bold, italic } = parseKonvaFontStyle(fontStyle);
+  const underlined = getTextDecoration(stringAttr(node.attrs, "textDecoration")) === "underline";
+  const isUppercase = getTextTransform(node.attrs.textTransform) === "uppercase";
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        <NumberField
-          label={t("width")}
-          value={numberAttr(node.attrs, "width", 0)}
-          min={1}
-          onChange={(value) => onChange({ width: value })}
-        />
-        <NumberField
-          label={t("height")}
-          value={numberAttr(node.attrs, "height", 0)}
-          min={0}
-          onChange={(value) => onChange({ height: value })}
-        />
-      </div>
+    <div className="min-w-0 space-y-2">
+      {canDelete ? (
+        <Button
+          type="button"
+          variant="destructive"
+          size="xs"
+          className="h-7 w-full text-xs"
+          onClick={onDelete}
+        >
+          <Trash2 aria-hidden />
+          {t("deleteNode")}
+        </Button>
+      ) : null}
 
-      {supportsFill ? (
-        <div className="space-y-2">
-          <Label htmlFor="node-fill">{t("fill")}</Label>
-          <Input
-            id="node-fill"
-            type="color"
-            value={stringAttr(node.attrs, "fill") ?? "#000000"}
-            className="h-11 p-1"
-            onChange={(event) => onChange({ fill: event.target.value })}
+      {!isText ? (
+        <div className="grid grid-cols-2 gap-1.5">
+          <PanelNumberInput
+            ariaLabel={t("width")}
+            value={numberAttr(node.attrs, "width", 0)}
+            min={1}
+            className="h-7 w-full min-w-0 px-1.5 text-xs"
+            onChange={(value) => onChange({ width: value })}
+          />
+          <PanelNumberInput
+            ariaLabel={t("height")}
+            value={numberAttr(node.attrs, "height", 0)}
+            min={0}
+            className="h-7 w-full min-w-0 px-1.5 text-xs"
+            onChange={(value) => onChange({ height: value })}
           />
         </div>
       ) : null}
 
+      {supportsFill && !isText ? (
+        <Input
+          type="color"
+          aria-label={t("fill")}
+          value={stringAttr(node.attrs, "fill") ?? "#000000"}
+          className="h-7 w-9 shrink-0 p-0.5"
+          onChange={(event) => onChange({ fill: event.target.value })}
+        />
+      ) : null}
+
       {isText ? (
         <>
-          <div className="space-y-3 border-t pt-4">
-            <div>
-              <h3 className="text-sm font-medium">{t("content")}</h3>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t("contentDescription")}
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="text-content-mode">{t("contentMode")}</Label>
+          {textBindingKey ? (
+            <div className="space-y-1.5">
               <Select
-                value={contentMode}
-                onValueChange={(value) => {
-                  if (value === "fixed") {
-                    onChange({
-                      bindingKey: undefined,
-                      text: resolveTextContent(node.attrs, automationType, "design"),
-                    });
-                    return;
-                  }
-
-                  const nextBindingKey =
-                    textBindingKey ?? availableTextBindingKeys[0];
-                  if (!nextBindingKey) {
-                    return;
-                  }
-                  onChange({
-                    bindingKey: nextBindingKey,
-                    text: undefined,
-                  });
-                }}
+                value={textBindingKey}
+                onValueChange={(value) =>
+                  onChange({ bindingKey: value as TextBindingKey, text: undefined })
+                }
               >
-                <SelectTrigger id="text-content-mode" className="w-full">
+                <SelectTrigger
+                  aria-label={t("variableBinding")}
+                  className="h-7 w-full min-w-0 text-xs"
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="fixed">{t("fixedText")}</SelectItem>
-                  <SelectItem value="variable" disabled={!hasTextBindingOptions}>
-                    {t("variable")}
-                  </SelectItem>
+                  {availableTextBindingKeys.map((bindingKey) => (
+                    <SelectItem key={bindingKey} value={bindingKey}>
+                      {t(`bindings.${bindingKey}`)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-            </div>
-            {textBindingKey ? (
-              <div className="space-y-2">
-                <Label htmlFor="text-binding-key">{t("variableBinding")}</Label>
-                <Select
-                  value={textBindingKey}
-                  onValueChange={(value) =>
-                    onChange({ bindingKey: value as TextBindingKey, text: undefined })
-                  }
-                >
-                  <SelectTrigger id="text-binding-key" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableTextBindingKeys.map((bindingKey) => (
-                      <SelectItem key={bindingKey} value={bindingKey}>
-                        {t(`bindings.${bindingKey}`)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  {t("resolvedPreview", {
-                    value: resolveTextContent(node.attrs, automationType, previewMode),
-                  })}
-                </p>
-              </div>
-            ) : null}
-          </div>
-          {!textBindingKey ? (
-            <div className="space-y-2">
-              <Label htmlFor="node-text">{t("text")}</Label>
-              <Input
-                id="node-text"
-                value={stringAttr(node.attrs, "text") ?? ""}
-                onChange={(event) => onChange({ text: event.target.value })}
-              />
+              <p className="truncate text-[10px] text-muted-foreground">
+                {t("resolvedPreview", {
+                  value: resolveTextContent(node.attrs, automationType, previewMode),
+                })}
+              </p>
             </div>
           ) : null}
-          <NumberField
-            label={t("fontSize")}
-            value={numberAttr(node.attrs, "fontSize", 48)}
-            min={1}
-            onChange={(value) => onChange({ fontSize: value })}
-          />
+
+          <div
+            className={
+              textBindingKey
+                ? "min-w-0 space-y-1.5 border-t pt-2"
+                : "min-w-0 space-y-1.5"
+            }
+          >
+            <FontPicker
+              value={stringAttr(node.attrs, "fontFamily") ?? "Arial"}
+              onChange={(fontFamily) => onChange({ fontFamily })}
+              searchPlaceholder={t("fontSearchPlaceholder")}
+              noResultsLabel={t("fontSearchNoResults")}
+            />
+            <PanelStepperInput
+              ariaLabel={t("fontSize")}
+              decreaseLabel={t("decreaseFontSize")}
+              increaseLabel={t("increaseFontSize")}
+              value={numberAttr(node.attrs, "fontSize", 48)}
+              min={1}
+              max={400}
+              step={1}
+              onChange={(value) => onChange({ fontSize: value })}
+            />
+            <TextColorPicker
+              label={t("fill")}
+              value={stringAttr(node.attrs, "fill") ?? "#000000"}
+              onChange={(fill) => onChange({ fill })}
+            />
+            <div className="flex min-w-0 flex-nowrap items-center gap-0.5 border border-input bg-muted/20 p-1.5">
+              <TextStyleToggles
+                bold={bold}
+                italic={italic}
+                underline={underlined}
+                uppercase={isUppercase}
+                boldLabel={t("bold")}
+                italicLabel={t("italic")}
+                underlineLabel={t("underline")}
+                uppercaseLabel={t("textTransformUppercase")}
+                onBoldToggle={() =>
+                  onChange({
+                    fontStyle: buildKonvaFontStyle(!bold, italic),
+                  })
+                }
+                onItalicToggle={() =>
+                  onChange({
+                    fontStyle: buildKonvaFontStyle(bold, !italic),
+                  })
+                }
+                onUnderlineToggle={() =>
+                  onChange({
+                    textDecoration: toggleUnderline(
+                      stringAttr(node.attrs, "textDecoration"),
+                    ),
+                  })
+                }
+                onUppercaseToggle={() =>
+                  onChange({
+                    textTransform: isUppercase ? "none" : "uppercase",
+                  })
+                }
+              />
+              <div
+                aria-hidden
+                className="mx-0.5 h-6 w-px shrink-0 bg-border"
+              />
+              <TextAlignmentControl
+                compact
+                value={stringAttr(node.attrs, "align") ?? "left"}
+                onChange={(align) => onChange({ align })}
+              />
+            </div>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <Select
+                value={getTextOverflowMode(node.attrs.overflowMode)}
+                onValueChange={(value) =>
+                  onChange({ overflowMode: value as TextOverflowMode })
+                }
+              >
+                <SelectTrigger
+                  aria-label={t("overflowMode")}
+                  className="h-7 min-w-0 flex-1 text-xs"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="wrap">{t("overflowWrap")}</SelectItem>
+                  <SelectItem value="shrink">{t("overflowShrink")}</SelectItem>
+                  <SelectItem value="ellipsis">{t("overflowEllipsis")}</SelectItem>
+                  <SelectItem value="fixed">{t("overflowFixed")}</SelectItem>
+                </SelectContent>
+              </Select>
+              <PanelStepperInput
+                ariaLabel={t("lineHeight")}
+                decreaseLabel={t("decreaseLineHeight")}
+                increaseLabel={t("increaseLineHeight")}
+                value={numberAttr(node.attrs, "lineHeight", 1)}
+                min={0.5}
+                max={3}
+                step={0.1}
+                decimals={1}
+                className="flex h-7 w-[8.5rem] shrink-0 items-stretch overflow-hidden border border-input/70 bg-muted/10"
+                onChange={(value) => onChange({ lineHeight: value })}
+              />
+            </div>
+          </div>
         </>
       ) : null}
 
@@ -1797,38 +3152,6 @@ function NodePropertiesPanel({
   );
 }
 
-function NumberField({
-  label,
-  value,
-  min,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  min?: number;
-  onChange: (value: number) => void;
-}) {
-  const id = `number-${label.toLowerCase().replace(/\s+/g, "-")}`;
-
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
-      <Input
-        id={id}
-        type="number"
-        min={min}
-        value={Number.isFinite(value) ? value : 0}
-        onChange={(event) => {
-          const nextValue = Number(event.target.value);
-          if (Number.isFinite(nextValue)) {
-            onChange(nextValue);
-          }
-        }}
-      />
-    </div>
-  );
-}
-
 function useStageScale(logicalWidth: number, logicalHeight: number) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -1854,6 +3177,82 @@ function useStageScale(logicalWidth: number, logicalHeight: number) {
   }, [logicalHeight, logicalWidth]);
 
   return { containerRef, scale };
+}
+
+function createInitialHistory(sceneDocument: SceneDocument | null): SceneHistory {
+  return sceneDocument ? { entries: [sceneDocument], index: 0 } : { entries: [], index: -1 };
+}
+
+function flushInlineTextEditingState({
+  sceneDocument,
+  history,
+  editingTextNodeId,
+  editingTextValue,
+}: {
+  sceneDocument: SceneDocument | null;
+  history: SceneHistory;
+  editingTextNodeId: string | null;
+  editingTextValue: string;
+}): {
+  sceneDocument: SceneDocument | null;
+  history: SceneHistory;
+  didFlush: boolean;
+} {
+  if (!sceneDocument || !editingTextNodeId) {
+    return { sceneDocument, history, didFlush: false };
+  }
+
+  const nextSceneDocument = updateSceneNodeAttrs(sceneDocument, editingTextNodeId, {
+    text: editingTextValue,
+  });
+
+  return {
+    sceneDocument: nextSceneDocument,
+    history: pushHistoryEntry(history, nextSceneDocument),
+    didFlush: true,
+  };
+}
+
+function pushHistoryEntry(
+  history: SceneHistory,
+  sceneDocument: SceneDocument,
+): SceneHistory {
+  const current = history.entries[history.index];
+  if (current && JSON.stringify(current) === JSON.stringify(sceneDocument)) {
+    return history;
+  }
+
+  const entries = history.entries.slice(0, history.index + 1);
+  entries.push(sceneDocument);
+  const trimmedEntries =
+    entries.length > MAX_HISTORY_ENTRIES
+      ? entries.slice(entries.length - MAX_HISTORY_ENTRIES)
+      : entries;
+
+  return {
+    entries: trimmedEntries,
+    index: trimmedEntries.length - 1,
+  };
+}
+
+function replaceCurrentHistoryEntry(
+  history: SceneHistory,
+  sceneDocument: SceneDocument,
+): SceneHistory {
+  if (history.index < 0) {
+    return createInitialHistory(sceneDocument);
+  }
+
+  const entries = [...history.entries];
+  entries[history.index] = sceneDocument;
+  return { entries, index: history.index };
+}
+
+function getContentLayerChildren(sceneDocument: SceneDocument): SceneNode[] {
+  return (
+    sceneDocument.stage.children?.find((node) => node.className === "Layer")
+      ?.children ?? []
+  );
 }
 
 function findSceneNodeById(node: SceneNode, nodeId: string): SceneNode | null {
@@ -1901,6 +3300,73 @@ function updateNodeAttrs(
     ...nextNode,
     children: node.children.map((child) => updateNodeAttrs(child, nodeId, attrs)),
   };
+}
+
+function removeSceneNode(
+  sceneDocument: SceneDocument,
+  nodeIdToRemove: string,
+): SceneDocument {
+  return {
+    ...sceneDocument,
+    stage: removeNodeFromTree(sceneDocument.stage, nodeIdToRemove),
+  };
+}
+
+function removeNodeFromTree(node: SceneNode, nodeIdToRemove: string): SceneNode {
+  if (!node.children) {
+    return node;
+  }
+
+  return {
+    ...node,
+    children: node.children
+      .filter((child) => stringAttr(child.attrs, "id") !== nodeIdToRemove)
+      .map((child) => removeNodeFromTree(child, nodeIdToRemove)),
+  };
+}
+
+function reorderContentLayerNode(
+  sceneDocument: SceneDocument,
+  draggedNodeId: string,
+  targetNodeId: string,
+  placement: "above" | "below",
+): SceneDocument {
+  let hasUpdated = false;
+  const stageChildren = sceneDocument.stage.children?.map((child) => {
+    if (hasUpdated || child.className !== "Layer") {
+      return child;
+    }
+
+    const children = [...(child.children ?? [])];
+    const draggedIndex = children.findIndex(
+      (node) => stringAttr(node.attrs, "id") === draggedNodeId,
+    );
+    if (draggedIndex < 0 || isBackgroundNode(children[draggedIndex])) {
+      return child;
+    }
+
+    const [draggedNode] = children.splice(draggedIndex, 1);
+    if (!draggedNode) {
+      return child;
+    }
+
+    const targetIndex = children.findIndex(
+      (node) => stringAttr(node.attrs, "id") === targetNodeId,
+    );
+    if (targetIndex < 0) {
+      return child;
+    }
+
+    const insertionIndex =
+      placement === "above" ? targetIndex + 1 : targetIndex;
+    children.splice(Math.max(insertionIndex, 1), 0, draggedNode);
+    hasUpdated = true;
+    return { ...child, children };
+  });
+
+  return stageChildren && hasUpdated
+    ? { ...sceneDocument, stage: { ...sceneDocument.stage, children: stageChildren } }
+    : sceneDocument;
 }
 
 function mergeSceneNodeAttrs(
@@ -1954,6 +3420,76 @@ function appendSceneNodeToFirstLayer(
       ],
     },
   };
+}
+
+function createFixedTextNode(
+  sceneDocument: SceneDocument,
+  nodeId: string,
+  preset: TextPresetKind,
+  point: { x: number; y: number },
+  text: string,
+): SceneNode {
+  const stageWidth = numberAttr(sceneDocument.stage.attrs, "width", 1080);
+  const stageHeight = numberAttr(sceneDocument.stage.attrs, "height", 1080);
+  const style = TEXT_PRESET_STYLES[preset];
+  const lineHeight = style.lineHeight ?? 1.2;
+  const width = Math.max(
+    estimateSingleLineTextWidth(text, style.fontSize),
+    Math.round(stageWidth * 0.35),
+  );
+  const height = Math.round(style.fontSize * lineHeight);
+  const x = point.x - Math.round(width / 2);
+  const y = point.y - Math.round(height / 2);
+  const minX = Math.min(0, stageWidth - width);
+  const maxX = Math.max(0, stageWidth - width);
+  const minY = Math.min(0, stageHeight - height);
+  const maxY = Math.max(0, stageHeight - height);
+
+  return {
+    className: "Text",
+    attrs: {
+      id: nodeId,
+      name: preset,
+      x: Math.round(clamp(x, minX, maxX)),
+      y: Math.round(clamp(y, minY, maxY)),
+      width,
+      height,
+      text,
+      fontSize: style.fontSize,
+      fontFamily: "Arial",
+      fontStyle: style.fontStyle ?? "normal",
+      lineHeight,
+      fill: "#111827",
+      align: "center",
+    },
+  };
+}
+
+function parseTextPresetDragPayload(raw: string): TextPresetDragPayload | null {
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<TextPresetDragPayload>;
+    if (
+      parsed.kind === "text-preset" &&
+      (parsed.preset === "heading" ||
+        parsed.preset === "subheading" ||
+        parsed.preset === "body") &&
+      typeof parsed.text === "string"
+    ) {
+      return {
+        kind: "text-preset",
+        preset: parsed.preset,
+        text: parsed.text,
+      };
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 }
 
 function createTextBindingNode(
@@ -2057,6 +3593,25 @@ function isBackgroundNode(node: SceneNode): boolean {
 
 function isBackgroundNodeAttrs(attrs: SceneNodeAttrs): boolean {
   return stringAttr(attrs, "id") === BACKGROUND_NODE_ID;
+}
+
+function isLockedNode(node: SceneNode): boolean {
+  return node.attrs.locked === true;
+}
+
+function getLayerLabel(node: SceneNode): string {
+  return (
+    stringAttr(node.attrs, "name") ??
+    stringAttr(node.attrs, "text") ??
+    getLayerBindingLabel(node) ??
+    stringAttr(node.attrs, "id") ??
+    node.className
+  );
+}
+
+function getLayerBindingLabel(node: SceneNode): string | null {
+  const bindingKey = stringAttr(node.attrs, "bindingKey");
+  return bindingKey ?? null;
 }
 
 function setSceneBackgroundColor(
@@ -2221,6 +3776,45 @@ function parseAssetDragPayload(rawPayload: string): AssetDragPayload | null {
   return null;
 }
 
+function measureTextForFit(
+  text: string,
+  fontSize: number,
+  fontFamily: string,
+): { width: number; height: number } {
+  const averageCharacterWidth = fontFamily === "Georgia" ? 0.58 : 0.54;
+  const lines = text.split("\n");
+  return {
+    width:
+      Math.max(...lines.map((line) => line.length), 1) *
+      fontSize *
+      averageCharacterWidth,
+    height: lines.length * fontSize,
+  };
+}
+
+function ellipsizeText(text: string, width: number, fontSize: number): string {
+  const maxCharacters = Math.max(Math.floor(width / (fontSize * 0.54)) - 1, 1);
+  if (text.length <= maxCharacters) {
+    return text;
+  }
+
+  return `${text.slice(0, maxCharacters)}...`;
+}
+
+function isEditableShortcutTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false;
+  }
+
+  const tagName = target.tagName.toLowerCase();
+  return (
+    tagName === "input" ||
+    tagName === "textarea" ||
+    tagName === "select" ||
+    target.isContentEditable
+  );
+}
+
 function bakeNodeTransform(node: Konva.Node): SceneNodeAttrs {
   const scaleX = node.scaleX();
   const scaleY = node.scaleY();
@@ -2258,6 +3852,12 @@ function optionalNumberAttr(
 function stringAttr(attrs: SceneNodeAttrs, key: string): string | undefined {
   const value = attrs[key];
   return typeof value === "string" ? value : undefined;
+}
+
+function getCssTextAlign(value: unknown): "left" | "center" | "right" | "justify" {
+  return value === "center" || value === "right" || value === "justify"
+    ? value
+    : "left";
 }
 
 function clamp(value: number, min: number, max: number): number {

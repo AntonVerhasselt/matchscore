@@ -1,3 +1,8 @@
+import {
+  isValidKonvaFontStyle,
+  isValidTextDecoration,
+} from "./text-style";
+
 type CanvasPreset =
   | "instagram_square"
   | "instagram_portrait"
@@ -53,6 +58,32 @@ export type ImageBindingKey = (typeof IMAGE_BINDING_KEYS)[number];
 export type BindingPreviewMode = "design" | "preview";
 
 export type ObjectFitMode = "cover" | "contain" | "fill";
+export type TextOverflowMode = "wrap" | "shrink" | "ellipsis" | "fixed";
+export type TextTransform = "none" | "uppercase";
+
+export {
+  buildKonvaFontStyle,
+  getKonvaFontStyle,
+  getTextDecoration,
+  isUnderline,
+  isValidKonvaFontStyle,
+  isValidTextDecoration,
+  parseKonvaFontStyle,
+  toggleUnderline,
+} from "./text-style";
+export type { KonvaFontStyle } from "./text-style";
+
+export {
+  TEMPLATE_FONT_OPTIONS,
+  buildGoogleFontsStylesheetUrl,
+  collectSceneFontFamilies,
+  isGoogleFontFamily,
+  isSystemFontFamily,
+  loadGoogleFonts,
+  searchTemplateFonts,
+  shouldLoadGoogleFont,
+} from "./google-fonts";
+export type { FontSource, TemplateFontOption } from "./google-fonts";
 
 export type ObjectFitRect = {
   x: number;
@@ -116,6 +147,7 @@ const ALLOWED_NODE_CLASSES = new Set<SceneNodeClassName>([
 
 const EDITOR_ONLY_ATTRS = new Set([
   "draggable",
+  "listening",
   "isDragging",
   "isSelected",
   "selected",
@@ -128,7 +160,21 @@ const EDITOR_ONLY_ATTRS = new Set([
   "temporaryId",
   "ui",
   "selection",
+  "overlay",
+  "overlayLayer",
+  "editingText",
 ]);
+
+const TEXT_OVERFLOW_MODES = new Set<TextOverflowMode>([
+  "wrap",
+  "shrink",
+  "ellipsis",
+  "fixed",
+]);
+
+const TEXT_TRANSFORMS = new Set<TextTransform>(["none", "uppercase"]);
+
+const TEXT_ALIGNMENTS = new Set(["left", "center", "right", "justify"]);
 
 export function normalizeSceneDocument(
   rawSceneDocument: unknown,
@@ -210,12 +256,13 @@ export function resolveTextContent(
 ): string {
   const bindingKey = getTextBindingKey(attrs.bindingKey, automationType);
   if (!bindingKey) {
-    return stringAttr(attrs, "text") ?? "";
+    return displayText(stringAttr(attrs, "text") ?? "", attrs);
   }
 
-  return previewMode === "preview"
+  const resolved = previewMode === "preview"
     ? TEXT_BINDING_PREVIEW_VALUES[bindingKey]
     : TEXT_BINDING_DESIGN_VALUES[bindingKey];
+  return displayText(resolved, attrs);
 }
 
 export function resolveImageSource(
@@ -238,6 +285,63 @@ export function collectSceneAssetIds(rawSceneDocument: unknown): string[] {
 
 export function getObjectFitMode(value: unknown): ObjectFitMode {
   return value === "contain" || value === "fill" ? value : "cover";
+}
+
+export function getTextOverflowMode(value: unknown): TextOverflowMode {
+  return TEXT_OVERFLOW_MODES.has(value as TextOverflowMode)
+    ? (value as TextOverflowMode)
+    : "wrap";
+}
+
+export function getTextTransform(value: unknown): TextTransform {
+  return TEXT_TRANSFORMS.has(value as TextTransform)
+    ? (value as TextTransform)
+    : "none";
+}
+
+export function displayText(text: string, attrs: SceneNodeAttrs): string {
+  return getTextTransform(attrs.textTransform) === "uppercase"
+    ? text.toUpperCase()
+    : text;
+}
+
+export function calculateTextFit(
+  text: string,
+  fontFamily: string,
+  maxWidth: number,
+  maxHeight: number,
+  baseFontSize: number,
+  measure: (
+    text: string,
+    fontSize: number,
+    fontFamily: string,
+  ) => { width: number; height: number },
+): number {
+  if (typeof measure !== "function") {
+    throw new TypeError("measure must be a function");
+  }
+
+  if (maxWidth <= 0 || maxHeight <= 0 || baseFontSize <= 0) {
+    return 1;
+  }
+
+  let lo = 1;
+  let hi = Math.max(Math.floor(baseFontSize), 1);
+  let best = lo;
+
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    const measured = measure(text, mid, fontFamily);
+
+    if (measured.width <= maxWidth && measured.height <= maxHeight) {
+      best = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+
+  return best;
 }
 
 export function calculateObjectFit(
@@ -422,6 +526,8 @@ function validateSceneNodeAttrs(
   attrs: SceneNodeAttrs,
   automationType: AutomationType,
 ) {
+  validateCommonSceneNodeAttrs(attrs);
+
   const hasAssetId = isNonEmptyString(attrs.assetId);
   const hasBindingKey = isNonEmptyString(attrs.bindingKey);
 
@@ -437,6 +543,7 @@ function validateSceneNodeAttrs(
     ) {
       throw new Error("Invalid text bindingKey for automation type");
     }
+    validateTextSceneNodeAttrs(attrs);
     return;
   }
 
@@ -458,11 +565,70 @@ function validateSceneNodeAttrs(
     return;
   }
 
+  if (attrs.overflowMode !== undefined) {
+    throw new Error("overflowMode is only supported on Text nodes");
+  }
+  if (attrs.textTransform !== undefined) {
+    throw new Error("textTransform is only supported on Text nodes");
+  }
   if (hasAssetId) {
     throw new Error("assetId is only supported on Image nodes");
   }
   if (hasBindingKey) {
     throw new Error("bindingKey is only supported on Text and Image nodes");
+  }
+}
+
+function validateCommonSceneNodeAttrs(attrs: SceneNodeAttrs) {
+  if (attrs.name !== undefined && typeof attrs.name !== "string") {
+    throw new Error("Scene node name must be a string");
+  }
+  if (attrs.visible !== undefined && typeof attrs.visible !== "boolean") {
+    throw new Error("Scene node visible attr must be a boolean");
+  }
+  if (attrs.locked !== undefined && typeof attrs.locked !== "boolean") {
+    throw new Error("Scene node locked attr must be a boolean");
+  }
+}
+
+function validateTextSceneNodeAttrs(attrs: SceneNodeAttrs) {
+  if (
+    attrs.overflowMode !== undefined &&
+    !TEXT_OVERFLOW_MODES.has(attrs.overflowMode as TextOverflowMode)
+  ) {
+    throw new Error("Invalid text overflowMode");
+  }
+  if (
+    attrs.textTransform !== undefined &&
+    !TEXT_TRANSFORMS.has(attrs.textTransform as TextTransform)
+  ) {
+    throw new Error("Invalid textTransform");
+  }
+  if (attrs.align !== undefined && !TEXT_ALIGNMENTS.has(attrs.align as string)) {
+    throw new Error("Invalid text alignment");
+  }
+  if (
+    attrs.lineHeight !== undefined &&
+    (typeof attrs.lineHeight !== "number" ||
+      !Number.isFinite(attrs.lineHeight) ||
+      attrs.lineHeight <= 0)
+  ) {
+    throw new Error("Invalid text lineHeight");
+  }
+  if (attrs.fontFamily !== undefined && typeof attrs.fontFamily !== "string") {
+    throw new Error("Invalid text fontFamily");
+  }
+  if (
+    attrs.fontStyle !== undefined &&
+    !isValidKonvaFontStyle(attrs.fontStyle)
+  ) {
+    throw new Error("Invalid text fontStyle");
+  }
+  if (
+    attrs.textDecoration !== undefined &&
+    !isValidTextDecoration(attrs.textDecoration)
+  ) {
+    throw new Error("Invalid text textDecoration");
   }
 }
 

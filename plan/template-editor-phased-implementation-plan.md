@@ -5,7 +5,7 @@
 > Branch context: `feature/club-automations-templates`  
 > Scope: Convex database design, automation/template APIs, react-konva editor, storage conventions, server render foundation, and phase-by-phase testing.  
 > Non-scope for MVP: match/calendar storage, actual scheduled posting, Meta/social posting, subscription/watermark enforcement, and `starting_eleven`.
-> Current implementation status: Phases 1-4 are implemented on `templates-phase-4`; Phases 5-7 remain planned work.
+> Current implementation status: Phases 1-5 are implemented on `templates-phase-5`; Phases 6-7 remain planned work.
 
 This document combines the approved product/backend brief and the react-konva technical guide into one phased implementation plan. Each phase must produce a small integrated slice: backend state, frontend UI, automated checks, browser verification, and database verification. After a phase passes those checks, the implementer should stop and hand it to the user for manual testing before continuing.
 
@@ -1275,6 +1275,8 @@ Phase 4 is complete only when static images are stored in Convex Storage, refere
 
 Goal: turn the basic editor into a practical Canva-like MVP while staying within the approved Konva subset.
 
+Implementation status: completed on `templates-phase-5`, with the deferred items noted below.
+
 ### Backend Scope
 
 No new tables should be needed.
@@ -1284,8 +1286,9 @@ Extend validation if these attrs are added:
 - `overflowMode`
 - `textTransform`
 - `visible`
-- `listening` or lock-related persisted attrs, if any
 - `name`
+
+Locking persists as `attrs.locked: boolean`. `listening` is editor-only and is stripped on save; it is not a persisted lock mechanism.
 
 Ensure save validation still strips non-persisted UI state:
 
@@ -1299,7 +1302,10 @@ Ensure save validation still strips non-persisted UI state:
 
 Implement:
 
+- Fix existing image `objectFit: "contain"` rendering so the editor applies both the shared `calculateObjectFit` crop and render rectangles. This should happen before server render parity work because Phase 6 depends on browser/server image layout matching.
 - DOM textarea overlay for editing `Konva.Text` on double-click.
+  - Double-click editing applies to fixed text only.
+  - Variable text nodes remain edited through the binding dropdown; double-clicking them should not silently convert them to fixed text.
 - Text style controls:
   - font family from allowed system stacks
   - font size
@@ -1316,11 +1322,14 @@ Implement:
 - Layer panel:
   - row per content node
   - select on click
-  - reorder by array order
+  - reorder by drag-and-drop with a drop indicator between rows; the full card is draggable, not only the grip icon
   - visibility toggle
-  - lock toggle
-  - badge when `bindingKey` exists
+  - lock toggle persisted as `attrs.locked`
+  - per-row delete icon for non-background nodes
+  - background row shows an `Achtergrond` / background badge only; variable-binding badges were intentionally omitted for cleaner rows
   - keep the canonical background node at the bottom or manage it through the Background tab rather than normal layer deletion
+  - persisted `visible: false` hides the node in the editor and should hide it in future server render
+  - canvas drag/transform auto-selects the moved node
 - Undo/redo:
   - snapshot on drag end
   - transform end
@@ -1335,14 +1344,16 @@ Implement:
   - redo
   - save
 - Normal image node deletion:
-  - allow removing uploaded sponsor/logo image nodes from the scene
-  - after a template no longer references an asset and the template is saved, `deleteTemplateAsset` can delete the asset row and storage blob
+  - allow removing uploaded sponsor/logo image nodes from the scene via Delete/Backspace, the properties panel delete button, or the layer-row trash icon
+  - after a template no longer references an asset and the template is saved, the existing Assets panel delete flow can remove the asset row and storage blob; there is no automatic asset cleanup on save
+- Do not add new text or shape insertion tools in Phase 5. Existing text and shape nodes can be edited, reordered, hidden, locked, and deleted, but new text/shape creation is deferred to Phase 7.
 - Overlay layer:
   - center crosshair or safe-zone guides if useful
   - `listening={false}`
   - never persisted
+  - deferred: not implemented in Phase 5
 - Performance cleanup:
-  - debounce numeric property inputs
+  - debounce numeric property inputs — deferred; numeric fields currently commit on each change
   - avoid manual `stage.draw()` except targeted `batchDraw()` after bulk hydration
   - keep node count target under 30 for MVP templates
 
@@ -1356,10 +1367,10 @@ Important transformer rule:
 Automated checks:
 
 - Unit tests for `calculateTextFit` with mock measure function.
-- Unit tests for layer reorder.
-- Unit tests for history stack behavior.
-- Normalizer tests confirming overlay and editor attrs are stripped.
+- Normalizer tests for Phase 5 attrs (`visible`, `locked`, `overflowMode`, `textTransform`, `name`, `fontFamily`, `lineHeight`, `align`) and rejection of invalid values.
+- Normalizer tests confirming editor-only attrs such as `draggable` and `listening` are stripped.
 - Type/lint/build checks.
+- Deferred automated coverage: dedicated unit tests for layer reorder helpers and history stack behavior.
 
 Browser checks:
 
@@ -1391,6 +1402,26 @@ User testing script:
 7. Confirm only the intended design state persisted.
 
 Phase 5 is complete only when the editor feels usable for static layouts and the saved JSON remains clean.
+
+### Phase 5 Implementation Notes
+
+Implemented in `components/template-editor/static-template-editor.tsx` and `lib/template-scene/index.ts`:
+
+- Image `objectFit: "contain"` uses shared `calculateObjectFit` crop and render rectangles in `SceneImage`.
+- Fixed-text double-click editing via DOM textarea overlay; variable text stays binding-based.
+- Text controls: font family, size, fill, alignment, line height, uppercase transform, overflow modes (`wrap`, `shrink`, `ellipsis`, `fixed`).
+- Layer panel with select, drag reorder, visibility, lock, delete, and background handling.
+- Undo/redo with 50-entry cap; toolbar buttons plus Cmd/Ctrl+Z, Cmd/Ctrl+Shift+Z, and Cmd/Ctrl+Y.
+- Keyboard Delete/Backspace removes the selected non-background node; Cmd/Ctrl+S saves.
+- Node deletion from properties panel and layer rows.
+- Canvas drag/transform auto-selects the active node.
+
+Deferred from the original Phase 5 scope:
+
+- Overlay guide layer (center crosshair / safe zones).
+- Debounced numeric property inputs.
+- Dedicated automated tests for reorder/history helpers.
+- Variable-binding badge in the layer list (removed during UX polish).
 
 ## Phase 6 - Server Render Parity Foundation
 
@@ -1489,7 +1520,7 @@ Phase 6 is complete only when the same stored scene can produce a server-rendere
 
 ## Phase 7 - MVP Hardening and Handoff
 
-Goal: stabilize the automation/template MVP before connecting real match data or social posting.
+Goal: stabilize the automation/template MVP before connecting real match data or social posting, and add only the smallest missing authoring tools if they are needed for handoff.
 
 ### Backend Scope
 
@@ -1513,6 +1544,10 @@ Implement or verify:
 
 Implement or verify:
 
+- Basic authoring insertion tools if still needed after Phase 5:
+  - add fixed text from the Text tab
+  - add an allowed `Rect` shape from the Shapes tab
+  - keep unsupported shapes such as `Circle`, `Line`, and `Path` out of the MVP unless the allowed Konva subset is intentionally expanded
 - Delete template dialog.
 - Empty states:
   - automation enabled with zero templates is allowed
