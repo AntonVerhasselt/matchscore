@@ -6,7 +6,8 @@ import {
   requireCurrentMembership,
 } from "./helpers";
 import { normalizePostingChannelStatuses } from "./constants";
-import { createStarterSceneDocument, normalizeSceneDocument } from "./scenes";
+import { normalizeSceneDocument } from "../../lib/template-scene";
+import { createStarterSceneDocument } from "./scenes";
 import {
   automationTypeValidator,
   canvasPresetValidator,
@@ -157,6 +158,7 @@ export const updateTemplate = mutation({
       sceneDocument,
       schemaVersion: 1,
       updatedAt: Date.now(),
+      updatedByUserId: membership.userId,
     });
 
     return null;

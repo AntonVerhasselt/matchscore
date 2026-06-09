@@ -8,7 +8,8 @@ import {
   normalizePostingChannelStatuses,
   POSTING_CHANNELS,
 } from "./constants";
-import { createStarterSceneDocument, normalizeSceneDocument } from "./scenes";
+import { normalizeSceneDocument } from "../../lib/template-scene";
+import { createStarterSceneDocument } from "./scenes";
 
 describe("automation phase 1 foundations", () => {
   test("defines exactly the two MVP automation types", () => {
@@ -160,6 +161,81 @@ describe("automation phase 1 foundations", () => {
     expect(() => normalizeSceneDocument(scene, "instagram_square")).toThrow(
       "Unsupported scene node class",
     );
+  });
+
+  test("accepts image nodes with exactly one external content reference", () => {
+    const scene = createStarterSceneDocument("instagram_square");
+    scene.stage.children?.[0]?.children?.push({
+      className: "Image",
+      attrs: {
+        id: "sponsor-logo",
+        x: 40,
+        y: 40,
+        width: 160,
+        height: 80,
+        assetId: "asset_123",
+      },
+    });
+
+    const normalized = normalizeSceneDocument(scene, "instagram_square");
+
+    expect(normalized.stage.children?.[0]?.children?.[2]).toMatchObject({
+      className: "Image",
+      attrs: {
+        assetId: "asset_123",
+      },
+    });
+  });
+
+  test("rejects image nodes without exactly one external content reference", () => {
+    const withoutReference = createStarterSceneDocument("instagram_square");
+    withoutReference.stage.children?.[0]?.children?.push({
+      className: "Image",
+      attrs: {
+        id: "empty-image",
+        x: 40,
+        y: 40,
+        width: 160,
+        height: 80,
+      },
+    });
+
+    const withBothReferences = createStarterSceneDocument("instagram_square");
+    withBothReferences.stage.children?.[0]?.children?.push({
+      className: "Image",
+      attrs: {
+        id: "ambiguous-image",
+        x: 40,
+        y: 40,
+        width: 160,
+        height: 80,
+        assetId: "asset_123",
+        bindingKey: "homeClubLogo",
+      },
+    });
+
+    const withEmptyReference = createStarterSceneDocument("instagram_square");
+    withEmptyReference.stage.children?.[0]?.children?.push({
+      className: "Image",
+      attrs: {
+        id: "blank-image",
+        x: 40,
+        y: 40,
+        width: 160,
+        height: 80,
+        assetId: " ",
+      },
+    });
+
+    expect(() =>
+      normalizeSceneDocument(withoutReference, "instagram_square"),
+    ).toThrow("Image nodes require exactly one assetId or bindingKey");
+    expect(() =>
+      normalizeSceneDocument(withBothReferences, "instagram_square"),
+    ).toThrow("Image nodes require exactly one assetId or bindingKey");
+    expect(() =>
+      normalizeSceneDocument(withEmptyReference, "instagram_square"),
+    ).toThrow("Image nodes require exactly one assetId or bindingKey");
   });
 
   test("strips editor-only attrs", () => {

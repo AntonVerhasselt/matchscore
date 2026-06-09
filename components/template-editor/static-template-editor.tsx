@@ -1,9 +1,17 @@
 "use client";
 
-import { Save } from "lucide-react";
+import { ArrowLeft, Save } from "lucide-react";
 import type Konva from "konva";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Group,
   Layer,
@@ -20,7 +28,7 @@ import {
   type SceneDocument,
   type SceneNode,
   type SceneNodeAttrs,
-} from "@/convex/automations/scenes";
+} from "@/lib/template-scene";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,11 +48,13 @@ type TemplateEditorTemplate = {
 type StaticTemplateEditorProps = {
   template: TemplateEditorTemplate;
   automationType: AutomationTypeSlug;
+  backHref: string;
 };
 
 export function StaticTemplateEditor({
   template,
   automationType,
+  backHref,
 }: StaticTemplateEditorProps) {
   const t = useTranslations("app.automations");
   const updateTemplate = useMutation(api.automations.mutations.updateTemplate);
@@ -59,8 +69,10 @@ export function StaticTemplateEditor({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [titleInputWidth, setTitleInputWidth] = useState(40);
   const nodeRefs = useRef(new Map<string, Konva.Node>());
   const transformerRef = useRef<Konva.Transformer>(null);
+  const titleMeasureRef = useRef<HTMLSpanElement>(null);
   const stageDimensions = sceneDocument
     ? {
         width: numberAttr(sceneDocument.stage.attrs, "width", 1080),
@@ -91,6 +103,11 @@ export function StaticTemplateEditor({
     transformer.nodes(selectedKonvaNode ? [selectedKonvaNode] : []);
     transformer.getLayer()?.batchDraw();
   }, [sceneDocument, selectedNodeId]);
+
+  useLayoutEffect(() => {
+    const measuredWidth = titleMeasureRef.current?.offsetWidth ?? 0;
+    setTitleInputWidth(Math.max(Math.ceil(measuredWidth) + 10, 40));
+  }, [templateName]);
 
   const updateSceneAttrs = useCallback(
     (nodeId: string, attrs: SceneNodeAttrs) => {
@@ -148,8 +165,36 @@ export function StaticTemplateEditor({
 
   return (
     <>
-      <div className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
-        <h1 className="truncate text-sm font-medium">{templateName}</h1>
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="-ml-2"
+          aria-label={t("backToTemplates")}
+          asChild
+        >
+          <Link href={backHref}>
+            <ArrowLeft aria-hidden />
+          </Link>
+        </Button>
+        <div className="relative min-w-0 max-w-72">
+          <span
+            ref={titleMeasureRef}
+            className="pointer-events-none invisible absolute whitespace-pre px-1 text-sm font-medium"
+          >
+            {templateName || " "}
+          </span>
+          <input
+            aria-label={t("editor.templateName")}
+            className="-ml-1 h-8 max-w-72 rounded-none border border-transparent bg-transparent px-1 text-sm font-medium outline-none transition-colors hover:border-border focus:border-ring focus:ring-3 focus:ring-ring/50"
+            style={{ width: titleInputWidth }}
+            value={templateName}
+            onChange={(event) => {
+              setTemplateName(event.target.value);
+              setIsDirty(true);
+            }}
+          />
+        </div>
         <Badge variant="outline">{t(`types.${automationType}.title`)}</Badge>
         <Badge variant="secondary">
           {CANVAS_PRESET_LABELS[template.canvasPreset]}
@@ -168,7 +213,7 @@ export function StaticTemplateEditor({
             {isSaving ? t("editor.saving") : t("editor.save")}
           </Button>
         </div>
-      </div>
+      </header>
 
       <div className="flex min-h-0 flex-1">
         <main
@@ -219,18 +264,6 @@ export function StaticTemplateEditor({
         </main>
 
         <aside className="flex w-80 shrink-0 flex-col gap-5 overflow-y-auto border-l bg-background p-4">
-          <section className="space-y-2">
-            <Label htmlFor="template-name">{t("editor.templateName")}</Label>
-            <Input
-              id="template-name"
-              value={templateName}
-              onChange={(event) => {
-                setTemplateName(event.target.value);
-                setIsDirty(true);
-              }}
-            />
-          </section>
-
           <section className="space-y-4">
             <div>
               <h2 className="text-sm font-semibold">
@@ -366,16 +399,6 @@ function NodePropertiesPanel({
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
-        <NumberField
-          label={t("x")}
-          value={numberAttr(node.attrs, "x", 0)}
-          onChange={(value) => onChange({ x: value })}
-        />
-        <NumberField
-          label={t("y")}
-          value={numberAttr(node.attrs, "y", 0)}
-          onChange={(value) => onChange({ y: value })}
-        />
         <NumberField
           label={t("width")}
           value={numberAttr(node.attrs, "width", 0)}
@@ -537,6 +560,7 @@ function bakeNodeTransform(node: Konva.Node): SceneNodeAttrs {
   const width = "width" in node ? node.width() : 0;
   const height = "height" in node ? node.height() : 0;
 
+  // Scale is intentionally cleared because it is baked into width/height.
   node.scaleX(1);
   node.scaleY(1);
 
