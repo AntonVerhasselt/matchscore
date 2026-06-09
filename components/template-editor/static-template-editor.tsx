@@ -8,6 +8,8 @@ import {
   Shapes,
   SlidersHorizontal,
   Square,
+  Palette,
+  Trash2,
   Type,
   UploadCloud,
 } from "lucide-react";
@@ -39,13 +41,16 @@ import {
   getAvailableImageBindingKeys,
   getAvailableTextBindingKeys,
   getImageBindingKey,
+  getObjectFitMode,
   getTextBindingKey,
+  calculateObjectFit,
   normalizeSceneDocument,
   resolveImageSource,
   resolveTextContent,
   type AutomationType,
   type BindingPreviewMode,
   type ImageBindingKey,
+  type ObjectFitMode,
   type SceneDocument,
   type SceneNode,
   type SceneNodeAttrs,
@@ -56,13 +61,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   toBackendAutomationType,
   type AutomationTypeSlug,
   type CanvasPreset,
 } from "@/lib/automations/types";
 import { CANVAS_PRESET_LABELS } from "@/lib/automations/canvas-presets";
 import { showErrorToast, showSuccessToast } from "@/lib/user-feedback";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
+import {
+  ALLOWED_TEMPLATE_ASSET_MIME_TYPES,
+  MAX_TEMPLATE_ASSET_BYTE_SIZE,
+} from "@/convex/templateAssets/constants";
 import {
   Select,
   SelectContent,
@@ -72,12 +91,35 @@ import {
 } from "@/components/ui/select";
 
 const VARIABLE_DRAG_MIME = "application/x-matchscore-template-variable";
+const ASSET_DRAG_MIME = "application/x-matchscore-template-asset";
+const BACKGROUND_NODE_ID = "background";
+const DEFAULT_BACKGROUND_FILL = "#ffffff";
 
-type EditorPanelTab = "variables" | "assets" | "text" | "shapes" | "properties";
+type EditorPanelTab =
+  | "variables"
+  | "assets"
+  | "text"
+  | "shapes"
+  | "background"
+  | "properties";
 
 type VariableDragPayload =
   | { kind: "text"; bindingKey: TextBindingKey }
   | { kind: "image"; bindingKey: ImageBindingKey };
+
+type AssetDragPayload = { assetId: Id<"templateAssets"> };
+
+type TemplateAsset = {
+  _id: Id<"templateAssets">;
+  storageId: Id<"_storage">;
+  fileName: string;
+  mimeType: string;
+  byteSize: number;
+  pixelWidth: number | null;
+  pixelHeight: number | null;
+  createdAt: number;
+  url: string | null;
+};
 
 type TemplateEditorTemplate = {
   _id: Id<"automationTemplates">;
@@ -99,6 +141,16 @@ export function StaticTemplateEditor({
 }: StaticTemplateEditorProps) {
   const t = useTranslations("app.automations");
   const updateTemplate = useMutation(api.automations.mutations.updateTemplate);
+  const generateUploadUrl = useMutation(
+    api.templateAssets.mutations.generateUploadUrl,
+  );
+  const saveTemplateAsset = useMutation(
+    api.templateAssets.mutations.saveTemplateAsset,
+  );
+  const deleteTemplateAsset = useMutation(
+    api.templateAssets.mutations.deleteTemplateAsset,
+  );
+  const templateAssets = useQuery(api.templateAssets.queries.listTemplateAssets);
   const backendAutomationType = toBackendAutomationType(automationType);
   const [templateName, setTemplateName] = useState(template.name);
   const [sceneDocument, setSceneDocument] = useState<SceneDocument | null>(() => {
@@ -119,6 +171,9 @@ export function StaticTemplateEditor({
     useState<BindingPreviewMode>("design");
   const [activePanelTab, setActivePanelTab] =
     useState<EditorPanelTab>("variables");
+  const [isUploadingAsset, setIsUploadingAsset] = useState(false);
+  const [deletingAssetId, setDeletingAssetId] =
+    useState<Id<"templateAssets"> | null>(null);
   const [titleInputWidth, setTitleInputWidth] = useState(40);
   const nodeRefs = useRef(new Map<string, Konva.Node>());
   const transformerRef = useRef<Konva.Transformer>(null);
@@ -141,6 +196,18 @@ export function StaticTemplateEditor({
         : null,
     [sceneDocument, selectedNodeId],
   );
+  const templateAssetRows = useMemo(() => templateAssets ?? [], [templateAssets]);
+  const templateAssetsById = useMemo(
+    () =>
+      new Map<string, TemplateAsset>(
+        templateAssetRows.map((asset) => [asset._id, asset]),
+      ),
+    [templateAssetRows],
+  );
+  const backgroundNode = useMemo(
+    () => (sceneDocument ? findBackgroundNode(sceneDocument) : null),
+    [sceneDocument],
+  );
 
   useEffect(() => {
     const transformer = transformerRef.current;
@@ -148,12 +215,17 @@ export function StaticTemplateEditor({
       return;
     }
 
-    const selectedKonvaNode = selectedNodeId
-      ? nodeRefs.current.get(selectedNodeId)
-      : null;
+    const selectedKonvaNode =
+      selectedNode &&
+      isBackgroundNode(selectedNode) &&
+      selectedNode.className !== "Image"
+        ? null
+        : selectedNodeId
+          ? nodeRefs.current.get(selectedNodeId)
+          : null;
     transformer.nodes(selectedKonvaNode ? [selectedKonvaNode] : []);
     transformer.getLayer()?.batchDraw();
-  }, [sceneDocument, selectedNodeId]);
+  }, [sceneDocument, selectedNode, selectedNodeId]);
 
   useLayoutEffect(() => {
     const measuredWidth = titleMeasureRef.current?.offsetWidth ?? 0;
@@ -180,10 +252,109 @@ export function StaticTemplateEditor({
     [selectedNodeId, updateSceneAttrs],
   );
 
-  const selectNode = useCallback((nodeId: string) => {
-    setSelectedNodeId(nodeId);
-    setActivePanelTab("properties");
-  }, []);
+  const replaceSceneDocument = useCallback(
+    (
+      nextSceneDocument:
+        | SceneDocument
+        | ((current: SceneDocument) => SceneDocument),
+    ) => {
+      setSceneDocument((current) => {
+        if (typeof nextSceneDocument === "function") {
+          return current ? nextSceneDocument(current) : current;
+        }
+
+        return nextSceneDocument;
+      });
+      setIsDirty(true);
+    },
+    [],
+  );
+
+  const selectNode = useCallback(
+    (nodeId: string) => {
+      const node = sceneDocument
+        ? findSceneNodeById(sceneDocument.stage, nodeId)
+        : null;
+
+      setSelectedNodeId(nodeId);
+      setActivePanelTab(node && isBackgroundNode(node) ? "background" : "properties");
+    },
+    [sceneDocument],
+  );
+
+  const uploadTemplateAsset = useCallback(
+    async (file: File): Promise<TemplateAsset> => {
+      if (
+        !ALLOWED_TEMPLATE_ASSET_MIME_TYPES.includes(
+          file.type as (typeof ALLOWED_TEMPLATE_ASSET_MIME_TYPES)[number],
+        )
+      ) {
+        throw new Error("Unsupported image type");
+      }
+      if (file.size > MAX_TEMPLATE_ASSET_BYTE_SIZE) {
+        throw new Error("Image is too large");
+      }
+
+      const dimensions = await getImageFileDimensions(file);
+      const uploadUrl = await generateUploadUrl({});
+      const result = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": file.type },
+        body: file,
+      });
+      if (!result.ok) {
+        throw new Error("Upload failed");
+      }
+
+      const { storageId } = (await result.json()) as {
+        storageId: Id<"_storage">;
+      };
+
+      return await saveTemplateAsset({
+        storageId,
+        fileName: file.name,
+        pixelWidth: dimensions.width,
+        pixelHeight: dimensions.height,
+      });
+    },
+    [generateUploadUrl, saveTemplateAsset],
+  );
+
+  const handleUploadAsset = useCallback(
+    async (file: File): Promise<TemplateAsset | null> => {
+      setIsUploadingAsset(true);
+      try {
+        const asset = await uploadTemplateAsset(file);
+        showSuccessToast(t("editor.assetUploadSuccess"));
+        return asset;
+      } catch {
+        showErrorToast(t("editor.assetUploadFailed"));
+        return null;
+      } finally {
+        setIsUploadingAsset(false);
+      }
+    },
+    [t, uploadTemplateAsset],
+  );
+
+  const handleDeleteAsset = useCallback(
+    async (assetId: Id<"templateAssets">) => {
+      setDeletingAssetId(assetId);
+      try {
+        const result = await deleteTemplateAsset({ assetId });
+        if (result.status === "inUse") {
+          showErrorToast(t("editor.assetDeleteFailed"));
+          return;
+        }
+        showSuccessToast(t("editor.assetDeleteSuccess"));
+      } catch {
+        showErrorToast(t("editor.assetDeleteFailed"));
+      } finally {
+        setDeletingAssetId(null);
+      }
+    },
+    [deleteTemplateAsset, t],
+  );
 
   const insertVariableNode = useCallback(
     (payload: VariableDragPayload, point: { x: number; y: number }) => {
@@ -205,6 +376,76 @@ export function StaticTemplateEditor({
     [sceneDocument],
   );
 
+  const insertAssetNode = useCallback(
+    async (asset: TemplateAsset, point?: { x: number; y: number }) => {
+      if (!sceneDocument) {
+        return;
+      }
+
+      let dimensions;
+      try {
+        dimensions = await getTemplateAssetDimensions(asset);
+      } catch {
+        showErrorToast(t("editor.assetInsertFailed"));
+        return;
+      }
+
+      const nodeId = `asset-${asset._id}-${Date.now()}`;
+
+      setSceneDocument((current) => {
+        if (!current) {
+          return current;
+        }
+
+        return appendSceneNodeToFirstLayer(
+          current,
+          createAssetImageNode(current, nodeId, asset, dimensions, point),
+        );
+      });
+      setSelectedNodeId(nodeId);
+      setActivePanelTab("properties");
+      setIsDirty(true);
+    },
+    [sceneDocument, t],
+  );
+
+  const setBackgroundColor = useCallback(
+    (fill: string) => {
+      if (!sceneDocument) {
+        return;
+      }
+      replaceSceneDocument(setSceneBackgroundColor(sceneDocument, fill));
+      setSelectedNodeId(BACKGROUND_NODE_ID);
+    },
+    [replaceSceneDocument, sceneDocument],
+  );
+
+  const setBackgroundImage = useCallback(
+    async (asset: TemplateAsset) => {
+      let dimensions;
+      try {
+        dimensions = await getTemplateAssetDimensions(asset);
+      } catch {
+        showErrorToast(t("editor.assetInsertFailed"));
+        return;
+      }
+
+      replaceSceneDocument((current) =>
+        setSceneBackgroundImage(current, asset._id, dimensions),
+      );
+      setSelectedNodeId(BACKGROUND_NODE_ID);
+    },
+    [replaceSceneDocument, t],
+  );
+
+  const removeBackgroundImage = useCallback(() => {
+    if (!sceneDocument) {
+      return;
+    }
+    replaceSceneDocument(removeSceneBackgroundImage(sceneDocument));
+    setSelectedNodeId(BACKGROUND_NODE_ID);
+  }, [replaceSceneDocument, sceneDocument]);
+
   const handleVariableDragStart = useCallback(
     (event: React.DragEvent<HTMLElement>, payload: VariableDragPayload) => {
       event.dataTransfer.effectAllowed = "copy";
@@ -223,6 +464,24 @@ export function StaticTemplateEditor({
     [insertVariableNode, stageDimensions.height, stageDimensions.width],
   );
 
+  const handleAssetDragStart = useCallback(
+    (event: React.DragEvent<HTMLElement>, assetId: Id<"templateAssets">) => {
+      event.dataTransfer.effectAllowed = "copy";
+      event.dataTransfer.setData(ASSET_DRAG_MIME, JSON.stringify({ assetId }));
+    },
+    [],
+  );
+
+  const handleAssetActivate = useCallback(
+    (asset: TemplateAsset) => {
+      void insertAssetNode(asset, {
+        x: Math.round(stageDimensions.width / 2),
+        y: Math.round(stageDimensions.height / 2),
+      });
+    },
+    [insertAssetNode, stageDimensions.height, stageDimensions.width],
+  );
+
   const handleCanvasDrop = useCallback(
     (event: React.DragEvent<HTMLDivElement>) => {
       event.preventDefault();
@@ -233,18 +492,31 @@ export function StaticTemplateEditor({
       const payload = parseVariableDragPayload(
         event.dataTransfer.getData(VARIABLE_DRAG_MIME),
       );
-      if (!payload) {
+      if (payload) {
+        const rect = stageFrameRef.current.getBoundingClientRect();
+        const point = {
+          x: Math.round((event.clientX - rect.left) / scale),
+          y: Math.round((event.clientY - rect.top) / scale),
+        };
+        insertVariableNode(payload, point);
         return;
       }
 
-      const rect = stageFrameRef.current.getBoundingClientRect();
-      const point = {
-        x: Math.round((event.clientX - rect.left) / scale),
-        y: Math.round((event.clientY - rect.top) / scale),
-      };
-      insertVariableNode(payload, point);
+      const assetPayload = parseAssetDragPayload(
+        event.dataTransfer.getData(ASSET_DRAG_MIME),
+      );
+      const asset = assetPayload
+        ? templateAssetsById.get(assetPayload.assetId)
+        : null;
+      if (asset) {
+        const rect = stageFrameRef.current.getBoundingClientRect();
+        void insertAssetNode(asset, {
+          x: Math.round((event.clientX - rect.left) / scale),
+          y: Math.round((event.clientY - rect.top) / scale),
+        });
+      }
     },
-    [insertVariableNode, scale, sceneDocument],
+    [insertAssetNode, insertVariableNode, scale, sceneDocument, templateAssetsById],
   );
 
   const handleSave = async () => {
@@ -386,6 +658,7 @@ export function StaticTemplateEditor({
                   nodeRefs={nodeRefs}
                   automationType={backendAutomationType}
                   previewMode={previewMode}
+                  templateAssetsById={templateAssetsById}
                   onSelect={selectNode}
                   onChange={updateSceneAttrs}
                 />
@@ -405,11 +678,22 @@ export function StaticTemplateEditor({
           <EditorRightPanel
             activeTab={activePanelTab}
             selectedNode={selectedNode}
+            backgroundNode={backgroundNode}
+            templateAssets={templateAssetRows}
+            isUploadingAsset={isUploadingAsset}
+            deletingAssetId={deletingAssetId}
             automationType={backendAutomationType}
             previewMode={previewMode}
             onTabChange={setActivePanelTab}
             onVariableDragStart={handleVariableDragStart}
             onVariableActivate={handleVariableActivate}
+            onAssetUpload={handleUploadAsset}
+            onAssetDragStart={handleAssetDragStart}
+            onAssetActivate={handleAssetActivate}
+            onAssetDelete={handleDeleteAsset}
+            onBackgroundColorChange={setBackgroundColor}
+            onBackgroundImageChange={setBackgroundImage}
+            onBackgroundImageRemove={removeBackgroundImage}
             onPropertiesChange={updateSelectedNodeAttrs}
           />
         </aside>
@@ -421,15 +705,30 @@ export function StaticTemplateEditor({
 function EditorRightPanel({
   activeTab,
   selectedNode,
+  backgroundNode,
+  templateAssets,
+  isUploadingAsset,
+  deletingAssetId,
   automationType,
   previewMode,
   onTabChange,
   onVariableDragStart,
   onVariableActivate,
+  onAssetUpload,
+  onAssetDragStart,
+  onAssetActivate,
+  onAssetDelete,
+  onBackgroundColorChange,
+  onBackgroundImageChange,
+  onBackgroundImageRemove,
   onPropertiesChange,
 }: {
   activeTab: EditorPanelTab;
   selectedNode: SceneNode | null;
+  backgroundNode: SceneNode | null;
+  templateAssets: TemplateAsset[];
+  isUploadingAsset: boolean;
+  deletingAssetId: Id<"templateAssets"> | null;
   automationType: AutomationType;
   previewMode: BindingPreviewMode;
   onTabChange: (tab: EditorPanelTab) => void;
@@ -438,6 +737,16 @@ function EditorRightPanel({
     payload: VariableDragPayload,
   ) => void;
   onVariableActivate: (payload: VariableDragPayload) => void;
+  onAssetUpload: (file: File) => Promise<TemplateAsset | null>;
+  onAssetDragStart: (
+    event: React.DragEvent<HTMLElement>,
+    assetId: Id<"templateAssets">,
+  ) => void;
+  onAssetActivate: (asset: TemplateAsset) => void;
+  onAssetDelete: (assetId: Id<"templateAssets">) => Promise<void>;
+  onBackgroundColorChange: (fill: string) => void;
+  onBackgroundImageChange: (asset: TemplateAsset) => void;
+  onBackgroundImageRemove: () => void;
   onPropertiesChange: (attrs: SceneNodeAttrs) => void;
 }) {
   const t = useTranslations("app.automations.editor");
@@ -449,6 +758,7 @@ function EditorRightPanel({
     { id: "assets", icon: UploadCloud },
     { id: "text", icon: Type },
     { id: "shapes", icon: Shapes },
+    { id: "background", icon: Palette },
     { id: "properties", icon: SlidersHorizontal },
   ];
 
@@ -463,10 +773,14 @@ function EditorRightPanel({
           />
         ) : null}
         {activeTab === "assets" ? (
-          <PlaceholderPanel
-            title={t("assetsPanelTitle")}
-            description={t("assetsPanelDescription")}
-            icon={UploadCloud}
+          <AssetsPanel
+            assets={templateAssets}
+            isUploading={isUploadingAsset}
+            deletingAssetId={deletingAssetId}
+            onUpload={onAssetUpload}
+            onAssetDragStart={onAssetDragStart}
+            onAssetActivate={onAssetActivate}
+            onAssetDelete={onAssetDelete}
           />
         ) : null}
         {activeTab === "text" ? (
@@ -477,6 +791,17 @@ function EditorRightPanel({
           />
         ) : null}
         {activeTab === "shapes" ? <ShapesPanel /> : null}
+        {activeTab === "background" ? (
+          <BackgroundPanel
+            backgroundNode={backgroundNode}
+            assets={templateAssets}
+            isUploading={isUploadingAsset}
+            onUpload={onAssetUpload}
+            onColorChange={onBackgroundColorChange}
+            onImageChange={onBackgroundImageChange}
+            onImageRemove={onBackgroundImageRemove}
+          />
+        ) : null}
         {activeTab === "properties" ? (
           <PropertiesPanelShell
             selectedNode={selectedNode}
@@ -572,6 +897,337 @@ function VariablesPanel({
         </div>
       </section>
     </div>
+  );
+}
+
+function AssetsPanel({
+  assets,
+  isUploading,
+  deletingAssetId,
+  onUpload,
+  onAssetDragStart,
+  onAssetActivate,
+  onAssetDelete,
+}: {
+  assets: TemplateAsset[];
+  isUploading: boolean;
+  deletingAssetId: Id<"templateAssets"> | null;
+  onUpload: (file: File) => Promise<TemplateAsset | null>;
+  onAssetDragStart: (
+    event: React.DragEvent<HTMLElement>,
+    assetId: Id<"templateAssets">,
+  ) => void;
+  onAssetActivate: (asset: TemplateAsset) => void;
+  onAssetDelete: (assetId: Id<"templateAssets">) => Promise<void>;
+}) {
+  const t = useTranslations("app.automations.editor");
+
+  return (
+    <div className="space-y-5">
+      <PanelHeader
+        title={t("assetsPanelTitle")}
+        description={t("assetsPanelDescription")}
+      />
+      <AssetUploadInput
+        id="asset-upload"
+        label={isUploading ? t("uploadingAsset") : t("uploadAsset")}
+        disabled={isUploading}
+        onUpload={onUpload}
+      />
+      {assets.length === 0 ? (
+        <p className="border border-dashed bg-muted/30 p-4 text-sm text-muted-foreground">
+          {t("assetsPanelEmpty")}
+        </p>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          {assets.map((asset) => (
+            <AssetGridItem
+              key={asset._id}
+              asset={asset}
+              isDeleting={deletingAssetId === asset._id}
+              onDragStart={onAssetDragStart}
+              onActivate={onAssetActivate}
+              onDelete={onAssetDelete}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BackgroundPanel({
+  backgroundNode,
+  assets,
+  isUploading,
+  onUpload,
+  onColorChange,
+  onImageChange,
+  onImageRemove,
+}: {
+  backgroundNode: SceneNode | null;
+  assets: TemplateAsset[];
+  isUploading: boolean;
+  onUpload: (file: File) => Promise<TemplateAsset | null>;
+  onColorChange: (fill: string) => void;
+  onImageChange: (asset: TemplateAsset) => void;
+  onImageRemove: () => void;
+}) {
+  const t = useTranslations("app.automations.editor");
+  const backgroundAssetId =
+    backgroundNode?.className === "Image"
+      ? stringAttr(backgroundNode.attrs, "assetId")
+      : null;
+  const backgroundAsset = backgroundAssetId
+    ? assets.find((asset) => asset._id === backgroundAssetId)
+    : null;
+  const backgroundColor =
+    backgroundNode?.className === "Rect"
+      ? stringAttr(backgroundNode.attrs, "fill") ?? DEFAULT_BACKGROUND_FILL
+      : DEFAULT_BACKGROUND_FILL;
+
+  return (
+    <div className="space-y-5">
+      <PanelHeader
+        title={t("backgroundPanelTitle")}
+        description={t("backgroundPanelDescription")}
+      />
+      {backgroundAsset ? (
+        <div className="space-y-3 border bg-muted/30 p-3">
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {t("currentBackgroundImage")}
+            </p>
+            <p className="mt-1 truncate text-sm font-medium">
+              {backgroundAsset.fileName}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t("dragBackgroundHint")}
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full"
+            onClick={onImageRemove}
+          >
+            <Trash2 aria-hidden />
+            {t("removeBackgroundImage")}
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <Label htmlFor="background-color">{t("backgroundColor")}</Label>
+          <Input
+            id="background-color"
+            type="color"
+            value={backgroundColor}
+            className="h-11 p-1"
+            onChange={(event) => onColorChange(event.target.value)}
+          />
+        </div>
+      )}
+      <AssetUploadInput
+        id="background-upload"
+        label={
+          isUploading ? t("uploadingAsset") : t("uploadBackgroundImage")
+        }
+        disabled={isUploading}
+        onUpload={async (file) => {
+          const asset = await onUpload(file);
+          if (asset) {
+            onImageChange(asset);
+          }
+          return asset;
+        }}
+      />
+      {assets.length > 0 ? (
+        <div className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {t("chooseExistingBackground")}
+          </h3>
+          <div className="grid grid-cols-2 gap-3">
+            {assets.map((asset) => (
+              <button
+                key={asset._id}
+                type="button"
+                aria-label={asset.fileName}
+                className={
+                  backgroundAssetId === asset._id
+                    ? "aspect-square overflow-hidden border border-primary bg-primary/10 ring-2 ring-primary/30"
+                    : "aspect-square overflow-hidden border bg-muted hover:border-primary/60"
+                }
+                onClick={() => onImageChange(asset)}
+              >
+                <AssetThumbnail asset={asset} className="size-full" />
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function AssetUploadInput({
+  id,
+  label,
+  disabled,
+  onUpload,
+}: {
+  id: string;
+  label: string;
+  disabled: boolean;
+  onUpload: (file: File) => Promise<TemplateAsset | null>;
+}) {
+  return (
+    <div className="space-y-2">
+      <Input
+        id={id}
+        type="file"
+        accept={ALLOWED_TEMPLATE_ASSET_MIME_TYPES.join(",")}
+        disabled={disabled}
+        className="sr-only"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.currentTarget.value = "";
+          if (file) {
+            void onUpload(file);
+          }
+        }}
+      />
+      <Button
+        type="button"
+        variant="default"
+        className="w-full"
+        disabled={disabled}
+        asChild
+      >
+        <label htmlFor={id} className="cursor-pointer">
+          <UploadCloud aria-hidden />
+          {label}
+        </label>
+      </Button>
+    </div>
+  );
+}
+
+function AssetGridItem({
+  asset,
+  isDeleting,
+  onDragStart,
+  onActivate,
+  onDelete,
+}: {
+  asset: TemplateAsset;
+  isDeleting: boolean;
+  onDragStart: (
+    event: React.DragEvent<HTMLElement>,
+    assetId: Id<"templateAssets">,
+  ) => void;
+  onActivate: (asset: TemplateAsset) => void;
+  onDelete: (assetId: Id<"templateAssets">) => Promise<void>;
+}) {
+  const t = useTranslations("app.automations.editor");
+  const [deleteOpen, setDeleteOpen] = useState(false);
+
+  const handleDeleteConfirm = async () => {
+    await onDelete(asset._id);
+    setDeleteOpen(false);
+  };
+
+  return (
+    <>
+      <div
+        draggable
+        role="button"
+        tabIndex={0}
+        aria-label={asset.fileName}
+        className="group relative aspect-square cursor-grab overflow-hidden border bg-muted shadow-sm transition-colors hover:border-primary/60 active:cursor-grabbing"
+        onDragStart={(event) => onDragStart(event, asset._id)}
+        onDoubleClick={() => onActivate(asset)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            onActivate(asset);
+          }
+        }}
+      >
+        <AssetThumbnail asset={asset} className="size-full" />
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon-xs"
+          disabled={isDeleting}
+          aria-label={t("deleteAsset")}
+          className="absolute right-1.5 top-1.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+          onClick={(event) => {
+            event.stopPropagation();
+            if (!isDeleting) {
+              setDeleteOpen(true);
+            }
+          }}
+        >
+          <Trash2 aria-hidden />
+        </Button>
+      </div>
+
+      <AlertDialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          if (!isDeleting) {
+            setDeleteOpen(open);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("deleteAssetConfirmTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("deleteAssetConfirmDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>
+              {t("cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeleting}
+              className="bg-destructive text-white hover:bg-destructive/90"
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDeleteConfirm();
+              }}
+            >
+              {isDeleting ? t("deletingAsset") : t("deleteAsset")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+function AssetThumbnail({
+  asset,
+  className = "size-12",
+}: {
+  asset: TemplateAsset;
+  className?: string;
+}) {
+  if (!asset.url) {
+    return <div className={`${className} shrink-0 bg-muted`} aria-hidden />;
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={asset.url}
+      alt=""
+      className={`${className} shrink-0 object-cover`}
+      draggable={false}
+    />
   );
 }
 
@@ -746,6 +1402,7 @@ function SceneNodeRenderer({
   nodeRefs,
   automationType,
   previewMode,
+  templateAssetsById,
   onSelect,
   onChange,
 }: {
@@ -753,10 +1410,12 @@ function SceneNodeRenderer({
   nodeRefs: React.MutableRefObject<Map<string, Konva.Node>>;
   automationType: AutomationType;
   previewMode: BindingPreviewMode;
+  templateAssetsById: Map<string, TemplateAsset>;
   onSelect: (nodeId: string) => void;
   onChange: (nodeId: string, attrs: SceneNodeAttrs) => void;
 }) {
   const nodeId = stringAttr(node.attrs, "id");
+  const isBackground = isBackgroundNode(node);
   const children = node.children?.map((child) => (
     <SceneNodeRenderer
       key={nodeKey(child)}
@@ -764,6 +1423,7 @@ function SceneNodeRenderer({
       nodeRefs={nodeRefs}
       automationType={automationType}
       previewMode={previewMode}
+      templateAssetsById={templateAssetsById}
       onSelect={onSelect}
       onChange={onChange}
     />
@@ -778,7 +1438,7 @@ function SceneNodeRenderer({
             nodeRefs.current.delete(nodeId);
           }
         },
-        draggable: true,
+        draggable: isBackground ? node.className === "Image" : true,
         onClick: () => onSelect(nodeId),
         onTap: () => onSelect(nodeId),
         onDragEnd: (event: Konva.KonvaEventObject<DragEvent>) => {
@@ -846,6 +1506,7 @@ function SceneNodeRenderer({
         {...sharedProps}
         attrs={node.attrs}
         previewMode={previewMode}
+        templateAssetsById={templateAssetsById}
       />
     );
   }
@@ -856,10 +1517,12 @@ function SceneNodeRenderer({
 function SceneImage({
   attrs,
   previewMode,
+  templateAssetsById,
   ...sharedProps
 }: {
   attrs: SceneNodeAttrs;
   previewMode: BindingPreviewMode;
+  templateAssetsById: Map<string, TemplateAsset>;
   id?: string;
   ref?: (node: Konva.Node | null) => void;
   draggable?: boolean;
@@ -868,12 +1531,16 @@ function SceneImage({
   onDragEnd?: (event: Konva.KonvaEventObject<DragEvent>) => void;
   onTransformEnd?: (event: Konva.KonvaEventObject<Event>) => void;
 }) {
-  const src = resolveImageSource(attrs, previewMode);
+  const assetId = stringAttr(attrs, "assetId");
+  const dynamicSrc = resolveImageSource(attrs, previewMode);
+  const staticSrc = assetId ? templateAssetsById.get(assetId)?.url ?? null : null;
+  const src = dynamicSrc ?? staticSrc;
   const [image] = useImage(src ?? "", "anonymous");
   const x = numberAttr(attrs, "x", 0);
   const y = numberAttr(attrs, "y", 0);
   const width = numberAttr(attrs, "width", 160);
   const height = numberAttr(attrs, "height", 160);
+  const objectFit = getObjectFitMode(attrs.objectFit);
 
   if (!src || !image) {
     return (
@@ -888,6 +1555,18 @@ function SceneImage({
     );
   }
 
+  const naturalWidth = image.naturalWidth || image.width || 1;
+  const naturalHeight = image.naturalHeight || image.height || 1;
+  const crop = isBackgroundNodeAttrs(attrs)
+    ? { x: 0, y: 0, width: naturalWidth, height: naturalHeight }
+    : calculateObjectFit(
+        naturalWidth,
+        naturalHeight,
+        width,
+        height,
+        objectFit,
+      ).crop;
+
   return (
     <KonvaImage
       {...sharedProps}
@@ -896,6 +1575,7 @@ function SceneImage({
       width={width}
       height={height}
       image={image}
+      crop={crop}
     />
   );
 }
@@ -914,6 +1594,7 @@ function NodePropertiesPanel({
   const t = useTranslations("app.automations.editor");
   const isText = node.className === "Text";
   const isImage = node.className === "Image";
+  const isBackgroundImage = isImage && isBackgroundNode(node);
   const supportsFill = node.className === "Rect" || node.className === "Text";
   const textBindingKey = isText
     ? getTextBindingKey(node.attrs.bindingKey, automationType)
@@ -923,6 +1604,7 @@ function NodePropertiesPanel({
     : [];
   const hasTextBindingOptions = availableTextBindingKeys.length > 0;
   const imageBindingKey = isImage ? getImageBindingKey(node.attrs.bindingKey) : null;
+  const imageAssetId = isImage ? stringAttr(node.attrs, "assetId") : null;
   const contentMode = textBindingKey ? "variable" : "fixed";
 
   return (
@@ -1077,6 +1759,38 @@ function NodePropertiesPanel({
               </SelectContent>
             </Select>
           </div>
+        </div>
+      ) : null}
+
+      {isImage && imageAssetId ? (
+        <div className="space-y-3 border-t pt-4">
+          <div>
+            <h3 className="text-sm font-medium">{t("content")}</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {t("staticImageContentDescription")}
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      {isImage && !isBackgroundImage ? (
+        <div className="space-y-2">
+          <Label htmlFor="image-object-fit">{t("objectFit")}</Label>
+          <Select
+            value={getObjectFitMode(node.attrs.objectFit)}
+            onValueChange={(value) =>
+              onChange({ objectFit: value as ObjectFitMode })
+            }
+          >
+            <SelectTrigger id="image-object-fit" className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="cover">{t("objectFitCover")}</SelectItem>
+              <SelectItem value="contain">{t("objectFitContain")}</SelectItem>
+              <SelectItem value="fill">{t("objectFitFill")}</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       ) : null}
     </div>
@@ -1296,6 +2010,168 @@ function createLogoNode(
   };
 }
 
+function createAssetImageNode(
+  sceneDocument: SceneDocument,
+  nodeId: string,
+  asset: TemplateAsset,
+  dimensions: { width: number; height: number },
+  point?: { x: number; y: number },
+): SceneNode {
+  const stageWidth = numberAttr(sceneDocument.stage.attrs, "width", 1080);
+  const stageHeight = numberAttr(sceneDocument.stage.attrs, "height", 1080);
+  const width = Math.round(dimensions.width);
+  const height = Math.round(dimensions.height);
+  const x = point ? point.x - Math.round(width / 2) : stageWidth / 2 - width / 2;
+  const y = point ? point.y - Math.round(height / 2) : stageHeight / 2 - height / 2;
+  const minX = Math.min(0, stageWidth - width);
+  const maxX = Math.max(0, stageWidth - width);
+  const minY = Math.min(0, stageHeight - height);
+  const maxY = Math.max(0, stageHeight - height);
+
+  return {
+    className: "Image",
+    attrs: {
+      id: nodeId,
+      name: asset.fileName,
+      x: Math.round(clamp(x, minX, maxX)),
+      y: Math.round(clamp(y, minY, maxY)),
+      width,
+      height,
+      assetId: asset._id,
+      objectFit: "contain",
+    },
+  };
+}
+
+function findBackgroundNode(sceneDocument: SceneDocument): SceneNode | null {
+  return (
+    sceneDocument.stage.children
+      ?.find((node) => node.className === "Layer")
+      ?.children?.find(isBackgroundNode) ?? null
+  );
+}
+
+function isBackgroundNode(node: SceneNode): boolean {
+  return stringAttr(node.attrs, "id") === BACKGROUND_NODE_ID;
+}
+
+function isBackgroundNodeAttrs(attrs: SceneNodeAttrs): boolean {
+  return stringAttr(attrs, "id") === BACKGROUND_NODE_ID;
+}
+
+function setSceneBackgroundColor(
+  sceneDocument: SceneDocument,
+  fill: string,
+): SceneDocument {
+  return setSceneBackgroundNode(
+    sceneDocument,
+    createBackgroundRectNode(sceneDocument, fill),
+  );
+}
+
+function setSceneBackgroundImage(
+  sceneDocument: SceneDocument,
+  assetId: Id<"templateAssets">,
+  dimensions: { width: number; height: number },
+): SceneDocument {
+  return setSceneBackgroundNode(
+    sceneDocument,
+    createBackgroundImageNode(sceneDocument, assetId, dimensions),
+  );
+}
+
+function removeSceneBackgroundImage(sceneDocument: SceneDocument): SceneDocument {
+  return setSceneBackgroundColor(sceneDocument, DEFAULT_BACKGROUND_FILL);
+}
+
+function setSceneBackgroundNode(
+  sceneDocument: SceneDocument,
+  backgroundNode: SceneNode,
+): SceneDocument {
+  let hasUpdatedLayer = false;
+  const children = sceneDocument.stage.children?.map((child) => {
+    if (!hasUpdatedLayer && child.className === "Layer") {
+      hasUpdatedLayer = true;
+      return {
+        ...child,
+        children: [
+          backgroundNode,
+          ...(child.children ?? []).filter((node) => !isBackgroundNode(node)),
+        ],
+      };
+    }
+    return child;
+  });
+
+  if (children && hasUpdatedLayer) {
+    return {
+      ...sceneDocument,
+      stage: { ...sceneDocument.stage, children },
+    };
+  }
+
+  return {
+    ...sceneDocument,
+    stage: {
+      ...sceneDocument.stage,
+      children: [
+        { className: "Layer", attrs: {}, children: [backgroundNode] },
+        ...(sceneDocument.stage.children ?? []),
+      ],
+    },
+  };
+}
+
+function createBackgroundRectNode(
+  sceneDocument: SceneDocument,
+  fill: string,
+): SceneNode {
+  const stageWidth = numberAttr(sceneDocument.stage.attrs, "width", 1080);
+  const stageHeight = numberAttr(sceneDocument.stage.attrs, "height", 1080);
+
+  return {
+    className: "Rect",
+    attrs: {
+      id: BACKGROUND_NODE_ID,
+      name: "Background",
+      x: 0,
+      y: 0,
+      width: stageWidth,
+      height: stageHeight,
+      fill,
+    },
+  };
+}
+
+function createBackgroundImageNode(
+  sceneDocument: SceneDocument,
+  assetId: Id<"templateAssets">,
+  dimensions: { width: number; height: number },
+): SceneNode {
+  const stageWidth = numberAttr(sceneDocument.stage.attrs, "width", 1080);
+  const stageHeight = numberAttr(sceneDocument.stage.attrs, "height", 1080);
+  const scale = Math.max(
+    stageWidth / dimensions.width,
+    stageHeight / dimensions.height,
+  );
+  const width = Math.round(dimensions.width * scale);
+  const height = Math.round(dimensions.height * scale);
+
+  return {
+    className: "Image",
+    attrs: {
+      id: BACKGROUND_NODE_ID,
+      name: "Background",
+      x: Math.round((stageWidth - width) / 2),
+      y: Math.round((stageHeight - height) / 2),
+      width,
+      height,
+      assetId,
+      objectFit: "fill",
+    },
+  };
+}
+
 function parseVariableDragPayload(rawPayload: string): VariableDragPayload | null {
   if (!rawPayload) {
     return null;
@@ -1320,6 +2196,23 @@ function parseVariableDragPayload(rawPayload: string): VariableDragPayload | nul
         kind: "image",
         bindingKey: parsed.bindingKey as ImageBindingKey,
       };
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function parseAssetDragPayload(rawPayload: string): AssetDragPayload | null {
+  if (!rawPayload) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(rawPayload) as Partial<AssetDragPayload>;
+    if (typeof parsed.assetId === "string") {
+      return { assetId: parsed.assetId as Id<"templateAssets"> };
     }
   } catch {
     return null;
@@ -1365,6 +2258,67 @@ function optionalNumberAttr(
 function stringAttr(attrs: SceneNodeAttrs, key: string): string | undefined {
   const value = attrs[key];
   return typeof value === "string" ? value : undefined;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+function getImageFileDimensions(
+  file: File,
+): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new window.Image();
+
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve({
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+      });
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Could not read image dimensions"));
+    };
+    image.src = url;
+  });
+}
+
+async function getTemplateAssetDimensions(
+  asset: TemplateAsset,
+): Promise<{ width: number; height: number }> {
+  if (asset.pixelWidth && asset.pixelHeight) {
+    return { width: asset.pixelWidth, height: asset.pixelHeight };
+  }
+
+  if (asset.url) {
+    return await getImageUrlDimensions(asset.url);
+  }
+
+  throw new Error("Could not read image dimensions");
+}
+
+function getImageUrlDimensions(
+  src: string,
+): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const image = new window.Image();
+
+    image.onload = () => {
+      if (image.naturalWidth <= 0 || image.naturalHeight <= 0) {
+        reject(new Error("Could not read image dimensions"));
+        return;
+      }
+      resolve({
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+      });
+    };
+    image.onerror = () => reject(new Error("Could not read image dimensions"));
+    image.src = src;
+  });
 }
 
 function nodeKey(node: SceneNode): string {

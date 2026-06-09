@@ -25,7 +25,7 @@ export function createStarterSceneDocument(
                 y: 0,
                 width: dimensions.width,
                 height: dimensions.height,
-                fill: "#111827",
+                fill: "#ffffff",
               },
             },
             {
@@ -37,7 +37,7 @@ export function createStarterSceneDocument(
                 width: Math.max(dimensions.width - 160, 100),
                 text: "Matchscore template",
                 fontSize: 64,
-                fill: "#ffffff",
+                fill: "#111827",
               },
             },
           ],

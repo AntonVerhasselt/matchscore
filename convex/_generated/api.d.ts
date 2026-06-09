@@ -26,6 +26,11 @@ import type * as locales from "../locales.js";
 import type * as organizations_helpers from "../organizations/helpers.js";
 import type * as organizations_mutations from "../organizations/mutations.js";
 import type * as organizations_queries from "../organizations/queries.js";
+import type * as templateAssets_constants from "../templateAssets/constants.js";
+import type * as templateAssets_helpers from "../templateAssets/helpers.js";
+import type * as templateAssets_mutations from "../templateAssets/mutations.js";
+import type * as templateAssets_queries from "../templateAssets/queries.js";
+import type * as templateAssets_validators from "../templateAssets/validators.js";
 import type * as users_emailLocales from "../users/emailLocales.js";
 import type * as users_settings from "../users/settings.js";
 
@@ -54,6 +59,11 @@ declare const fullApi: ApiFromModules<{
   "organizations/helpers": typeof organizations_helpers;
   "organizations/mutations": typeof organizations_mutations;
   "organizations/queries": typeof organizations_queries;
+  "templateAssets/constants": typeof templateAssets_constants;
+  "templateAssets/helpers": typeof templateAssets_helpers;
+  "templateAssets/mutations": typeof templateAssets_mutations;
+  "templateAssets/queries": typeof templateAssets_queries;
+  "templateAssets/validators": typeof templateAssets_validators;
   "users/emailLocales": typeof users_emailLocales;
   "users/settings": typeof users_settings;
 }>;

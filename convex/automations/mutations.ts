@@ -8,6 +8,7 @@ import {
 import { normalizePostingChannelStatuses } from "./constants";
 import { normalizeSceneDocument } from "../../lib/template-scene";
 import { createStarterSceneDocument } from "./scenes";
+import { assertTemplateAssetReferencesBelongToOrganization } from "../templateAssets/helpers";
 import {
   automationTypeValidator,
   canvasPresetValidator,
@@ -153,6 +154,11 @@ export const updateTemplate = mutation({
         error instanceof Error ? error.message : "Invalid scene document",
       );
     }
+    await assertTemplateAssetReferencesBelongToOrganization(
+      ctx,
+      sceneDocument,
+      membership.organizationId,
+    );
 
     await ctx.db.patch(template._id, {
       name,

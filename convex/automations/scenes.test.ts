@@ -10,6 +10,8 @@ import {
 } from "./constants";
 import {
   getAvailableTextBindingKeys,
+  calculateObjectFit,
+  collectSceneAssetIds,
   resolveImageSource,
   resolveTextContent,
   normalizeSceneDocument,
@@ -97,7 +99,7 @@ describe("automation phase 1 foundations", () => {
         id: "background",
         width: 1200,
         height: 630,
-        fill: "#111827",
+        fill: "#ffffff",
       },
     });
     expect(layer.children[1]).toMatchObject({
@@ -105,7 +107,7 @@ describe("automation phase 1 foundations", () => {
       attrs: {
         id: "title",
         text: "Matchscore template",
-        fill: "#ffffff",
+        fill: "#111827",
       },
     });
   });
@@ -130,7 +132,7 @@ describe("automation phase 1 foundations", () => {
                     y: 0,
                     width: 1080,
                     height: 1080,
-                    fill: "#111827",
+                    fill: "#ffffff",
                   },
                 },
                 {
@@ -478,5 +480,36 @@ describe("automation phase 1 foundations", () => {
     expect(() =>
       normalizeSceneDocument(scene, "instagram_square", "match_announcement"),
     ).toThrow("Invalid image bindingKey");
+  });
+
+  test("calculates cover object fit crop rectangles", () => {
+    expect(calculateObjectFit(2000, 1000, 1080, 1080, "cover")).toEqual({
+      crop: { x: 500, y: 0, width: 1000, height: 1000 },
+      render: { x: 0, y: 0, width: 1080, height: 1080 },
+    });
+  });
+
+  test("calculates contain object fit render rectangles", () => {
+    expect(calculateObjectFit(2000, 1000, 1080, 1080, "contain")).toEqual({
+      crop: { x: 0, y: 0, width: 2000, height: 1000 },
+      render: { x: 0, y: 270, width: 1080, height: 540 },
+    });
+  });
+
+  test("collects static asset references from scene documents", () => {
+    const scene = createStarterSceneDocument("instagram_square");
+    scene.stage.children?.[0]?.children?.push({
+      className: "Image",
+      attrs: {
+        id: "sponsor-logo",
+        x: 40,
+        y: 40,
+        width: 160,
+        height: 80,
+        assetId: "asset_123",
+      },
+    });
+
+    expect(collectSceneAssetIds(scene)).toEqual(["asset_123"]);
   });
 });
