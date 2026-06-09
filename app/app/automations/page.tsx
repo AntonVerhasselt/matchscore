@@ -2,11 +2,45 @@
 
 import { AppPageHeader } from "@/components/app-page";
 import { AutomationTypeCard } from "@/components/automations/automation-type-card";
-import { AUTOMATION_TYPE_ORDER } from "@/lib/automations/types";
+import { api } from "@/convex/_generated/api";
+import {
+  AUTOMATION_TYPE_ORDER,
+  toBackendAutomationType,
+} from "@/lib/automations/types";
+import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
+import { useEffect, useMemo, useRef } from "react";
 
 export default function AutomationsPage() {
   const t = useTranslations("app.automations");
+  const automations = useQuery(api.automations.queries.listAutomations);
+  const ensureAutomations = useMutation(
+    api.automations.mutations.ensureCurrentOrganizationAutomations,
+  );
+  const hasEnsuredAutomationsRef = useRef(false);
+
+  useEffect(() => {
+    if (automations && !hasEnsuredAutomationsRef.current) {
+      void ensureAutomations({})
+        .then(() => {
+          hasEnsuredAutomationsRef.current = true;
+        })
+        .catch((error) => {
+          console.error("Failed to ensure organization automations:", error);
+        });
+    }
+  }, [automations, ensureAutomations]);
+
+  const automationsByType = useMemo(
+    () =>
+      new Map(
+        (automations ?? []).map((automation) => [
+          automation.automationType,
+          automation,
+        ]),
+      ),
+    [automations],
+  );
 
   return (
     <>
@@ -17,6 +51,7 @@ export default function AutomationsPage() {
           <AutomationTypeCard
             key={automationType}
             automationType={automationType}
+            automation={automationsByType.get(toBackendAutomationType(automationType))}
           />
         ))}
       </div>

@@ -2,36 +2,55 @@
 
 import { notFound, useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
+import { api } from "@/convex/_generated/api";
 import { AppPageBackLink, AppPageHeader } from "@/components/app-page";
 import { CreateTemplateButton } from "@/components/automations/create-template-button";
 import { TemplateList } from "@/components/automations/template-list";
-import { getMockTemplatesForType } from "@/lib/automations/mock-data";
-import { isAutomationTypeSlug } from "@/lib/automations/types";
+import {
+  isAutomationTypeSlug,
+  toBackendAutomationType,
+} from "@/lib/automations/types";
+import { useQuery } from "convex/react";
 
 export default function AutomationTemplatesPage() {
   const params = useParams<{ automationType: string }>();
   const automationType = params.automationType;
   const t = useTranslations("app.automations");
-
-  const initialTemplates = useMemo(
+  const isValidAutomationType = isAutomationTypeSlug(automationType);
+  const slug = isValidAutomationType ? automationType : "result";
+  const backendAutomationType = toBackendAutomationType(slug);
+  const templates = useQuery(api.automations.queries.listTemplates, {
+    automationType: backendAutomationType,
+  });
+  const automations = useQuery(api.automations.queries.listAutomations);
+  const automation = useMemo(
     () =>
-      isAutomationTypeSlug(automationType)
-        ? getMockTemplatesForType(automationType)
-        : [],
-    [automationType],
+      automations?.find(
+        (item) => item.automationType === backendAutomationType,
+      ),
+    [automations, backendAutomationType],
   );
 
-  const [templates, setTemplates] = useState(initialTemplates);
+  const templateRows = templates ?? [];
+  const templateCount = automation?.templateCount ?? templateRows.length;
+  const statusLabel = (automation?.isGloballyEnabled ?? true)
+    ? t("templates.statusActive")
+    : t("templates.statusInactive");
+  const metaDescription = automation?.templateCountIsCapped
+    ? t("templates.cappedMeta", {
+        count: templateCount,
+        status: statusLabel,
+      })
+    : t("templates.meta", {
+        count: templateCount,
+        status: statusLabel,
+      });
 
-  if (!isAutomationTypeSlug(automationType)) {
+  if (!isValidAutomationType) {
     notFound();
   }
-
-  const handleDelete = (templateId: string) => {
-    setTemplates((prev) => prev.filter((tpl) => tpl.id !== templateId));
-  };
 
   return (
     <>
@@ -43,22 +62,18 @@ export default function AutomationTemplatesPage() {
 
       <AppPageHeader
         className="mb-4"
-        title={t(`types.${automationType}.title`)}
-        description={t("templates.meta", {
-          count: templates.length,
-          status: t("templates.statusActive"),
-        })}
+        title={t(`types.${slug}.title`)}
+        description={metaDescription}
       />
 
       <CreateTemplateButton
-        automationType={automationType}
+        automationType={slug}
         className="mb-8 w-full md:w-fit"
       />
 
       <TemplateList
-        automationType={automationType}
-        templates={templates}
-        onDelete={handleDelete}
+        automationType={slug}
+        templates={templateRows}
       />
     </>
   );

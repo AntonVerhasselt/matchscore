@@ -5,18 +5,19 @@ import { useTranslations } from "next-intl";
 
 import { CreateTemplateButton } from "@/components/automations/create-template-button";
 import { TemplateListItem } from "@/components/automations/template-list-item";
-import type { AutomationTypeSlug, MockTemplate } from "@/lib/automations/types";
+import type {
+  AutomationTemplateSummary,
+  AutomationTypeSlug,
+} from "@/lib/automations/types";
 
 type TemplateListProps = {
   automationType: AutomationTypeSlug;
-  templates: MockTemplate[];
-  onDelete: (templateId: string) => void;
+  templates: AutomationTemplateSummary[];
 };
 
 export function TemplateList({
   automationType,
   templates,
-  onDelete,
 }: TemplateListProps) {
   const t = useTranslations("app.automations.templates");
 
@@ -42,10 +43,9 @@ export function TemplateList({
     <div>
       {templates.map((template) => (
         <TemplateListItem
-          key={template.id}
+          key={template._id}
           template={template}
           automationType={automationType}
-          onDelete={onDelete}
         />
       ))}
     </div>

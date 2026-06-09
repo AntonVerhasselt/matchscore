@@ -1,3 +1,5 @@
+import type { Id } from "@/convex/_generated/dataModel";
+
 /** URL segment under `/app/automations/[automationType]`. */
 export type AutomationTypeSlug = "result" | "preview";
 
@@ -12,6 +14,14 @@ export const AUTOMATION_TYPE_ORDER: AutomationTypeSlug[] = ["result", "preview"]
 export type SocialPlatform = "facebook" | "instagram";
 
 export type SocialChannel = "posts" | "story";
+
+export type PostingChannel =
+  | "facebookPagePost"
+  | "facebookPageStory"
+  | "instagramProfilePost"
+  | "instagramProfileStory";
+
+export type PostingChannelStatuses = Record<PostingChannel, boolean>;
 
 export type CanvasPreset =
   | "instagram_square"
@@ -28,6 +38,27 @@ export type MockTemplate = {
   id: string;
   name: string;
   canvasPreset: CanvasPreset;
+  updatedAt: number;
+};
+
+export type AutomationSummary = {
+  _id: Id<"organizationAutomations">;
+  automationType: AutomationTypeBackend;
+  isGloballyEnabled: boolean;
+  postingChannels: PostingChannelStatuses;
+  effectivePostingChannels: PostingChannelStatuses;
+  updatedAt: number;
+  updatedByUserId: string | null;
+  templateCount: number;
+  templateCountIsCapped: boolean;
+};
+
+export type AutomationTemplateSummary = {
+  _id: Id<"automationTemplates">;
+  name: string;
+  automationType: AutomationTypeBackend;
+  canvasPreset: CanvasPreset;
+  schemaVersion: number;
   updatedAt: number;
 };
 
@@ -70,4 +101,20 @@ export function automationEditorPath(
 
 export function isEditorRoute(pathname: string): boolean {
   return /^\/app\/automations\/(result|preview)\/[^/]+$/.test(pathname);
+}
+
+export function toPostingChannel(
+  platform: SocialPlatform,
+  channel: SocialChannel,
+): PostingChannel {
+  if (platform === "facebook" && channel === "posts") {
+    return "facebookPagePost";
+  }
+  if (platform === "facebook" && channel === "story") {
+    return "facebookPageStory";
+  }
+  if (platform === "instagram" && channel === "posts") {
+    return "instagramProfilePost";
+  }
+  return "instagramProfileStory";
 }

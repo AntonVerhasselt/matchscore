@@ -280,6 +280,13 @@
       "backToTemplates": "Back to templates",
       "manageTemplates": "Manage templates",
       "connectedAccounts": "Connected accounts",
+      "enabled": "Active",
+      "disabled": "Paused",
+      "toggleAutomation": "Toggle {type}",
+      "toggleSuccess": "Automation updated.",
+      "toggleFailed": "Couldn't update automation. Please try again.",
+      "channelToggleSuccess": "Posting channel updated.",
+      "channelToggleFailed": "Couldn't update posting channel. Please try again.",
       "types": {
         "result": {
           "title": "Match result",
@@ -302,14 +309,23 @@
       },
       "templates": {
         "create": "New template",
+        "creating": "Creating template...",
+        "defaultName": "New template",
+        "createSuccess": "Template created.",
+        "createFailed": "Couldn't create template. Please try again.",
+        "shortCount": "{count, plural, =0 {No templates} one {# template} other {# templates}}",
+        "cappedShortCount": "{count}+ templates",
         "meta": "{count, plural, =0 {No templates} one {# template} other {# templates}} · {status}",
+        "cappedMeta": "{count}+ templates · {status}",
         "statusActive": "Automation active",
+        "statusInactive": "Automation paused",
         "empty": {
           "title": "No templates yet",
           "description": "Create your first template to start posting automatically."
         },
         "edit": "Edit",
         "delete": "Delete",
+        "deleting": "Deleting...",
         "cancel": "Cancel",
         "deleteConfirmTitle": "Delete template?",
         "deleteConfirmDescription": "\"{name}\" will be permanently deleted. This cannot be undone.",
@@ -324,7 +340,8 @@
         "newTemplate": "New template",
         "editTemplate": "Edit template ({id})",
         "placeholderTitle": "Template editor coming soon",
-        "placeholderDescription": "The react-konva visual editor will appear here. You can already navigate and save placeholder templates."
+        "placeholderDescription": "The react-konva visual editor arrives here in phase 2. This template is already saved in the database.",
+        "notFound": "Template not found."
       }
     }
   },

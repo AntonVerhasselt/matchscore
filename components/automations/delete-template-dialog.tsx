@@ -18,6 +18,7 @@ type DeleteTemplateDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
+  isDeleting?: boolean;
 };
 
 export function DeleteTemplateDialog({
@@ -25,6 +26,7 @@ export function DeleteTemplateDialog({
   open,
   onOpenChange,
   onConfirm,
+  isDeleting = false,
 }: DeleteTemplateDialogProps) {
   const t = useTranslations("app.automations.templates");
 
@@ -41,9 +43,10 @@ export function DeleteTemplateDialog({
           <AlertDialogCancel>{t("cancel")}</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
+            disabled={isDeleting}
             className="bg-destructive text-white hover:bg-destructive/90"
           >
-            {t("delete")}
+            {isDeleting ? t("deleting") : t("delete")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

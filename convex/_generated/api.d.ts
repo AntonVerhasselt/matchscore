@@ -11,6 +11,12 @@
 import type * as auth_deleteUserAccount from "../auth/deleteUserAccount.js";
 import type * as auth_instance from "../auth/instance.js";
 import type * as auth_queries from "../auth/queries.js";
+import type * as automations_constants from "../automations/constants.js";
+import type * as automations_helpers from "../automations/helpers.js";
+import type * as automations_mutations from "../automations/mutations.js";
+import type * as automations_queries from "../automations/queries.js";
+import type * as automations_scenes from "../automations/scenes.js";
+import type * as automations_validators from "../automations/validators.js";
 import type * as dev_clearDatabase from "../dev/clearDatabase.js";
 import type * as emails_actions from "../emails/actions.js";
 import type * as http from "../http.js";
@@ -33,6 +39,12 @@ declare const fullApi: ApiFromModules<{
   "auth/deleteUserAccount": typeof auth_deleteUserAccount;
   "auth/instance": typeof auth_instance;
   "auth/queries": typeof auth_queries;
+  "automations/constants": typeof automations_constants;
+  "automations/helpers": typeof automations_helpers;
+  "automations/mutations": typeof automations_mutations;
+  "automations/queries": typeof automations_queries;
+  "automations/scenes": typeof automations_scenes;
+  "automations/validators": typeof automations_validators;
   "dev/clearDatabase": typeof dev_clearDatabase;
   "emails/actions": typeof emails_actions;
   http: typeof http;
