@@ -185,12 +185,42 @@ export function StaticTemplateEditor({
     setActivePanelTab("properties");
   }, []);
 
+  const insertVariableNode = useCallback(
+    (payload: VariableDragPayload, point: { x: number; y: number }) => {
+      if (!sceneDocument) {
+        return;
+      }
+
+      const nodeId = `${payload.bindingKey}-${Date.now()}`;
+      const node =
+        payload.kind === "image"
+          ? createLogoNode(sceneDocument, nodeId, payload.bindingKey, point)
+          : createTextBindingNode(nodeId, payload.bindingKey, point);
+
+      setSceneDocument(appendSceneNodeToFirstLayer(sceneDocument, node));
+      setSelectedNodeId(nodeId);
+      setActivePanelTab("properties");
+      setIsDirty(true);
+    },
+    [sceneDocument],
+  );
+
   const handleVariableDragStart = useCallback(
     (event: React.DragEvent<HTMLElement>, payload: VariableDragPayload) => {
       event.dataTransfer.effectAllowed = "copy";
       event.dataTransfer.setData(VARIABLE_DRAG_MIME, JSON.stringify(payload));
     },
     [],
+  );
+
+  const handleVariableActivate = useCallback(
+    (payload: VariableDragPayload) => {
+      insertVariableNode(payload, {
+        x: Math.round(stageDimensions.width / 2),
+        y: Math.round(stageDimensions.height / 2),
+      });
+    },
+    [insertVariableNode, stageDimensions.height, stageDimensions.width],
   );
 
   const handleCanvasDrop = useCallback(
@@ -212,18 +242,9 @@ export function StaticTemplateEditor({
         x: Math.round((event.clientX - rect.left) / scale),
         y: Math.round((event.clientY - rect.top) / scale),
       };
-      const nodeId = `${payload.bindingKey}-${Date.now()}`;
-      const node =
-        payload.kind === "image"
-          ? createLogoNode(sceneDocument, nodeId, payload.bindingKey, point)
-          : createTextBindingNode(nodeId, payload.bindingKey, point);
-
-      setSceneDocument(appendSceneNodeToFirstLayer(sceneDocument, node));
-      setSelectedNodeId(nodeId);
-      setActivePanelTab("properties");
-      setIsDirty(true);
+      insertVariableNode(payload, point);
     },
-    [scale, sceneDocument],
+    [insertVariableNode, scale, sceneDocument],
   );
 
   const handleSave = async () => {
@@ -388,6 +409,7 @@ export function StaticTemplateEditor({
             previewMode={previewMode}
             onTabChange={setActivePanelTab}
             onVariableDragStart={handleVariableDragStart}
+            onVariableActivate={handleVariableActivate}
             onPropertiesChange={updateSelectedNodeAttrs}
           />
         </aside>
@@ -403,6 +425,7 @@ function EditorRightPanel({
   previewMode,
   onTabChange,
   onVariableDragStart,
+  onVariableActivate,
   onPropertiesChange,
 }: {
   activeTab: EditorPanelTab;
@@ -414,6 +437,7 @@ function EditorRightPanel({
     event: React.DragEvent<HTMLElement>,
     payload: VariableDragPayload,
   ) => void;
+  onVariableActivate: (payload: VariableDragPayload) => void;
   onPropertiesChange: (attrs: SceneNodeAttrs) => void;
 }) {
   const t = useTranslations("app.automations.editor");
@@ -435,6 +459,7 @@ function EditorRightPanel({
           <VariablesPanel
             automationType={automationType}
             onVariableDragStart={onVariableDragStart}
+            onVariableActivate={onVariableActivate}
           />
         ) : null}
         {activeTab === "assets" ? (
@@ -485,12 +510,14 @@ function EditorRightPanel({
 function VariablesPanel({
   automationType,
   onVariableDragStart,
+  onVariableActivate,
 }: {
   automationType: AutomationType;
   onVariableDragStart: (
     event: React.DragEvent<HTMLElement>,
     payload: VariableDragPayload,
   ) => void;
+  onVariableActivate: (payload: VariableDragPayload) => void;
 }) {
   const t = useTranslations("app.automations.editor");
 
@@ -515,6 +542,9 @@ function VariablesPanel({
               onDragStart={(event) =>
                 onVariableDragStart(event, { kind: "text", bindingKey })
               }
+              onActivate={() =>
+                onVariableActivate({ kind: "text", bindingKey })
+              }
             />
           ))}
         </div>
@@ -534,6 +564,9 @@ function VariablesPanel({
               onDragStart={(event) =>
                 onVariableDragStart(event, { kind: "image", bindingKey })
               }
+              onActivate={() =>
+                onVariableActivate({ kind: "image", bindingKey })
+              }
             />
           ))}
         </div>
@@ -547,11 +580,13 @@ function VariableCard({
   description,
   icon: Icon,
   onDragStart,
+  onActivate,
 }: {
   title: string;
   description: string;
   icon: React.ComponentType<{ className?: string }>;
   onDragStart: (event: React.DragEvent<HTMLElement>) => void;
+  onActivate: () => void;
 }) {
   return (
     <div
@@ -560,6 +595,12 @@ function VariableCard({
       tabIndex={0}
       className="group flex cursor-grab items-center gap-3 border bg-card p-3 text-left shadow-sm transition-colors hover:border-primary/50 active:cursor-grabbing"
       onDragStart={onDragStart}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onActivate();
+        }
+      }}
     >
       <div className="flex size-10 shrink-0 items-center justify-center bg-muted text-muted-foreground group-hover:text-foreground">
         <Icon className="size-4" aria-hidden />
@@ -877,6 +918,10 @@ function NodePropertiesPanel({
   const textBindingKey = isText
     ? getTextBindingKey(node.attrs.bindingKey, automationType)
     : null;
+  const availableTextBindingKeys = isText
+    ? getAvailableTextBindingKeys(automationType)
+    : [];
+  const hasTextBindingOptions = availableTextBindingKeys.length > 0;
   const imageBindingKey = isImage ? getImageBindingKey(node.attrs.bindingKey) : null;
   const contentMode = textBindingKey ? "variable" : "fixed";
 
@@ -933,7 +978,10 @@ function NodePropertiesPanel({
                   }
 
                   const nextBindingKey =
-                    textBindingKey ?? getAvailableTextBindingKeys(automationType)[0];
+                    textBindingKey ?? availableTextBindingKeys[0];
+                  if (!nextBindingKey) {
+                    return;
+                  }
                   onChange({
                     bindingKey: nextBindingKey,
                     text: undefined,
@@ -945,7 +993,9 @@ function NodePropertiesPanel({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="fixed">{t("fixedText")}</SelectItem>
-                  <SelectItem value="variable">{t("variable")}</SelectItem>
+                  <SelectItem value="variable" disabled={!hasTextBindingOptions}>
+                    {t("variable")}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -962,7 +1012,7 @@ function NodePropertiesPanel({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {getAvailableTextBindingKeys(automationType).map((bindingKey) => (
+                    {availableTextBindingKeys.map((bindingKey) => (
                       <SelectItem key={bindingKey} value={bindingKey}>
                         {t(`bindings.${bindingKey}`)}
                       </SelectItem>
