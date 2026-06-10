@@ -192,7 +192,7 @@ export function prepareFilledShapeAttrsForRender(
   attrs: SceneNodeAttrs,
 ): SceneNodeAttrs {
   const strokeProps = getFilledShapeStrokeProps(attrs);
-  const next = { ...attrs, strokeWidth: strokeProps.strokeWidth };
+  const next: SceneNodeAttrs = { ...attrs, strokeWidth: strokeProps.strokeWidth };
 
   if (!strokeProps.strokeEnabled) {
     delete next.stroke;
