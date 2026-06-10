@@ -115,10 +115,13 @@ export {
   SHAPE_CATEGORIES,
   SHAPE_PRESET_DRAG_MIME,
   createShapeNode,
+  getFilledShapeStrokeProps,
+  isFilledShapeClassName,
   isRadiusShapeClassName,
   isShapePresetId,
   isVectorShapeClassName,
   parseShapePresetDragPayload,
+  prepareFilledShapeAttrsForRender,
 } from "./shape-presets";
 export type {
   ShapeCategoryId,

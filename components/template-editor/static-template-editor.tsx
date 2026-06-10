@@ -89,6 +89,7 @@ import {
   type TextBindingKey,
   type TextOverflowMode,
   createShapeNode,
+  getFilledShapeStrokeProps,
   getLineDashPreset,
   isVectorShapeClassName,
   LINE_DASH_PRESETS,
@@ -629,16 +630,44 @@ export function StaticTemplateEditor({
     [generateUploadUrl, saveTemplateAsset],
   );
 
-  const handleUploadAsset = useCallback(
-    async (file: File): Promise<TemplateAsset | null> => {
+  const handleUploadAssets = useCallback(
+    async (files: File[]): Promise<TemplateAsset[]> => {
+      if (files.length === 0) {
+        return [];
+      }
+
       setIsUploadingAsset(true);
+      const uploaded: TemplateAsset[] = [];
+      let failedCount = 0;
+
       try {
-        const asset = await uploadTemplateAsset(file);
-        showSuccessToast(t("editor.assetUploadSuccess"));
-        return asset;
-      } catch {
-        showErrorToast(t("editor.assetUploadFailed"));
-        return null;
+        for (const file of files) {
+          try {
+            const asset = await uploadTemplateAsset(file);
+            uploaded.push(asset);
+          } catch {
+            failedCount += 1;
+          }
+        }
+
+        if (uploaded.length > 0 && failedCount === 0) {
+          showSuccessToast(
+            uploaded.length === 1
+              ? t("editor.assetUploadSuccess")
+              : t("editor.assetUploadSuccessMultiple", { count: uploaded.length }),
+          );
+        } else if (uploaded.length > 0) {
+          showSuccessToast(
+            t("editor.assetUploadPartialSuccess", {
+              uploaded: uploaded.length,
+              failed: failedCount,
+            }),
+          );
+        } else {
+          showErrorToast(t("editor.assetUploadFailed"));
+        }
+
+        return uploaded;
       } finally {
         setIsUploadingAsset(false);
       }
@@ -1330,7 +1359,7 @@ export function StaticTemplateEditor({
             onShapeInsert={handleShapeInsert}
             onVariableDragStart={handleVariableDragStart}
             onVariableActivate={handleVariableActivate}
-            onAssetUpload={handleUploadAsset}
+            onAssetUpload={handleUploadAssets}
             onAssetDragStart={handleAssetDragStart}
             onAssetActivate={handleAssetActivate}
             onAssetDelete={handleDeleteAsset}
@@ -1444,7 +1473,7 @@ function EditorRightPanel({
     payload: VariableDragPayload,
   ) => void;
   onVariableActivate: (payload: VariableDragPayload) => void;
-  onAssetUpload: (file: File) => Promise<TemplateAsset | null>;
+  onAssetUpload: (files: File[]) => Promise<TemplateAsset[]>;
   onAssetDragStart: (
     event: React.DragEvent<HTMLElement>,
     assetId: Id<"templateAssets">,
@@ -1758,7 +1787,7 @@ function AssetsPanel({
   assets: TemplateAsset[];
   isUploading: boolean;
   deletingAssetId: Id<"templateAssets"> | null;
-  onUpload: (file: File) => Promise<TemplateAsset | null>;
+  onUpload: (files: File[]) => Promise<TemplateAsset[]>;
   onAssetDragStart: (
     event: React.DragEvent<HTMLElement>,
     assetId: Id<"templateAssets">,
@@ -2022,7 +2051,7 @@ function BackgroundPanel({
   backgroundNode: SceneNode | null;
   assets: TemplateAsset[];
   isUploading: boolean;
-  onUpload: (file: File) => Promise<TemplateAsset | null>;
+  onUpload: (files: File[]) => Promise<TemplateAsset[]>;
   onColorChange: (fill: string) => void;
   onImageChange: (asset: TemplateAsset) => void;
   onImageRemove: () => void;
@@ -2088,12 +2117,12 @@ function BackgroundPanel({
           isUploading ? t("uploadingAsset") : t("uploadBackgroundImage")
         }
         disabled={isUploading}
-        onUpload={async (file) => {
-          const asset = await onUpload(file);
-          if (asset) {
-            onImageChange(asset);
+        onUpload={async (files) => {
+          const assets = await onUpload(files);
+          if (assets[0]) {
+            onImageChange(assets[0]);
           }
-          return asset;
+          return assets;
         }}
       />
       {assets.length > 0 ? (
@@ -2133,7 +2162,7 @@ function AssetUploadInput({
   id: string;
   label: string;
   disabled: boolean;
-  onUpload: (file: File) => Promise<TemplateAsset | null>;
+  onUpload: (files: File[]) => Promise<TemplateAsset[]>;
 }) {
   return (
     <div className="space-y-2">
@@ -2141,13 +2170,14 @@ function AssetUploadInput({
         id={id}
         type="file"
         accept={ALLOWED_TEMPLATE_ASSET_MIME_TYPES.join(",")}
+        multiple
         disabled={disabled}
         className="sr-only"
         onChange={(event) => {
-          const file = event.target.files?.[0];
+          const selectedFiles = Array.from(event.target.files ?? []);
           event.currentTarget.value = "";
-          if (file) {
-            void onUpload(file);
+          if (selectedFiles.length > 0) {
+            void onUpload(selectedFiles);
           }
         }}
       />
@@ -2923,52 +2953,63 @@ function SceneNodeRenderer({
     );
   }
 
-  if (node.className === "Rect") {
-    return (
-      <Rect
-        {...sharedProps}
-        x={numberAttr(node.attrs, "x", 0)}
-        y={numberAttr(node.attrs, "y", 0)}
-        width={numberAttr(node.attrs, "width", 100)}
-        height={numberAttr(node.attrs, "height", 100)}
-        cornerRadius={optionalNumberAttr(node.attrs, "cornerRadius") ?? 0}
-        fill={stringAttr(node.attrs, "fill") ?? "#111827"}
-        stroke={stringAttr(node.attrs, "stroke")}
-        strokeWidth={optionalNumberAttr(node.attrs, "strokeWidth")}
-      />
-    );
-  }
+  if (
+    node.className === "Rect" ||
+    node.className === "Circle" ||
+    node.className === "RegularPolygon" ||
+    node.className === "Star"
+  ) {
+    const strokeProps = getFilledShapeStrokeProps(node.attrs);
+    const fill = stringAttr(node.attrs, "fill") ?? "#111827";
 
-  if (node.className === "Circle") {
-    return (
-      <KonvaCircle
-        {...sharedProps}
-        x={numberAttr(node.attrs, "x", 0)}
-        y={numberAttr(node.attrs, "y", 0)}
-        radius={numberAttr(node.attrs, "radius", 50)}
-        fill={stringAttr(node.attrs, "fill") ?? "#111827"}
-        stroke={stringAttr(node.attrs, "stroke")}
-        strokeWidth={optionalNumberAttr(node.attrs, "strokeWidth")}
-      />
-    );
-  }
+    if (node.className === "Rect") {
+      return (
+        <Rect
+          {...sharedProps}
+          x={numberAttr(node.attrs, "x", 0)}
+          y={numberAttr(node.attrs, "y", 0)}
+          width={numberAttr(node.attrs, "width", 100)}
+          height={numberAttr(node.attrs, "height", 100)}
+          cornerRadius={optionalNumberAttr(node.attrs, "cornerRadius") ?? 0}
+          fill={fill}
+          stroke={strokeProps.stroke}
+          strokeWidth={strokeProps.strokeWidth}
+          strokeEnabled={strokeProps.strokeEnabled}
+        />
+      );
+    }
 
-  if (node.className === "RegularPolygon") {
-    return (
-      <RegularPolygon
-        {...sharedProps}
-        x={numberAttr(node.attrs, "x", 0)}
-        y={numberAttr(node.attrs, "y", 0)}
-        sides={numberAttr(node.attrs, "sides", 3)}
-        radius={numberAttr(node.attrs, "radius", 50)}
-        fill={stringAttr(node.attrs, "fill") ?? "#111827"}
-        stroke={stringAttr(node.attrs, "stroke")}
-        strokeWidth={optionalNumberAttr(node.attrs, "strokeWidth")}
-      />
-    );
-  }
+    if (node.className === "Circle") {
+      return (
+        <KonvaCircle
+          {...sharedProps}
+          x={numberAttr(node.attrs, "x", 0)}
+          y={numberAttr(node.attrs, "y", 0)}
+          radius={numberAttr(node.attrs, "radius", 50)}
+          fill={fill}
+          stroke={strokeProps.stroke}
+          strokeWidth={strokeProps.strokeWidth}
+          strokeEnabled={strokeProps.strokeEnabled}
+        />
+      );
+    }
 
-  if (node.className === "Star") {
+    if (node.className === "RegularPolygon") {
+      return (
+        <RegularPolygon
+          {...sharedProps}
+          x={numberAttr(node.attrs, "x", 0)}
+          y={numberAttr(node.attrs, "y", 0)}
+          sides={numberAttr(node.attrs, "sides", 3)}
+          radius={numberAttr(node.attrs, "radius", 50)}
+          fill={fill}
+          stroke={strokeProps.stroke}
+          strokeWidth={strokeProps.strokeWidth}
+          strokeEnabled={strokeProps.strokeEnabled}
+        />
+      );
+    }
+
     return (
       <KonvaStar
         {...sharedProps}
@@ -2977,9 +3018,10 @@ function SceneNodeRenderer({
         numPoints={numberAttr(node.attrs, "numPoints", 5)}
         innerRadius={numberAttr(node.attrs, "innerRadius", 20)}
         outerRadius={numberAttr(node.attrs, "outerRadius", 50)}
-        fill={stringAttr(node.attrs, "fill") ?? "#111827"}
-        stroke={stringAttr(node.attrs, "stroke")}
-        strokeWidth={optionalNumberAttr(node.attrs, "strokeWidth")}
+        fill={fill}
+        stroke={strokeProps.stroke}
+        strokeWidth={strokeProps.strokeWidth}
+        strokeEnabled={strokeProps.strokeEnabled}
       />
     );
   }

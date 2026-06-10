@@ -150,6 +150,59 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
+const FILLED_SHAPE_CLASS_NAMES = [
+  "Rect",
+  "Circle",
+  "RegularPolygon",
+  "Star",
+] as const;
+
+export type FilledShapeClassName = (typeof FILLED_SHAPE_CLASS_NAMES)[number];
+
+export function isFilledShapeClassName(
+  className: string,
+): className is FilledShapeClassName {
+  return (FILLED_SHAPE_CLASS_NAMES as readonly string[]).includes(className);
+}
+
+function readStrokeWidth(attrs: SceneNodeAttrs): number {
+  const value = attrs.strokeWidth;
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+/** Konva draws a 1px stroke when `stroke` is set but width is missing/zero. */
+export function getFilledShapeStrokeProps(attrs: SceneNodeAttrs): {
+  stroke?: string;
+  strokeWidth: number;
+  strokeEnabled: boolean;
+} {
+  const strokeWidth = readStrokeWidth(attrs);
+  if (strokeWidth <= 0) {
+    return { strokeWidth: 0, strokeEnabled: false };
+  }
+
+  return {
+    stroke: typeof attrs.stroke === "string" ? attrs.stroke : "#111827",
+    strokeWidth,
+    strokeEnabled: true,
+  };
+}
+
+export function prepareFilledShapeAttrsForRender(
+  attrs: SceneNodeAttrs,
+): SceneNodeAttrs {
+  const strokeProps = getFilledShapeStrokeProps(attrs);
+  const next = { ...attrs, strokeWidth: strokeProps.strokeWidth };
+
+  if (!strokeProps.strokeEnabled) {
+    delete next.stroke;
+    return next;
+  }
+
+  next.stroke = strokeProps.stroke;
+  return next;
+}
+
 function baseShapeAttrs(
   nodeId: string,
   presetId: ShapePresetId,
@@ -161,6 +214,7 @@ function baseShapeAttrs(
     name: presetId,
     fill,
     stroke,
+    strokeWidth: 0,
   };
 }
 

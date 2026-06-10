@@ -5,6 +5,8 @@ import { loadImage } from "skia-canvas";
 
 import {
   getImageBindingKey,
+  isFilledShapeClassName,
+  prepareFilledShapeAttrsForRender,
   type AutomationType,
   type ImageBindingKey,
   type SceneDocument,
@@ -64,6 +66,14 @@ function prepareSceneNodeForRender(
         text: prepared.text,
         fontSize: prepared.fontSize,
       },
+      ...(children ? { children } : {}),
+    };
+  }
+
+  if (isFilledShapeClassName(node.className)) {
+    return {
+      className: node.className,
+      attrs: prepareFilledShapeAttrsForRender(node.attrs),
       ...(children ? { children } : {}),
     };
   }
