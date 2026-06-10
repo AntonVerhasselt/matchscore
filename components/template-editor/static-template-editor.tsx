@@ -15,6 +15,7 @@ import {
   EyeOff,
   GripVertical,
   ImageIcon,
+  ImagePlay,
   Layers,
   Lock,
   Redo2,
@@ -65,9 +66,11 @@ import {
   buildKonvaFontStyle,
   calculateObjectFit,
   calculateTextFit,
+  ellipsizeText,
   getTextDecoration,
   collectSceneFontFamilies,
   loadGoogleFonts,
+  measureTextForFit,
   normalizeSceneDocument,
   parseKonvaFontStyle,
   toggleUnderline,
@@ -82,8 +85,12 @@ import {
   type SceneNodeAttrs,
   type TextBindingKey,
   type TextOverflowMode,
-  type TextTransform,
 } from "@/lib/template-scene";
+import {
+  normalizeHexColor,
+  pickContrastingTextColor,
+  resolveSceneBackgroundFill,
+} from "@/lib/template-scene/color-contrast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,7 +112,7 @@ import {
 } from "@/lib/automations/types";
 import { CANVAS_PRESET_LABELS } from "@/lib/automations/canvas-presets";
 import { showErrorToast, showSuccessToast } from "@/lib/user-feedback";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useAction } from "convex/react";
 import {
   ALLOWED_TEMPLATE_ASSET_MIME_TYPES,
   MAX_TEMPLATE_ASSET_BYTE_SIZE,
@@ -204,6 +211,7 @@ export function StaticTemplateEditor({
   const deleteTemplateAsset = useMutation(
     api.templateAssets.mutations.deleteTemplateAsset,
   );
+  const renderTemplateTest = useAction(api.automations.actions.renderTemplateTest);
   const templateAssets = useQuery(api.templateAssets.queries.listTemplateAssets);
   const backendAutomationType = toBackendAutomationType(automationType);
   const initialSceneDocument = useMemo(() => {
@@ -235,6 +243,9 @@ export function StaticTemplateEditor({
     useState<Id<"templateAssets"> | null>(null);
   const [titleInputWidth, setTitleInputWidth] = useState(40);
   const [editingTextNodeId, setEditingTextNodeId] = useState<string | null>(null);
+  const [isRenderingTest, setIsRenderingTest] = useState(false);
+  const [renderPreviewUrl, setRenderPreviewUrl] = useState<string | null>(null);
+  const [renderPreviewOpen, setRenderPreviewOpen] = useState(false);
   const [editingTextValue, setEditingTextValue] = useState("");
   const nodeRefs = useRef(new Map<string, Konva.Node>());
   const transformerRef = useRef<Konva.Transformer>(null);
@@ -656,7 +667,7 @@ export function StaticTemplateEditor({
       const node =
         payload.kind === "image"
           ? createLogoNode(sceneDocument, nodeId, payload.bindingKey, point)
-          : createTextBindingNode(nodeId, payload.bindingKey, point);
+          : createTextBindingNode(sceneDocument, nodeId, payload.bindingKey, point);
 
       commitSceneDocument((current) => appendSceneNodeToFirstLayer(current, node));
       setSelectedNodeId(nodeId);
@@ -910,6 +921,27 @@ export function StaticTemplateEditor({
     updateTemplate,
   ]);
 
+  const handleRenderTest = useCallback(async () => {
+    if (!sceneDocument) {
+      return;
+    }
+
+    setIsRenderingTest(true);
+    try {
+      const result = await renderTemplateTest({
+        templateId: template._id,
+        sceneDocument,
+      });
+      setRenderPreviewUrl(result.previewUrl);
+      setRenderPreviewOpen(true);
+      showSuccessToast(t("editor.renderTestSuccess"));
+    } catch {
+      showErrorToast(t("editor.renderTestFailed"));
+    } finally {
+      setIsRenderingTest(false);
+    }
+  }, [renderTemplateTest, sceneDocument, t, template._id]);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isEditableShortcutTarget(event.target)) {
@@ -1046,6 +1078,16 @@ export function StaticTemplateEditor({
           </Button>
           <Button
             type="button"
+            variant="outline"
+            size="sm"
+            disabled={isRenderingTest || isSaving}
+            onClick={() => void handleRenderTest()}
+          >
+            <ImagePlay aria-hidden />
+            {isRenderingTest ? t("editor.renderTestRunning") : t("editor.renderTest")}
+          </Button>
+          <Button
+            type="button"
             size="sm"
             disabled={!isDirty || isSaving}
             onClick={() => void handleSave()}
@@ -1157,6 +1199,32 @@ export function StaticTemplateEditor({
           />
         </aside>
       </div>
+
+      <AlertDialog open={renderPreviewOpen} onOpenChange={setRenderPreviewOpen}>
+        <AlertDialogContent className="max-w-3xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("editor.renderTestTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("editor.renderTestDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {renderPreviewUrl ? (
+            <div className="overflow-hidden rounded-md border bg-muted/20 p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={renderPreviewUrl}
+                alt={t("editor.renderTestImageAlt")}
+                className="mx-auto max-h-[70vh] w-auto max-w-full object-contain"
+              />
+            </div>
+          ) : null}
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setRenderPreviewOpen(false)}>
+              {t("editor.renderTestClose")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
@@ -2409,31 +2477,61 @@ function TextColorPicker({
   label: string;
   onChange: (fill: string) => void;
 }) {
-  const inputId = useId();
-  const normalized = value || "#000000";
+  const hexInputId = useId();
+  const colorInputRef = useRef<HTMLInputElement>(null);
+  const normalized = normalizeHexColor(value) ?? "#000000";
+  const [hexDraft, setHexDraft] = useState(normalized);
+
+  useEffect(() => {
+    setHexDraft(normalized);
+  }, [normalized]);
+
+  const commitHexDraft = () => {
+    const nextColor = normalizeHexColor(hexDraft);
+    if (nextColor) {
+      onChange(nextColor);
+      setHexDraft(nextColor);
+      return;
+    }
+
+    setHexDraft(normalized);
+  };
 
   return (
-    <label
-      htmlFor={inputId}
-      className="flex h-10 w-full min-w-0 cursor-pointer items-center gap-3 border border-input bg-background px-2.5 transition-colors hover:bg-muted/40"
-    >
-      <span
-        aria-hidden
-        className="size-9 shrink-0 border border-border shadow-sm"
+    <div className="flex h-8 w-full min-w-0 items-stretch overflow-hidden border border-input bg-background">
+      <button
+        type="button"
+        aria-label={label}
+        className="w-9 shrink-0 cursor-pointer border-r border-input transition-opacity hover:opacity-90"
         style={{ backgroundColor: normalized }}
+        onClick={() => colorInputRef.current?.click()}
       />
-      <span className="min-w-0 flex-1 text-sm font-medium">{label}</span>
-      <span className="shrink-0 font-mono text-xs uppercase text-muted-foreground">
-        {normalized}
-      </span>
+      <Input
+        id={hexInputId}
+        value={hexDraft}
+        aria-label={`${label} hex`}
+        spellCheck={false}
+        autoComplete="off"
+        className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent px-2 font-mono text-xs uppercase shadow-none focus-visible:ring-0"
+        onChange={(event) => setHexDraft(event.target.value)}
+        onBlur={commitHexDraft}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            commitHexDraft();
+          }
+        }}
+      />
       <input
-        id={inputId}
+        ref={colorInputRef}
         type="color"
         value={normalized}
         className="sr-only"
+        tabIndex={-1}
+        aria-hidden
         onChange={(event) => onChange(event.target.value)}
       />
-    </label>
+    </div>
   );
 }
 
@@ -3422,6 +3520,13 @@ function appendSceneNodeToFirstLayer(
   };
 }
 
+function getSceneBackgroundFill(sceneDocument: SceneDocument): string {
+  return resolveSceneBackgroundFill(
+    findBackgroundNode(sceneDocument),
+    DEFAULT_BACKGROUND_FILL,
+  );
+}
+
 function createFixedTextNode(
   sceneDocument: SceneDocument,
   nodeId: string,
@@ -3444,6 +3549,7 @@ function createFixedTextNode(
   const maxX = Math.max(0, stageWidth - width);
   const minY = Math.min(0, stageHeight - height);
   const maxY = Math.max(0, stageHeight - height);
+  const fill = pickContrastingTextColor(getSceneBackgroundFill(sceneDocument));
 
   return {
     className: "Text",
@@ -3459,7 +3565,7 @@ function createFixedTextNode(
       fontFamily: "Arial",
       fontStyle: style.fontStyle ?? "normal",
       lineHeight,
-      fill: "#111827",
+      fill,
       align: "center",
     },
   };
@@ -3493,12 +3599,14 @@ function parseTextPresetDragPayload(raw: string): TextPresetDragPayload | null {
 }
 
 function createTextBindingNode(
+  sceneDocument: SceneDocument,
   nodeId: string,
   bindingKey: TextBindingKey,
   point: { x: number; y: number },
 ): SceneNode {
   const fontSize = 52;
   const token = `{{ ${bindingKey} }}`;
+  const fill = pickContrastingTextColor(getSceneBackgroundFill(sceneDocument));
 
   return {
     className: "Text",
@@ -3510,7 +3618,7 @@ function createTextBindingNode(
       width: estimateSingleLineTextWidth(token, fontSize),
       fontSize,
       fontFamily: "Arial",
-      fill: "#ffffff",
+      fill,
       bindingKey,
     },
   };
@@ -3774,31 +3882,6 @@ function parseAssetDragPayload(rawPayload: string): AssetDragPayload | null {
   }
 
   return null;
-}
-
-function measureTextForFit(
-  text: string,
-  fontSize: number,
-  fontFamily: string,
-): { width: number; height: number } {
-  const averageCharacterWidth = fontFamily === "Georgia" ? 0.58 : 0.54;
-  const lines = text.split("\n");
-  return {
-    width:
-      Math.max(...lines.map((line) => line.length), 1) *
-      fontSize *
-      averageCharacterWidth,
-    height: lines.length * fontSize,
-  };
-}
-
-function ellipsizeText(text: string, width: number, fontSize: number): string {
-  const maxCharacters = Math.max(Math.floor(width / (fontSize * 0.54)) - 1, 1);
-  if (text.length <= maxCharacters) {
-    return text;
-  }
-
-  return `${text.slice(0, maxCharacters)}...`;
 }
 
 function isEditableShortcutTarget(target: EventTarget | null): boolean {

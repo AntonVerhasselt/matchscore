@@ -18,7 +18,50 @@ import {
   resolveTextContent,
   normalizeSceneDocument,
 } from "../../lib/template-scene";
+import {
+  formatBinding,
+  formatMatchDateTime,
+  formatScore,
+} from "../../lib/template-scene/format-binding";
+import {
+  DEFAULT_MOCK_MATCH,
+  DEFAULT_MOCK_MATCH_KICKOFF_AT,
+} from "../../lib/template-scene/mock-match";
+import { prepareImageLayout, prepareTextForRender } from "../../lib/template-scene/prepare-render-node";
+import { getFontUrlsForFamilies, assertTemplateFontManifestUsesRemoteUrls } from "../../lib/template-scene/server-font-registry";
 import { createStarterSceneDocument } from "./scenes";
+import {
+  normalizeHexColor,
+  pickContrastingTextColor,
+  relativeLuminance,
+  resolveSceneBackgroundFill,
+} from "../../lib/template-scene/color-contrast";
+
+describe("template scene color contrast", () => {
+  test("picks black text on light backgrounds", () => {
+    expect(pickContrastingTextColor("#ffffff")).toBe("#000000");
+    expect(pickContrastingTextColor("#fef3c7")).toBe("#000000");
+  });
+
+  test("picks white text on dark backgrounds", () => {
+    expect(pickContrastingTextColor("#000000")).toBe("#ffffff");
+    expect(pickContrastingTextColor("#111827")).toBe("#ffffff");
+    expect(pickContrastingTextColor("#1e3a8a")).toBe("#ffffff");
+  });
+
+  test("normalizes shorthand and missing hash hex values", () => {
+    expect(normalizeHexColor("fff")).toBe("#ffffff");
+    expect(normalizeHexColor("#ABC")).toBe("#aabbcc");
+    expect(normalizeHexColor("not-a-color")).toBeNull();
+  });
+
+  test("resolves solid and image background fills", () => {
+    const scene = createStarterSceneDocument("instagram_square");
+    const background = scene.stage.children?.[0]?.children?.[0] ?? null;
+    expect(resolveSceneBackgroundFill(background)).toBe("#ffffff");
+    expect(relativeLuminance("#ffffff")).toBeGreaterThan(0.55);
+  });
+});
 
 describe("automation phase 1 foundations", () => {
   test("defines exactly the two MVP automation types", () => {
@@ -642,5 +685,66 @@ describe("automation phase 1 foundations", () => {
     });
 
     expect(collectSceneAssetIds(scene)).toEqual(["asset_123"]);
+  });
+});
+
+describe("automation phase 6 server render prep", () => {
+  test("formats binding text from mock match data with nl-BE locale", () => {
+    expect(formatBinding("homeClubName", DEFAULT_MOCK_MATCH, "nl-BE")).toBe(
+      "KFC Eendracht",
+    );
+    expect(formatBinding("homeAwayClubNames", DEFAULT_MOCK_MATCH, "nl-BE")).toBe(
+      "KFC Eendracht - Sporting Zuid",
+    );
+    expect(formatBinding("score", DEFAULT_MOCK_MATCH, "nl-BE")).toBe("2 - 1");
+    expect(formatMatchDateTime(DEFAULT_MOCK_MATCH_KICKOFF_AT, "nl-BE")).toMatch(
+      /2025/,
+    );
+    expect(formatScore(DEFAULT_MOCK_MATCH)).toBe("2 - 1");
+  });
+
+  test("prepares bound text for server render", () => {
+    const prepared = prepareTextForRender(
+      {
+        bindingKey: "homeClubName",
+        fontSize: 48,
+        width: 400,
+      },
+      "match_result",
+      DEFAULT_MOCK_MATCH,
+    );
+
+    expect(prepared.text).toBe("KFC Eendracht");
+    expect(prepared.fontSize).toBe(48);
+  });
+
+  test("prepares background image layout as full-frame cover", () => {
+    const layout = prepareImageLayout(
+      {
+        id: "background",
+        width: 1080,
+        height: 1080,
+        objectFit: "contain",
+      },
+      2000,
+      1000,
+    );
+
+    expect(layout.render).toEqual({ x: 0, y: 0, width: 1080, height: 1080 });
+  });
+
+  test("returns no font urls for unknown families", () => {
+    expect(getFontUrlsForFamilies(["Comic Sans MS"])).toEqual([]);
+  });
+
+  test("returns downloadable urls for system and catalog families", () => {
+    const entries = getFontUrlsForFamilies(["Arial", "Montserrat"]);
+    expect(entries).toHaveLength(2);
+    expect(entries[0]?.family).toBe("Arial");
+    expect(entries[1]?.family).toBe("Montserrat");
+  });
+
+  test("font manifest uses remote https urls for convex runtime loading", () => {
+    assertTemplateFontManifestUsesRemoteUrls();
   });
 });

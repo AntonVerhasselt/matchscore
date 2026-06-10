@@ -68,7 +68,7 @@ export default async function RootLayout({
           <NextIntlClientProvider locale={locale} messages={messages}>
             <ConvexClientProvider initialToken={token}>
               {children}
-              <Toaster position="top-right" closeButton />
+              <Toaster closeButton />
             </ConvexClientProvider>
           </NextIntlClientProvider>
         </ThemeProvider>

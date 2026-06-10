@@ -5,7 +5,7 @@
 > Branch context: `feature/club-automations-templates`  
 > Scope: Convex database design, automation/template APIs, react-konva editor, storage conventions, server render foundation, and phase-by-phase testing.  
 > Non-scope for MVP: match/calendar storage, actual scheduled posting, Meta/social posting, subscription/watermark enforcement, and `starting_eleven`.
-> Current implementation status: Phases 1-5 are merged to `main`; Phases 6-7 remain planned work.
+> Current implementation status: Phases 1-5 are merged to `main`; Phase 6 is implemented on `templates-phase-6` (PR pending); Phase 7 remains planned work.
 
 This document combines the approved product/backend brief and the react-konva technical guide into one phased implementation plan. Each phase must produce a small integrated slice: backend state, frontend UI, automated checks, browser verification, and database verification. After a phase passes those checks, the implementer should stop and hand it to the user for manual testing before continuing.
 
@@ -79,9 +79,10 @@ These decisions are carried forward unchanged:
 | Permissions | Any organization member can manage automations and templates |
 | Watermark | Out of scope |
 | Scene storage | Inline `sceneDocument` object on template row |
-| Fonts | System fonts plus a curated Google Fonts catalog in the editor (Phase 5); server render still uses system fonts until custom font loading is added |
+| Fonts | System fonts plus a curated Google Fonts catalog in the editor (Phase 5); server render registers the same catalog via downloaded `.woff2` files in Phase 6 (see **Google Fonts — server render strategy**). System fonts are mapped to metric-compatible Google Font stand-ins on Linux. Club-uploaded custom fonts remain deferred. |
 | Konva features | Basic `Stage`, `Layer`, `Group`, `Rect`, `Text`, `Image` only |
 | Schema versioning | `schemaVersion: 1` on every template |
+| Render backend | **Approved:** `konva/skia-backend` + `skia-canvas` in Convex `"use node"` actions. Fallback to `konva/canvas-backend` + `canvas` only if the Convex native-module spike fails. |
 | Thumbnail | Optional `thumbnailStorageId`, implement later |
 | Delete templates | Hard delete |
 | Background editing | A dedicated Background tab controls background color/image; background selection opens this tab |
@@ -417,10 +418,8 @@ Dependency intent:
 
 ```bash
 pnpm add konva react-konva use-image
-pnpm add skia-canvas
+pnpm add skia-canvas  # Convex "use node" render actions only — must not enter the client bundle
 ```
-
-`skia-canvas` is for a future Convex `"use node"` render action only. It must not enter the client bundle.
 
 ### Runtime State Split
 
@@ -821,9 +820,9 @@ The browser and server render paths must share:
 | Uppercase | `displayText()` |
 | Date/time | `formatBinding()` with `nl-BE` |
 | Gradients | Same Konva attrs |
-| Fonts | Same font family names; editor loads Google Fonts in browser, server render still system-only until `registerFont` is added |
+| Fonts | Same `fontFamily` names; editor loads via Google Fonts CDN; server downloads matching `.woff2` URLs from a generated manifest, caches to `os.tmpdir()`, and registers via skia-canvas `FontLibrary.use()` (see **Google Fonts — server render strategy**) |
 
-When custom fonts are added later, document the font list and use `registerFont()` on the server.
+When the catalog changes, update `lib/template-scene/google-fonts.ts` and re-run the font sync script. Club-uploaded custom fonts remain out of scope.
 
 ## Phase 1 - Database Backbone and Minimal UI
 
@@ -1461,23 +1460,169 @@ Deferred from the original Phase 5 scope:
 - Variable-binding badge in the layer list (removed during UX polish).
 - Shapes tab insertion tools (still Phase 7).
 
+## Google Fonts — server render strategy
+
+The editor (Phase 5) and the server renderer must use the **same font family names** but load fonts through **different mechanisms**:
+
+| Environment | Mechanism | Source |
+| --- | --- | --- |
+| Browser editor | Google Fonts CSS CDN via `loadGoogleFonts()` | `fonts.googleapis.com/css2` (weights 400/700, normal + italic) |
+| Server render | Download `.woff2` files, cache locally, register before drawing | Stable `fonts.gstatic.com` URLs in `server-font-manifest.generated.ts` |
+
+Neither `skia-canvas` nor `node-canvas` can consume Google Fonts **CSS** URLs directly. Both require **local font files** (`.woff2`, `.ttf`, or `.otf`) registered at runtime via `FontLibrary.use()`. **Approved backend:** skia-canvas with family aliases matching the editor catalog.
+
+**Convex constraint (discovered in Phase 6):** static `.woff2` files committed in the repo are **not readable** from the Convex Node bundle at runtime (`/tmp/source/...` or `/var/task/...`). The implemented approach stores **HTTPS URLs** in the manifest and downloads fonts to `os.tmpdir()` on first use per family.
+
+**Linux constraint (discovered in Phase 6):** Convex Node runs on Linux without Arial, Times New Roman, etc. System font families from the editor are mapped to downloadable stand-ins and registered under the **original family name**:
+
+| Editor system font | Server stand-in (Google Font) |
+| --- | --- |
+| Arial, Helvetica | Arimo |
+| Times New Roman, Georgia | Tinos |
+| Verdana | Open Sans |
+
+`Arimo` and `Tinos` are synced for server use only; they do not appear in the editor font picker.
+
+### Why Phase 6 must include catalog font registration
+
+Without server-side font files, templates that use catalog Google Fonts (most real templates) will silently fall back to wrong fonts on the server. That breaks the Phase 6 acceptance criterion (“acceptable visual parity”) and would make the later posting pipeline unusable for typical club designs.
+
+**Decision:** implement catalog font registration in **Phase 6**, not Phase 7 and not deferred to the posting pipeline.
+
+What stays deferred: **club-uploaded custom fonts** (`.ttf` uploads). Only the fixed catalog in `lib/template-scene/google-fonts.ts` is in scope.
+
+### Implementation approach (catalog fonts) — as built
+
+1. **Generated manifest:** `lib/template-scene/server-font-manifest.generated.ts` — maps each catalog family (plus server-only `Arimo`, `Tinos`) to stable `https://fonts.gstatic.com/.../*.woff2` URLs.
+2. **Sync script:** `pnpm sync-template-fonts` (`scripts/sync-template-fonts.ts`) resolves URLs from Google Fonts CSS for every family in `GOOGLE_FONT_CATALOG` + `SERVER_ONLY_FONT_FAMILIES`. Run when the catalog changes; commit the regenerated manifest. Optionally caches files locally under `convex/automations/render/fonts/` for dev inspection — **gitignored**, not used at runtime on Convex (production downloads from the manifest URLs instead).
+3. **Registry helper:** `lib/template-scene/server-font-registry.ts` (pure TypeScript):
+   - `getFontUrlsForFamilies(families)` → `{ family, urls }[]` for catalog and system-mapped fonts
+   - `assertTemplateFontManifestUsesRemoteUrls()` in tests
+4. **Render action (Node only):** `convex/automations/render/register_scene_fonts.ts` downloads URLs to `os.tmpdir()/matchscore-template-fonts/`, then `FontLibrary.use(family, filePaths)` before `Konva.Node.create`.
+5. **Runtime network fetch:** first render of a font family downloads from `fonts.gstatic.com`; subsequent renders reuse the temp cache within the same Convex Node process. Acceptable for MVP render-test and early posting; Phase 7 may revisit bundling strategy if cold-start latency or offline determinism becomes a concern.
+
+**Not yet implemented:** Konva `fontStyle` → weight/style file selection (only default catalog weights are synced; bold/italic parity may drift for some families).
+
+### Acceptable parity limits
+
+Even with identical font files, Konva maintainers note that **pixel-perfect text parity between Chrome and any Node canvas backend is not guaranteed** (width, line breaks, vertical offset can differ slightly). Phase 6 targets **acceptable** parity: same fonts, same layout intent, same bindings/images/object-fit. Minor text metrics drift is acceptable; wrong font family is not.
+
+### Mock match data and logo placeholders
+
+Phase 6 uses a structured `MockMatchDto` + `formatBinding(key, match, "nl-BE")` (not editor design-mode `{{token}}` placeholders). Dynamic logo bindings use SVG crest placeholders from `lib/template-scene/placeholder-crest.ts`:
+
+- **Editor:** `createPlaceholderCrestDataUrl()` — SVG as `data:image/svg+xml` (browser renders correctly).
+- **Server:** `load_placeholder_crest.ts` rasterizes SVG → PNG before Konva, because skia-canvas + Konva `Image` with `crop` on a full-size stage drops SVG path/text and shows only the background rect.
+
+Real federation club logos arrive with the match/posting integration later; no DB seed is required for Phase 6 unless you want richer mock PNG crests.
+
+---
+
 ## Phase 6 - Server Render Parity Foundation
 
-Goal: prove that stored templates can be rendered server-side with Konva and skia-canvas using the same scene document. This still does not implement scheduled posting.
+Goal: prove that a template from Convex can be rendered server-side to PNG with acceptable visual parity (layout, bindings, static assets, catalog fonts). This still does not implement scheduled posting or external API delivery.
+
+Implementation status: **completed** on `templates-phase-6` (PR pending merge to `main`).
+
+### Confirmed product decisions (Phase 6)
+
+- **Production posting** will render **saved** template rows from Convex (`templateId` only), without a logged-in dashboard session.
+- **Render test UI** passes the editor’s **current canvas** (`sceneDocument`) so manual verification matches what the user sees; optional `sceneDocument` arg on `renderTemplateTest`. Production posting uses the saved DB row only.
+- Binding text via `formatBinding()` + `MockMatchDto` + `nl-BE` date formatting (per original plan).
+- Store render output in Convex `_storage`; return a signed URL. Leave preview blobs in storage (no cleanup job in this phase).
+- Render test UI is for manual verification only; the same render function will later power cron-triggered posting.
+
+### Backend render technology (approved)
+
+**Stack:** `konva` + `import "konva/skia-backend"` + `skia-canvas` in Convex `"use node"` actions only.
+
+Rationale: the editor runs in Chrome (Skia); skia-canvas is the closest headless match for layout, text, and image parity. Konva v10 documents this as the performance-oriented Node backend.
+
+**Fallback (spike only):** if `skia-canvas` fails to install or run on the Convex Node runtime, retry with `konva/canvas-backend` + `canvas` (node-canvas). Do not pursue both in parallel unless the spike fails.
+
+**First implementation step:** a minimal Convex Node action that renders a solid-color PNG and stores it in `_storage`, proving the native module bundles and runs on the dev deployment.
+
+### Phase 6 file layout (as built)
+
+```text
+scripts/
+  sync-template-fonts.ts            # generates URL manifest (+ optional local cache)
+  test-template-render.ts           # local skia smoke test
+
+lib/template-scene/
+  mock-match.ts                     # MockMatchDto + DEFAULT_MOCK_MATCH
+  format-binding.ts                 # formatBinding(key, match, "nl-BE")
+  text-measure.ts                   # measureTextForFit, ellipsizeText (from editor)
+  prepare-render-node.ts            # prepareTextForRender, prepareImageLayout
+  placeholder-crest.ts              # SVG crest placeholders (editor + server source)
+  server-font-registry.ts           # family → HTTPS URLs (pure TS)
+  server-font-manifest.generated.ts # generated URL manifest — commit this
+  google-fonts.ts                   # + SYSTEM_FONT_SERVER_SOURCES, SERVER_ONLY_FONT_FAMILIES
+  index.ts                          # re-exports shared types/helpers
+
+convex/automations/
+  actions.ts                        # "use node" — renderTemplateTest, renderSpikeTest
+  render/
+    register_scene_fonts.ts         # "use node" — download + FontLibrary.use
+    load_placeholder_crest.ts       # "use node" — SVG → PNG rasterize for Konva
+    hydrate_scene.ts                # "use node" — Konva tree hydration
+    render_template_to_png.ts       # "use node" — orchestrates render
+    render.test.ts                  # integration tests (skia + fonts + crests)
+
+convex.json                         # node.externalPackages: skia-canvas, konva
+```
+
+Keep all `"use node"` files that import `skia-canvas` or `konva/skia-backend` out of the import graph of queries, mutations, client code, and default-runtime Convex files. Shared pure-TS helpers live under `lib/template-scene/` and are safe to import from both editor and Node actions.
+
+### Production render path (design context — not built in Phase 6)
+
+Future posting will look like:
+
+```text
+Convex cron (match event / schedule)
+  → internal Node action
+  → load template + match DTO + asset blobs (via runQuery + ctx.storage.get)
+  → register catalog fonts used in scene
+  → hydrate + Konva render → PNG buffer
+  → ctx.storage.store(png)
+  → fetch(externalSocialApi, { imageUrl or bytes })
+```
+
+Phase 6 builds the middle section (hydrate + render + store + URL). Cron wiring and external API calls remain out of scope.
 
 ### Backend Scope
 
-Implement a server-only render path:
+Implement in this order:
 
-- A Convex action in a `"use node"` file.
-- Import `Konva` and `konva/skia-backend` only in that server action or server-only helper.
-- Load a template by id after authorization.
-- Hydrate scene:
-  - static `assetId` from Convex Storage
-  - text `bindingKey` from mock match data
-  - image `bindingKey` from placeholder or mock logo data
-- Render PNG buffer through the skia backend.
-- Return a URL or storage id for a temporary render preview, depending on the safest project pattern.
+#### 6.1 — Native backend spike
+
+- Add `skia-canvas` to `package.json`; add `skia-canvas` to pnpm `onlyBuiltDependencies`.
+- `convex/automations/actions.ts` with `"use node"`: render a trivial PNG via Konva + skia-backend, store in `_storage`, return signed URL. Confirms Convex Node runtime compatibility before hydration work.
+
+#### 6.2 — Shared render preparation (no native imports)
+
+- `MockMatchDto` + `DEFAULT_MOCK_MATCH` + `formatBinding(key, match, "nl-BE")`.
+- Extract text measurement helpers (`measureTextForFit`, `ellipsizeText`) from the editor into shared `lib/template-scene/` code.
+- `prepareTextNodeAttrs` / `prepareImageLayout` pure functions mirroring `SceneNodeRenderer` / `SceneImage` browser logic (including background `id: "background"` cover behavior and `objectFit` crop math via `calculateObjectFit`).
+- Unit tests for binding formatting and layout prep.
+
+#### 6.3 — Font manifest + registry
+
+- Run `pnpm sync-template-fonts`; commit `lib/template-scene/server-font-manifest.generated.ts`.
+- `lib/template-scene/server-font-registry.ts` + `convex/automations/render/register_scene_fonts.ts` using skia-canvas `FontLibrary.use()`.
+- System fonts mapped to Arimo/Tinos/Open Sans stand-ins (see **Google Fonts — server render strategy**).
+- Test: scene using catalog + system fonts renders with correct family per text node; mixed Arial + Pacifico in one template.
+
+#### 6.4 — Hydration + render core
+
+- `convex/automations/render/hydrate_scene.ts` and `render_template_to_png.ts` (both `"use node"`).
+- Public action `renderTemplateTest` in `convex/automations/actions.ts` orchestrates: load template → load assets → register fonts → render → store.
+- Load template metadata via `ctx.runQuery(api.automations.queries.getTemplate, { templateId })` (auth from dashboard session). Accept optional `sceneDocument` override for render test. Add `internalQuery` variant later for cron posting.
+- Resolve static images: look up `templateAssets` storage IDs via query, then `ctx.storage.get(storageId)` → buffer → skia-canvas `loadImage`.
+- Resolve binding images: rasterized crest PNG placeholders via `load_placeholder_crest.ts` (upgradeable to match DTO logo URLs later).
+- Apply text/image layout prep; export PNG via `stage.toDataURL()`.
+- Store PNG in `_storage`; return `{ storageId, previewUrl }`.
+- Internal `renderSpikeTest` action: trivial 100×100 PNG to verify native module on Convex.
 
 Example shape:
 
@@ -1487,74 +1632,102 @@ Example shape:
 import Konva from "konva";
 import "konva/skia-backend";
 
-export async function renderTemplateToPng(sceneDocument: SceneDocument, match: MatchDto) {
+export async function renderTemplateToPng(
+  sceneDocument: SceneDocument,
+  automationType: AutomationType,
+  match: MockMatchDto,
+  deps: {
+    loadAsset: (assetId: string) => Promise<Buffer | null>;
+    loadBindingLogo: (key: ImageBindingKey) => Promise<unknown>;
+    registerFonts: (families: string[]) => void;
+  },
+): Promise<Buffer> {
+  deps.registerFonts(collectSceneFontFamilies(sceneDocument.stage));
   const stage = Konva.Node.create(sceneDocument.stage);
-  await hydrateScene(stage, {
-    resolveAsset: (assetId) => loadBufferFromConvexStorage(assetId),
-    resolveBindingImage: (key) => loadMockOrMatchLogo(match, key),
-    resolveBindingText: (key) => formatBinding(key, match, "nl-BE"),
-  });
-  const canvas = stage.toCanvas();
-  return await canvas.toBuffer("png");
+  await hydrateScene(stage, { automationType, match, ...deps });
+  // export PNG buffer from stage
 }
 ```
 
 Rules:
 
-- Do not use `ctx.db` inside actions; run queries/mutations through function references or keep DB work in queries/mutations.
+- Do not use `ctx.db` inside actions; use `runQuery` / `runMutation`.
 - Do not mix `"use node"` actions and queries/mutations in the same file.
-- Use `nl-BE` for date/time formatting.
-- Keep system fonts only.
-- Do not implement actual social posting.
+- Files with native imports must not be imported from client code or non-Node Convex files.
+- Do not implement actual social posting or crons in Phase 6.
 
 ### Frontend Scope
 
 Implement a render test action in the editor UI:
 
-- Add a "Render test image" or "Preview PNG" button.
-- Calls the server render action with mock match data.
-- Shows loading and success/error feedback.
-- Displays the rendered PNG result in a modal, side panel, or new preview area.
-- Make clear this is a render test, not a posted social update.
+- Add a **Render test** button in the editor toolbar.
+- Calls the server render action with `{ templateId, sceneDocument }` (current canvas).
+- Shows loading and success/error feedback via Sonner (app-wide toasts: bottom-right).
+- Displays the rendered PNG in a dialog from the returned signed URL.
+- Copy makes clear this is a render test of the current canvas, not a published social post.
 
 ### Agent Testing Before User Handoff
 
 Automated checks:
 
-- Unit tests for shared binding formatting.
-- Unit tests for object-fit/text-fit functions used by both browser and server render paths.
-- Build check to catch accidental client import of `skia-canvas`.
-- If feasible, golden image comparison:
-  - browser export of a simple fixture
-  - server-rendered PNG of same fixture
-  - compare dimensions and acceptable pixel difference
+- Unit tests for `formatBinding` and mock match fixtures.
+- Unit tests for object-fit/text-fit/layout prep functions.
+- Unit tests for `server-font-registry` URL mapping (catalog + system fonts).
+- `convex/automations/render/render.test.ts`: font download, per-element fonts, logo crest pixel checks.
+- `pnpm test:template-render`: local Pacifico smoke test.
+- Build check: no `skia-canvas` or `konva/skia-backend` imports in client bundle or default-runtime Convex files.
+- `renderSpikeTest` internal action succeeds on Convex dev deployment.
 
 Browser checks:
 
-- Open a template with:
-  - background rect
-  - static text
-  - bound text
-  - uploaded image if Phase 4 is complete
-- Click render test.
-- Confirm a PNG is produced.
-- Confirm dimensions match the canvas preset.
-- Visually compare browser canvas and rendered PNG.
+- Open a template with background, fixed text, bound text, a Google Font (e.g. Montserrat), logo bindings, and an uploaded image.
+- Click **Render test**.
+- Confirm PNG dimensions match canvas preset.
+- Visually compare editor preview mode vs rendered PNG (fonts, images, bindings, HOME/AWAY crest shields).
 
 Database/storage checks:
 
-- If render output is stored, confirm it goes to `_storage` or the chosen temporary location.
+- Confirm render output appears in `_storage`.
+- Confirm returned signed URL displays the image.
 - Confirm no social posting record is created.
-- Confirm the template scene document is not mutated by rendering.
+- Confirm the template `sceneDocument` is not mutated by rendering.
 
 User testing script:
 
-1. Open a saved template.
-2. Click render test.
+1. Build a template with a Google Font, system font, variable binding, and logo placeholders.
+2. Click **Render test** (save optional — test uses current canvas).
 3. Compare the generated PNG to the editor preview.
 4. Confirm no post is published.
 
-Phase 6 is complete only when the same stored scene can produce a server-rendered PNG with acceptable visual parity.
+Phase 6 is complete when a scene produces a server-rendered PNG with acceptable visual parity, including catalog Google Fonts, system fonts, and logo crest placeholders.
+
+### Phase 6 Implementation Notes
+
+**Delivered on `templates-phase-6`**
+
+- Native backend spike verified (`renderSpikeTest` + `skia-canvas` in `convex.json` `externalPackages`).
+- Shared render prep extracted to `lib/template-scene/`; editor uses shared text measurement.
+- Font manifest with HTTPS URLs; runtime download + temp cache; system font stand-ins for Linux.
+- Full render pipeline: normalize → register fonts → prepare bindings → hydrate images → PNG export.
+- Logo crest placeholders: SVG in editor, PNG rasterization on server (`load_placeholder_crest.ts`).
+- Editor **Render test** button + dialog + i18n (nl/en/fr/de).
+- **40 tests** in `scenes.test.ts` + `render.test.ts`.
+
+**Deviations from original plan**
+
+| Planned | Built | Reason |
+| --- | --- | --- |
+| Committed `assets/template-fonts/` `.woff2` bundle | Generated URL manifest + runtime download | Convex Node cannot read repo static files at runtime |
+| Render test uses saved DB template only | Passes current `sceneDocument` from editor | Better manual verification UX; production posting still uses saved row |
+| System fonts need no registration | Mapped to Arimo/Tinos/Open Sans | Linux Convex runtime lacks Arial/Times/etc. |
+| Logo SVG loaded directly in Konva | SVG rasterized to PNG first | skia + Konva `crop` on full-size stage drops SVG paths |
+
+**Known limitations for Phase 7**
+
+- First render of a new font family hits `fonts.gstatic.com` (cold-start latency).
+- Bold/italic weight selection not fully mapped per family in manifest.
+- Preview render blobs accumulate in `_storage` (no cleanup job).
+- `renderTemplateTest` requires auth; cron posting needs internal query/action variant.
 
 ## Phase 7 - MVP Hardening and Handoff
 
@@ -1651,13 +1824,13 @@ These items must remain out of the MVP unless explicitly pulled into a later imp
 - Full live preview with real fixture data.
 - Email nudge for active automations with zero templates.
 - Asset reference integrity background sweep.
-- Custom font upload and `registerFont`.
+- Club-uploaded custom font files (`.ttf`/`.otf` uploads beyond the curated Google Fonts catalog).
 - Advanced filters, custom shapes, animations, or rich text.
 
 ## Cross-Phase Pitfalls to Avoid
 
 - Do not import `react-konva` in server components or app route files that are not behind the dynamic editor boundary.
-- Do not import `skia-canvas` or `konva/skia-backend` in client code.
+- Do not import `skia-canvas` or `konva/skia-backend` in client code or default-runtime Convex files.
 - Do not size the stage to the browser window.
 - Do not persist `scaleX`/`scaleY` after transforms.
 - Do not persist transformer nodes, guide lines, or overlay state.
@@ -1685,6 +1858,6 @@ The phased implementation is considered complete for this MVP when:
 - `match_announcement` and `match_result` expose only valid bindings.
 - The editor uses fixed logical canvas presets and visual scaling.
 - The saved scene contains no editor-only state.
-- The server render test can produce a PNG from the stored scene.
+- The server render test can produce a PNG from the current editor canvas (or saved scene for production posting).
 - Automated checks, browser checks, and database checks pass at each phase before user handoff.
 

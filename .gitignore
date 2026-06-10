@@ -40,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# template render dev artifacts (not used at runtime on Convex)
+/convex/automations/render/fonts/
+/tmp/

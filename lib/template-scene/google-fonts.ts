@@ -14,7 +14,7 @@ const SYSTEM_FONT_FAMILIES = [
   "Verdana",
 ] as const;
 
-const GOOGLE_FONT_CATALOG: Array<{ family: string; category: string }> = [
+export const GOOGLE_FONT_CATALOG: Array<{ family: string; category: string }> = [
   { family: "Inter", category: "Sans Serif" },
   { family: "Roboto", category: "Sans Serif" },
   { family: "Open Sans", category: "Sans Serif" },
@@ -81,6 +81,18 @@ const GOOGLE_FONT_FAMILIES = new Set(
   GOOGLE_FONT_CATALOG.map((font) => font.family),
 );
 
+/** Google Fonts used as server-side stand-ins for system fonts on Linux. */
+export const SYSTEM_FONT_SERVER_SOURCES: Readonly<Record<string, string>> = {
+  Arial: "Arimo",
+  Helvetica: "Arimo",
+  Georgia: "Tinos",
+  "Times New Roman": "Tinos",
+  Verdana: "Open Sans",
+};
+
+/** Downloaded for server render only; not shown in the editor font picker. */
+export const SERVER_ONLY_FONT_FAMILIES = ["Arimo", "Tinos"] as const;
+
 export function isSystemFontFamily(family: string): boolean {
   return (SYSTEM_FONT_FAMILIES as readonly string[]).includes(family);
 }
@@ -99,6 +111,23 @@ export function encodeGoogleFontFamily(family: string): string {
 
 export function buildGoogleFontsStylesheetUrl(families: string[]): string {
   const uniqueFamilies = [...new Set(families.filter(shouldLoadGoogleFont))];
+  if (uniqueFamilies.length === 0) {
+    return "";
+  }
+
+  return buildGoogleFontsStylesheetUrlForFamilies(uniqueFamilies);
+}
+
+/**
+ * Builds a Google Fonts CSS2 URL for pre-validated family names.
+ * Callers (e.g. buildGoogleFontsStylesheetUrl, sync-template-fonts) must pass
+ * trusted catalog or server-only names; this only trims, deduplicates, and
+ * URL-encodes via encodeGoogleFontFamily.
+ */
+export function buildGoogleFontsStylesheetUrlForFamilies(
+  families: string[],
+): string {
+  const uniqueFamilies = [...new Set(families.filter((family) => family.trim().length > 0))];
   if (uniqueFamilies.length === 0) {
     return "";
   }
