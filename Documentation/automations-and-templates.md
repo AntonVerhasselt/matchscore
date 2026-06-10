@@ -1,531 +1,276 @@
-# Automations & templates — implementation brief
+# Automations & templates
 
-> **Status:** Approved direction (MVP scope)  
-> **Branch:** `feature/club-automations-templates`  
-> **Scope:** Database design, template JSON format, and editor/render conventions for the first two automation types. Does **not** cover match data, rendering jobs, or social posting.
+Matchscore helps Belgian amateur football clubs automate social media posts. Each registered **club** (stored as an `organization` in code and the database) can:
 
----
+1. Design visual **templates** for automated posts.
+2. Toggle **automations** on or off per post type and per social channel.
+3. *(Future)* Connect social accounts so Matchscore picks a template, fills match variables, renders a PNG, and publishes it.
 
-## 1. Context & product premise
-
-Matchscore automates social media for **Belgian amateur football clubs**. Each registered club (organisation) can:
-
-1. Design **visual templates** for automated posts (backgrounds, text layout, sponsor logos).
-2. Toggle **automations** on or off per post type.
-3. (Later) Connect social accounts; Matchscore picks a template, fills variables, renders, and posts.
-
-**MVP automation types (this brief):**
-
-| Type | Trigger (future) | Purpose |
-|------|------------------|---------|
-| `match_announcement` | 2 days before kick-off | Opponent, location, date/time |
-| `match_result` | When federation publishes result | Score visual |
-
-**Deferred:** `starting_eleven`, subscription/watermark gating, thumbnails, social posting, match/calendar tables.
-
-**User-facing copy says “club”; code and schema use `organization`.**
+The template editor and automation settings are fully implemented for MVP. Scheduled posting, real match data, and social OAuth are **not** implemented yet.
 
 ---
 
-## 2. Problem statement
+## Automation types
 
-We need to store, per organisation:
+Two automation types exist in MVP:
 
-- **Automation state** — which post types are enabled (active by default; posting is skipped until at least one template exists).
-- **Templates** — graphical layouts created in **react-konva**, persisted as JSON, later rendered server-side with **skia-canvas**.
+| Backend `automationType` | URL slug | User-facing purpose | Future trigger |
+| --- | --- | --- | --- |
+| `match_result` | `result` | Final score visual | When the federation publishes a result |
+| `match_announcement` | `preview` | Match preview / announcement | ~2 days before kick-off |
 
-The stored JSON must:
+URL slugs live under `/app/automations/`. Mapping helpers are in `lib/automations/types.ts`:
 
-1. Reload faithfully in the **template editor** (react-konva).
-2. Be renderable on the **server** with the same visual output (via Konva’s skia backend).
+```ts
+result  → match_result
+preview → match_announcement
+```
 
-We are **not** designing match storage, render scheduling, or Meta API integration in this phase.
+**Deferred:** `starting_eleven` and any additional automation types.
 
 ---
 
-## 3. Investigation summary
+## Architecture overview
 
-### 3.1 react-konva (editor)
+Templates are **normalized Konva scene JSON** stored inline on each `automationTemplates` row. The same JSON is:
 
-- Declarative React bindings over the Konva scene graph (`Stage`, `Layer`, `Text`, `Image`, `Rect`, etc.).
-- Browser-only; fits a client-side template designer in Next.js (`"use client"`).
-- Export/load: `stage.toJSON()` and `Konva.Node.create(json)`.
-- **Images are not serialized** — only attrs survive. Custom attrs (e.g. `assetId`, `bindingKey`) must be set explicitly and re-hydrated on load.
-- Konva’s [best-practices doc](https://konvajs.org/docs/data_and_serialization/Best_Practices.html) warns that raw `toJSON()` alone is fragile in large apps; for Matchscore’s MVP (background + text + static logos, basic shapes) a **normalized Konva document with conventions** is sufficient.
+- Edited in the browser with **react-konva** (client-only, dynamically imported).
+- Rendered server-side with **Konva + skia-canvas** in Convex `"use node"` actions.
 
-### 3.2 skia-canvas (server render)
+Static club uploads (backgrounds, sponsor logos) live in Convex Storage and are referenced by `assetId` on `Image` nodes. Dynamic match content (club names, score, logos) is stored as `bindingKey` attrs and resolved at render time.
 
-- Node.js implementation of the HTML Canvas 2D API; used for off-screen image generation.
-- Strong text and image support; exports PNG/JPEG via `toBuffer()` / `toURL()`.
-
-### 3.3 Critical discovery: Konva + skia-canvas are already integrated
-
-Konva v10+ supports an explicit **skia backend**:
-
-```ts
-import Konva from "konva";
-import "konva/skia-backend";
-```
-
-The **same Konva scene JSON** can be:
-
-- Edited in the browser with **react-konva**
-- Rendered on the server with **Konva + skia-canvas** (no hand-written Canvas 2D translator)
-
-This was the main architectural unlock. Alternatives considered:
-
-| Approach | Pros | Cons | Verdict |
-|----------|------|------|---------|
-| **A. Normalized Konva JSON** | One format; official skia backend; fastest MVP | Konva version coupling; verbose JSON | **Chosen** |
-| B. Custom scene schema → Canvas 2D | Smaller payloads; full control | Two render paths; high maintenance | Rejected for MVP |
-| C. Dual storage (Konva + canonical) | Editor flexibility | Two sources of truth | Rejected |
-
-### 3.4 Convex constraints relevant to design
-
-- Document fields max **~1 MB** (UTF-8).
-- Objects max **1024 keys**; arrays max **8192 elements**.
-- Do not embed unbounded child lists on parent documents — use separate tables.
-- File blobs: **`_storage`** table + `storageId` references (not yet used in this project).
-
-For MVP templates (single 1080×1080 stage, handful of nodes), inline `sceneDocument` objects are expected to stay well under 1 MB. Revisit `_storage` for JSON only if real templates approach size limits.
+See [template-editor.md](./template-editor.md) for scene format, editor internals, and the render pipeline.
 
 ---
 
-## 4. Decisions log (from product Q&A)
+## Data model
 
-| Topic | Decision | Rationale |
-|-------|----------|-----------|
-| Automation types (MVP) | `match_announcement`, `match_result` only | Starting 11 later |
-| Initial automation state | All **active** on org creation | Automations on by default; clubs add templates when ready |
-| Enable rule | User can toggle freely; **no template required** to stay active | Posting job skips types with 0 templates |
-| Active-but-no-template nudge | **Deferred** — email reminder to add a template | Future onboarding/retention feature |
-| Template pick at post time | Uniform **random** among templates | Simple MVP |
-| Subscription lapse | Block **posting** only; editing still allowed | User answer #6 |
-| Canvas dimensions | **Fixed presets** (common social sizes) | One image for FB + IG |
-| Static images | `templateAssets` (backgrounds, sponsors) | MVP |
-| Dynamic images (club logos) | Resolved at **render** from match data; **placeholder** in editor | Not in `templateAssets` |
-| Home/away | User’s club may be home **or** away; variables are match-relative | `homeClubLogo`, not “our logo” |
-| Date/time format | **`nl-BE`** locale | Fixed for MVP |
-| Variable UX (MVP) | **Property panel** with binding dropdown (see §6) | Best for non-technical volunteers |
-| Live preview (MVP) | **Static placeholder** values in editor | Full live preview later |
-| Template limit | None | — |
-| Version history | None; overwrite on save | — |
-| Permissions | All org members; **no roles** | Matches current org model |
-| Watermark | Out of scope | — |
-| Scene storage | **Inline** `sceneDocument` on template row | Simplest; monitor size |
-| Fonts | **System fonts** only | No upload pipeline |
-| Konva features (MVP) | **Basics**: `Stage`, `Layer`, `Rect`, `Text`, `Image` | No filters/custom shapes |
-| Schema versioning | **`schemaVersion: 1`** on every template | Cheap insurance for migrations |
-| Thumbnail | **Optional** `thumbnailStorageId` | Implement later |
-| Delete templates | **Hard delete** | Simple |
-| Org deletion cascade | Keep simple; delete child rows when org removed | Future org-delete flow |
+```
+organizations
+  ├── organizationAutomations   (1 row per automation type)
+  ├── automationTemplates       (0..N per type)
+  └── templateAssets            (static image uploads)
+```
+
+### `organizationAutomations`
+
+One row per organization per automation type. Rows are created when an organization is created (`convex/organizations/mutations.ts` → `ensureOrganizationAutomations`).
+
+| Field | Description |
+| --- | --- |
+| `isGloballyEnabled` | Master switch for this automation type. Defaults to `true`. |
+| `postingChannels` | Per-channel preferences: Facebook page post/story, Instagram profile post/story. All default to `true`. |
+| `updatedAt`, `updatedByUserId` | Audit fields on toggle mutations. |
+
+**Behavior:**
+
+- Users can enable/disable globally and per channel without needing templates.
+- When `isGloballyEnabled` is `false`, **effective** channel status is `false` for every channel, but stored per-channel preferences are preserved for re-enable.
+- An enabled automation with **zero templates** is valid. A future posting job will skip that type until a template exists.
+- Deleting the last template does **not** disable the automation.
+
+### `automationTemplates`
+
+| Field | Description |
+| --- | --- |
+| `name` | Display name in the template list. |
+| `automationType` | `match_announcement` or `match_result` (immutable after create). |
+| `canvasPreset` | `instagram_square`, `instagram_portrait`, or `facebook_landscape`. |
+| `sceneDocument` | Parsed Konva scene JSON (`schemaVersion: 1`). |
+| `schemaVersion` | Format version (currently `1`). |
+| `lastRenderPreviewStorageId` | Latest render-test PNG in `_storage`; previous blob is deleted on each test. |
+| `thumbnailStorageId` | Optional; reserved for future thumbnails. |
+
+Canvas dimensions are derived from `canvasPreset` in code, not stored separately:
+
+| Preset | Size | Typical use |
+| --- | --- | --- |
+| `instagram_square` | 1080 × 1080 | Instagram feed, square Facebook posts |
+| `instagram_portrait` | 1080 × 1350 | Instagram portrait |
+| `facebook_landscape` | 1200 × 630 | Facebook landscape / link-style visual |
+
+Templates are hard-deleted. Deleting a template also removes associated render-preview and thumbnail blobs from `_storage`.
+
+### `templateAssets`
+
+Static images uploaded by the club (PNG, JPEG, WebP only; max 8 MB).
+
+| Field | Description |
+| --- | --- |
+| `storageId` | Convex `_storage` reference (durable; signed URLs generated at read time). |
+| `fileName`, `mimeType`, `byteSize` | File metadata. |
+| `pixelWidth`, `pixelHeight` | Intrinsic dimensions for editor insertion. |
+
+Club logos for home/away teams are **not** stored here. They are dynamic bindings resolved from match data at render time.
+
+**Delete policy:** `deleteTemplateAsset` returns `{ status: "inUse" }` if any template in the organization still references the asset via `attrs.assetId`.
 
 ---
 
-## 5. Database schema
+## Convex API
 
-### 5.1 Tables overview
+Functions follow the feature-folder layout described in [convex-structure.md](./convex-structure.md).
 
-```
-organizations (existing)
-    │
-    ├── organizationAutomations (1 row per automation type)
-    │
-    ├── automationTemplates (0..N per type)
-    │
-    └── templateAssets (static uploads)
-```
+### `convex/automations/`
 
-### 5.2 `organizationAutomations`
+| Function | Type | Purpose |
+| --- | --- | --- |
+| `queries.listAutomations` | query | Both automation rows + template counts + effective channel status |
+| `queries.listTemplates` | query | Templates for current org, optional filter by `automationType` |
+| `queries.getTemplate` | query | Single template including `sceneDocument` |
+| `mutations.ensureCurrentOrganizationAutomations` | mutation | Idempotent backfill for orgs created before automations shipped |
+| `mutations.setAutomationGlobalEnabled` | mutation | Toggle `isGloballyEnabled` |
+| `mutations.setAutomationPostingChannelEnabled` | mutation | Toggle one posting channel |
+| `mutations.createTemplate` | mutation | Insert template with starter scene |
+| `mutations.updateTemplate` | mutation | Validate + normalize scene, update name |
+| `mutations.deleteTemplate` | mutation | Hard delete + cleanup storage blobs |
+| `actions.renderTemplateTest` | action (`"use node"`) | Render current or saved scene to PNG; returns signed preview URL |
+| `internalMutations.replaceTemplateRenderPreview` | internal | Stores new preview blob, deletes previous |
 
-One row per organisation per automation type. Created when the organisation is created.
+All public functions authenticate via Better Auth, resolve organization membership server-side, and scope reads/writes to `membership.organizationId`. Never accept a client-supplied organization id for authorization.
 
-```ts
-organizationAutomations: defineTable({
-  organizationId: v.id("organizations"),
-  automationType: v.union(
-    v.literal("match_announcement"),
-    v.literal("match_result"),
-    // v.literal("starting_eleven"), // add when feature ships
-  ),
-  isEnabled: v.boolean(),
-  updatedAt: v.number(),
-  updatedByUserId: v.optional(v.string()),
-})
-  .index("by_organizationId", ["organizationId"])
-  .index("by_organizationId_and_automationType", [
-    "organizationId",
-    "automationType",
-  ]);
-```
+Scene validation runs through `normalizeSceneDocument` in `lib/template-scene/` on both client save and server mutations.
 
-**Invariants:**
+### `convex/templateAssets/`
 
-- Exactly **2 rows** per org in MVP (seeded in `createOrganization`).
-- Default `isEnabled: true`.
-- Toggling on/off is always allowed; **no template count check** on enable.
-- An enabled automation with **0 templates** is valid — the future posting job simply **skips** that type (nothing to render).
-- **Later:** send an email when `isEnabled && templateCount === 0` to nudge the club to create a template.
+| Function | Type | Purpose |
+| --- | --- | --- |
+| `mutations.generateUploadUrl` | mutation | Convex Storage upload URL |
+| `mutations.saveTemplateAsset` | mutation | Insert asset row after upload (validates mime/size) |
+| `queries.listTemplateAssets` | query | Org assets with signed URLs |
+| `mutations.deleteTemplateAsset` | mutation | Delete if unreferenced |
+| `queries.assertSceneDocumentAssetReferences` | query | Validates all `assetId` refs belong to caller's org |
 
-**Why a separate table (not fields on `organizations`)?**
+### Organization cleanup
 
-- Avoids bloating the org document and couples toggles to org profile updates.
-- Clean index for “all clubs with announcement automation enabled” (future cron).
-- Easy to add `starting_eleven` without schema migration on `organizations`.
-
-### 5.3 `automationTemplates`
-
-```ts
-automationTemplates: defineTable({
-  organizationId: v.id("organizations"),
-  automationType: v.union(
-    v.literal("match_announcement"),
-    v.literal("match_result"),
-  ),
-  name: v.string(),
-  sceneDocument: v.any(), // normalized Konva tree — see §6
-  canvasPreset: v.union(
-    v.literal("instagram_square"),    // 1080 × 1080
-    v.literal("instagram_portrait"),  // 1080 × 1350
-    v.literal("facebook_landscape"),  // 1200 × 630
-  ),
-  schemaVersion: v.number(), // start at 1
-  thumbnailStorageId: v.optional(v.id("_storage")),
-  createdByUserId: v.string(),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-})
-  .index("by_organizationId", ["organizationId"])
-  .index("by_organizationId_and_automationType", [
-    "organizationId",
-    "automationType",
-  ]);
-```
-
-**Canvas presets (MVP):**
-
-| `canvasPreset` | Width × height | Typical use |
-|----------------|----------------|-------------|
-| `instagram_square` | 1080 × 1080 | IG feed, FB square posts |
-| `instagram_portrait` | 1080 × 1350 | IG portrait |
-| `facebook_landscape` | 1200 × 630 | FB link preview style |
-
-`canvasWidth` / `canvasHeight` are **derived** from `canvasPreset` in code (single source of truth). Store only the preset key in the DB.
-
-**Invariants:**
-
-- `automationType` is immutable after create (or: allow change only if bindings remain valid — simpler to forbid edits).
-- Hard delete; no `deletedAt`.
-- Deleting the last template for a type leaves the automation **enabled**; posting for that type is skipped until a new template is added.
-
-### 5.4 `templateAssets`
-
-Static files uploaded by the club (backgrounds, sponsor logos).
-
-```ts
-templateAssets: defineTable({
-  organizationId: v.id("organizations"),
-  storageId: v.id("_storage"),
-  fileName: v.string(),
-  mimeType: v.string(),
-  byteSize: v.number(),
-  uploadedByUserId: v.string(),
-  createdAt: v.number(),
-})
-  .index("by_organizationId", ["organizationId"]);
-```
-
-**Not stored here:** home/away club logos (dynamic, from match data at render time).
-
-**Upload flow (future UI):** Convex file upload → insert `templateAssets` row → reference `assetId` on `Image` nodes in the scene.
-
-### 5.5 Seeding automations
-
-Extend `createOrganization` mutation:
-
-```ts
-for (const automationType of ["match_announcement", "match_result"] as const) {
-  await ctx.db.insert("organizationAutomations", {
-    organizationId,
-    automationType,
-    isEnabled: true,
-    updatedAt: Date.now(),
-  });
-}
-```
-
-### 5.6 Access control
-
-All queries/mutations:
-
-1. Authenticate via `authComponent.getAuthUser`.
-2. Resolve membership via `getMembershipForUser`.
-3. Scope reads/writes to `membership.organizationId`.
-
-No role checks (any member can manage automations and templates).
+`convex/automations/cleanup.ts` exports `deleteOrganizationAutomationData()` to remove automation rows, templates, assets, and storage blobs for an organization. It is ready to call from a future `deleteOrganization` mutation but is **not wired yet**.
 
 ---
 
-## 6. Template JSON format (`sceneDocument`)
+## Routes & UI
 
-### 6.1 Shape
+| Route | Page | Purpose |
+| --- | --- | --- |
+| `/app/automations` | `app/app/automations/page.tsx` | Overview: automation cards, global + channel toggles, template counts |
+| `/app/automations/[automationType]` | `app/app/automations/[automationType]/page.tsx` | Template list for `result` or `preview` |
+| `/app/automations/[automationType]/[templateId]` | `app/app/automations/[automationType]/[templateId]/page.tsx` | Template editor |
 
-Store a **parsed object** (not a JSON string) with this top-level structure:
+The editor route dynamically imports `TemplateEditorRoot` with `{ ssr: false }`. The editor requires a viewport width of at least **1024px** (`lg` breakpoint); smaller viewports show a “use a larger screen” message.
 
-```ts
-type SceneDocument = {
-  schemaVersion: 1;
-  stage: KonvaStageAttrs; // output of stage.toJSON() after normalization
-};
-```
+### Key UI components
 
-`stage` follows Konva’s serialized node tree (`className`, `attrs`, `children`).
+| Area | Location |
+| --- | --- |
+| Automation overview cards | `components/automations/automation-type-card.tsx` |
+| Template list + empty state | `components/automations/template-list.tsx` |
+| Create template | `components/automations/create-template-button.tsx` |
+| Delete template dialog | `components/automations/delete-template-dialog.tsx` |
+| Template editor shell | `components/template-editor/template-editor-root.tsx` |
+| Editor canvas + panels | `components/template-editor/static-template-editor.tsx` |
 
-### 6.2 Normalization pipeline (on save)
+Copy is translated via `next-intl` (`messages/*.json`, namespace `app.automations`). User-facing text says “club”; code uses `organization`.
 
-Editor calls `stage.toJSON()` → `normalizeSceneDocument(raw)`:
-
-1. **Parse** JSON if string.
-2. **Validate** allowed `className` values: `Stage`, `Layer`, `Group`, `Rect`, `Text`, `Image` only.
-3. **Strip** editor-only attrs: `draggable`, transformer metadata, selection state, internal ids used only by UI.
-4. **Ensure** every `Image` node has exactly one of:
-   - `attrs.assetId` — `Id<"templateAssets">` for static uploads
-   - `attrs.bindingKey` — dynamic image binding (club logos)
-5. **Ensure** every dynamic `Text` node has `attrs.bindingKey`.
-6. **Reject** nodes with filters, custom `sceneFunc`, or disallowed class names.
-7. **Set** `schemaVersion: 1`.
-
-Shared module: `lib/template-scene/` (used by frontend save and Convex validators).
-
-### 6.3 Variable bindings
-
-Bindings are **`bindingKey` attrs** on Konva nodes, not a separate table.
-
-**Text bindings:**
-
-| `bindingKey` | Automation(s) | Example rendered value (nl-BE) |
-|--------------|---------------|--------------------------------|
-| `homeClubName` | both | `KFC Dessel Sport` |
-| `awayClubName` | both | `KRC Genk` |
-| `matchAddress` | both | `Stadionstraat 1, 2480 Dessel` |
-| `matchDateTime` | both | `za 15 mrt. 2025, 20:00` |
-| `score` | `match_result` only | `2 - 1` |
-
-**Image bindings:**
-
-| `bindingKey` | Automation(s) | Editor placeholder | Render source (future) |
-|--------------|---------------|--------------------|-------------------------|
-| `homeClubLogo` | both | Generic crest SVG/PNG | Match document |
-| `awayClubLogo` | both | Generic crest SVG/PNG | Match document |
-
-**Static images:** `assetId` instead of `bindingKey` on `Image` nodes (backgrounds, sponsors).
-
-**Placeholder content in editor (MVP):**
-
-```ts
-const PLACEHOLDER_TEXT: Record<TextBindingKey, string> = {
-  homeClubName: "Thuisploeg",
-  awayClubName: "Uitploeg",
-  matchAddress: "Adres van de wedstrijd",
-  matchDateTime: "za 15 mrt. 2025, 20:00",
-  score: "2 - 1",
-};
-```
-
-Use bundled placeholder crest images for `homeClubLogo` / `awayClubLogo` in the designer only.
-
-### 6.4 Why property-panel bindings (not `{{mustache}}` in text)
-
-Target users are club volunteers, not designers. Typing `{{homeClubName}}` inside a text box is error-prone and hard to validate.
-
-**MVP UX:**
-
-1. User adds a **Text** or **Image** element.
-2. Inspector shows **“Inhoud”** dropdown: *Vaste tekst* | *Variabele*.
-3. If variable → second dropdown lists bindings **allowed for this template’s automation type**.
-4. Canvas shows **placeholder** string/image immediately.
-5. Optional **“Voorbeeld”** toggle later swaps placeholders for richer sample data.
-
-This maps cleanly to `attrs.bindingKey` in stored JSON and keeps Konva `text` attrs free of template syntax.
-
-### 6.5 Loading in the editor
-
-```ts
-const stage = Konva.Node.create(sceneDocument.stage, container);
-await hydrateScene(stage, {
-  resolveAsset: (assetId) => loadTemplateAssetUrl(assetId),
-  resolveBindingImage: (key) => PLACEHOLDER_IMAGES[key],
-  resolveBindingText: (key) => PLACEHOLDER_TEXT[key],
-});
-// Re-attach selection, transformer, drag handlers (not persisted)
-```
-
-### 6.6 Server render (future action — design only)
-
-```ts
-import Konva from "konva";
-import "konva/skia-backend";
-
-const stage = Konva.Node.create(sceneDocument.stage);
-await hydrateScene(stage, {
-  resolveAsset: (assetId) => loadFromConvexStorage(assetId),
-  resolveBindingImage: (key, match) => loadMatchLogo(match, key),
-  resolveBindingText: (key, match) => formatBinding(key, match, "nl-BE"),
-});
-const pngBuffer = await stage.toCanvas().toBuffer("png");
-```
-
-Run inside a Convex **`"use node"` action** (skia-canvas is a native Node dependency).
+User actions show success/error feedback with Sonner toasts via `@/lib/user-feedback`.
 
 ---
 
-## 7. Convex API surface (MVP)
+## User flows
 
-Folder: `convex/automations/` per [convex-structure.md](./convex-structure.md).
+### Enable or disable an automation
 
-### Queries
+1. User toggles global switch or a Facebook/Instagram channel switch on `/app/automations`.
+2. Mutation updates `organizationAutomations`.
+3. Toast confirms success or failure.
 
-| Function | Returns | Notes |
-|----------|---------|-------|
-| `listAutomations` | Both automation rows for current org + template count per type | Dashboard list |
-| `listTemplates` | Templates for org, optional filter by `automationType` | Template gallery |
-| `getTemplate` | Single template by id | Editor load |
+No template count check runs on enable. When globally disabled, channel switches appear off in the UI but stored channel preferences remain.
 
-### Mutations
+### Create a template
 
-| Function | Behavior |
-|----------|----------|
-| `setAutomationEnabled` | Sets `isEnabled`; no template count check |
-| `createTemplate` | Validates `sceneDocument`, inserts row |
-| `updateTemplate` | Re-validates scene, updates `sceneDocument` + `name` |
-| `deleteTemplate` | Hard delete; does not change automation `isEnabled` |
+1. User opens an automation type page and clicks create.
+2. `createTemplate` inserts a row with a starter scene for the chosen canvas preset.
+3. User is routed to the editor.
 
-Folder: `convex/templateAssets/` (can ship with template editor).
+### Edit and save
 
-| Function | Behavior |
-|----------|----------|
-| `generateUploadUrl` | Convex storage upload URL |
-| `saveTemplateAsset` | After upload, insert `templateAssets` row |
-| `listTemplateAssets` | Assets for current org |
-| `deleteTemplateAsset` | Hard delete; **reject** if referenced by any template (or orphan check on save) |
+1. Editor loads `getTemplate` and hydrates images from signed URLs / binding placeholders.
+2. Changes are tracked as dirty state; **autosave** runs after 2.5 s idle (`hooks/use-template-autosave.ts`).
+3. Manual save (toolbar button or Cmd/Ctrl+S) also calls `updateTemplate`.
+4. `beforeunload` warns if there are unsaved changes.
 
-All mutations: auth + org membership check. Success/error → Sonner toasts in UI per [user-feedback rule](../.cursor/rules/user-feedback.mdc).
+### Delete a template
+
+1. User deletes from the template list dialog.
+2. Row and associated preview/thumbnail blobs are removed.
+3. Automation `isGloballyEnabled` is unchanged.
+
+### Render test
+
+1. User clicks **Render test** in the editor toolbar.
+2. `renderTemplateTest` receives the **current canvas** (`sceneDocument` override) plus `templateId`.
+3. Server normalizes, registers fonts, hydrates bindings with mock match data, exports PNG.
+4. PNG is stored in `_storage`; a dialog shows the signed URL.
+
+Production posting will render the **saved** template row only (no live canvas override).
 
 ---
 
-## 8. Frontend routes (MVP, for context)
+## Variable bindings (summary)
 
-| Route | Purpose |
-|-------|---------|
-| `/app/automations` | List automations + enable toggles + link to templates |
-| `/app/automations/[type]/templates` | Template list for one automation |
-| `/app/automations/[type]/templates/new` | Create template (preset picker → editor) |
-| `/app/automations/[type]/templates/[id]/edit` | react-konva editor |
+Dynamic content uses `attrs.bindingKey` on Konva nodes — not `{{mustache}}` syntax in text. Users configure bindings through the property panel (“Inhoud” dropdown).
 
-Dependencies to add when implementing editor:
+**Text bindings:** `homeClubName`, `awayClubName`, `homeAwayClubNames`, `matchAddress`, `matchDateTime`, `score` (result only).
+
+**Image bindings:** `homeClubLogo`, `awayClubLogo`.
+
+Full binding rules, placeholder values, and validation are documented in [template-editor.md](./template-editor.md).
+
+---
+
+## Access control
+
+Any organization member can manage automations and templates. There are no role checks beyond membership.
+
+All queries and mutations derive the organization from the authenticated user's membership — never from client-supplied ids.
+
+---
+
+## Testing
+
+Automated coverage lives in:
+
+- `convex/automations/scenes.test.ts` — scene normalization, bindings, shapes, text fit
+- `convex/automations/render/render.test.ts` — server render, fonts, crest placeholders
+
+Useful scripts:
 
 ```bash
-pnpm add konva react-konva
-pnpm add skia-canvas  # server/action only — not bundled to client
-```
-
-`react-konva` components must be dynamically imported with `ssr: false` in Next.js.
-
----
-
-## 9. Enable / disable / delete interaction flows
-
-### Enable / disable automation
-
-```
-User toggles ON or OFF
-  → mutation sets isEnabled directly
-  → no template count check
-```
-
-### Delete last template
-
-```
-User deletes template
-  → delete template row
-  → automation stays enabled (isEnabled unchanged)
-  → future posting job will skip this type until a new template exists
-```
-
-### Active automation without templates (future nudge)
-
-```
-Deferred — not MVP
-  → detect orgs where isEnabled && templateCount === 0
-  → send email reminding club to add a template
-  → optional dashboard banner in the automations UI
-```
-
-### Random template selection (future posting job)
-
-```
-enabled automations for org
-  → query templates by organizationId + automationType
-  → if length === 0: skip (automation is on but not ready to post)
-  → pick index = floor(random() * length)
-  → load sceneDocument → render → post
+pnpm sync-template-fonts    # Regenerate server font URL manifest after catalog changes
+pnpm test:template-render   # Local skia-canvas smoke test
 ```
 
 ---
 
-## 10. `schemaVersion` strategy
+## Deferred (post-MVP)
 
-Start at **`1`** on every template. The normalizer and loader check `schemaVersion`:
-
-- **v1:** Current Konva-basic subset and binding keys defined in this doc.
-- **Future v2+:** Migration function `migrateSceneDocument(doc)` run on read or via one-off backfill before tightening validators.
-
-Even with “no version history” for user edits, **schema version on the document** is not user-facing history — it is forward compatibility for format changes.
-
----
-
-## 11. What we explicitly defer
-
-| Item | Notes |
-|------|-------|
-| `starting_eleven` automation | Third row + bindings added later |
-| `organizations.federationClubId` | Match/calendar integration TBD |
-| Match table & variable resolution | Render pipeline consumes match DTO |
-| Posting / scheduling / cron | Convex scheduled functions + actions |
-| Social account connections | Meta OAuth |
-| Subscription gating | Only block `post` action, not CRUD |
-| Thumbnails | `thumbnailStorageId` reserved |
-| Watermark layer | Starter plan |
+| Area | Notes |
+| --- | --- |
+| `starting_eleven` automation | Third automation type |
+| Match / calendar tables | Real fixture data for bindings |
+| Posting pipeline | Cron, random template pick, Meta/social APIs |
+| Social OAuth | Connect Facebook/Instagram accounts |
+| Subscription gating | Block posting only; editing stays allowed |
+| Email nudge | Remind clubs with active automations but no templates |
+| Template thumbnails | `thumbnailStorageId` field exists but unused |
 | Template duplication | Nice-to-have |
-| Live preview with real fixture data | Static placeholders first |
-| Email nudge (active automation, no template) | Remind clubs to create templates |
-| Asset reference integrity job | MVP: check on delete; optional background sweep later |
+| Watermark layer | Starter plan feature |
+| Club-uploaded custom fonts | Only curated Google Fonts catalog today |
+| Org deletion wiring | `deleteOrganizationAutomationData` helper exists |
+| `selectRandomTemplate` helper | For future posting job |
 
 ---
 
-## 12. Implementation order
+## Related documentation
 
-1. **Schema** — add three tables + indexes; seed automations in `createOrganization`.
-2. **`lib/template-scene/`** — presets, binding enums, `normalizeSceneDocument`, validators, placeholders.
-3. **Convex `automations/`** — queries + mutations (no editor yet).
-4. **Convex `templateAssets/`** — upload + list.
-5. **Automations dashboard UI** — list, toggles, template counts.
-6. **Template editor** — react-konva, preset picker, property panel bindings, save/load.
-7. **(Later)** Render action with `konva/skia-backend`.
-8. **(Later)** Match data + posting pipeline.
-
----
-
-## 13. Open questions (non-blocking)
-
-1. **Exact canvas preset list** — confirm the three sizes above are sufficient for MVP or add `1080×1920` story format.
-2. **`templateAssets` delete policy** — hard reject delete when referenced vs. cascade remove nodes from templates automatically (recommend: **reject with clear error**).
-3. **Org deletion** — when implemented, delete `organizationAutomations`, `automationTemplates`, and `templateAssets` rows + storage blobs in one internal mutation.
-
----
-
-## 14. Summary
-
-We store **normalized Konva scene JSON** inline on `automationTemplates`, with **`bindingKey`** / **`assetId`** conventions for dynamic vs static content. **react-konva** edits the same document that **Konva + skia-canvas** will render server-side. Automation toggles live in **`organizationAutomations`** (two seeded rows per org, **default on**); posting is skipped when no templates exist. **Later**, email users whose automations are active but still have no templates. Static uploads use **`templateAssets`** + Convex **`_storage`**; club logos are render-time only with editor placeholders.
-
-This is the simplest architecture that satisfies both the editor and backend render requirements without maintaining a custom Canvas 2D interpreter.
+- [template-editor.md](./template-editor.md) — Scene format, editor architecture, server render
+- [convex-structure.md](./convex-structure.md) — Convex folder conventions
+- [organisations.md](./organisations.md) — Organization membership model

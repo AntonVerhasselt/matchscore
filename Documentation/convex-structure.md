@@ -29,6 +29,20 @@ convex/
 ├── emails/
 │   └── actions.ts             # Resend email actions
 │
+├── automations/
+│   ├── queries.ts             # listAutomations, listTemplates, getTemplate
+│   ├── mutations.ts           # Automation toggles, template CRUD
+│   ├── actions.ts             # "use node" — renderTemplateTest
+│   ├── internalMutations.ts   # Render preview blob cleanup
+│   ├── helpers.ts             # Membership, ensureOrganizationAutomations
+│   ├── scenes.ts              # Starter scene documents
+│   ├── cleanup.ts             # deleteOrganizationAutomationData (future org delete)
+│   └── render/                # "use node" — skia-canvas render pipeline
+│
+├── templateAssets/
+│   ├── queries.ts             # listTemplateAssets, asset reference checks
+│   └── mutations.ts           # Upload URL, save, delete assets
+│
 └── lib/                       # Pure TypeScript helpers (no Convex exports)
     ├── email.ts
     └── slugify.ts
