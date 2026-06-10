@@ -5,7 +5,7 @@
 > Branch context: `feature/club-automations-templates`  
 > Scope: Convex database design, automation/template APIs, react-konva editor, storage conventions, server render foundation, and phase-by-phase testing.  
 > Non-scope for MVP: match/calendar storage, actual scheduled posting, Meta/social posting, subscription/watermark enforcement, and `starting_eleven`.
-> Current implementation status: Phases 1-6 are merged to `main` (Phase 6 via PR #15). Phase 7 is implemented on `templates-phase-7` (uncommitted at time of writing) and is ready for manual handoff testing. Post-MVP deferred items (match data, posting, social OAuth, etc.) remain out of scope.
+> Current implementation status: Phases 1-6 are merged to `main` (Phase 6 via PR #15). Phase 7 is implemented on `templates-phase-7` and is ready for manual handoff testing. Post-MVP deferred items (match data, posting, social OAuth, etc.) remain out of scope.
 
 This document combines the approved product/backend brief and the react-konva technical guide into one phased implementation plan. Each phase must produce a small integrated slice: backend state, frontend UI, automated checks, browser verification, and database verification. After a phase passes those checks, the implementer should stop and hand it to the user for manual testing before continuing.
 

@@ -63,7 +63,9 @@ export function useTemplateAutosave({
     clearScheduledSave();
     timeoutRef.current = setTimeout(() => {
       timeoutRef.current = null;
-      void flushSave();
+      void flushSave().catch((error) => {
+        console.error("Template autosave failed:", error);
+      });
     }, TEMPLATE_AUTOSAVE_DELAY_MS);
   }, [clearScheduledSave, flushSave]);
 

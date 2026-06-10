@@ -886,6 +886,43 @@ describe("template shape presets", () => {
     ]);
   });
 
+  test("normalizes legacy multi-point lines to first and last vertices on save", () => {
+    const scene = normalizeSceneDocument(
+      {
+        schemaVersion: 1,
+        stage: {
+          className: "Stage",
+          attrs: { width: 1080, height: 1080 },
+          children: [
+            {
+              className: "Layer",
+              attrs: {},
+              children: [
+                {
+                  className: "Line",
+                  attrs: {
+                    id: "line-legacy-polyline",
+                    x: 0,
+                    y: 0,
+                    points: [0, 0, 50, 0, 100, 50, 200, 100],
+                    stroke: "#111827",
+                    strokeWidth: 4,
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      },
+      "instagram_square",
+      "match_announcement",
+    );
+
+    expect(scene.stage.children?.[0]?.children?.[0]?.attrs.points).toEqual([
+      0, 0, 200, 100,
+    ]);
+  });
+
   test("rejects unsupported Konva classes", () => {
     expect(() =>
       normalizeSceneDocument(

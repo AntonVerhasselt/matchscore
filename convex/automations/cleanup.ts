@@ -19,10 +19,28 @@ export async function deleteOrganizationAutomationData(
 
   for (const template of templates) {
     if (template.lastRenderPreviewStorageId) {
-      await ctx.storage.delete(template.lastRenderPreviewStorageId);
+      try {
+        await ctx.storage.delete(template.lastRenderPreviewStorageId);
+      } catch (error) {
+        console.warn(
+          "Failed to delete template render preview blob",
+          template._id,
+          template.lastRenderPreviewStorageId,
+          error,
+        );
+      }
     }
     if (template.thumbnailStorageId) {
-      await ctx.storage.delete(template.thumbnailStorageId);
+      try {
+        await ctx.storage.delete(template.thumbnailStorageId);
+      } catch (error) {
+        console.warn(
+          "Failed to delete template thumbnail blob",
+          template._id,
+          template.thumbnailStorageId,
+          error,
+        );
+      }
     }
     await ctx.db.delete(template._id);
   }
@@ -35,7 +53,16 @@ export async function deleteOrganizationAutomationData(
     .collect();
 
   for (const asset of assets) {
-    await ctx.storage.delete(asset.storageId);
+    try {
+      await ctx.storage.delete(asset.storageId);
+    } catch (error) {
+      console.warn(
+        "Failed to delete template asset blob",
+        asset._id,
+        asset.storageId,
+        error,
+      );
+    }
     await ctx.db.delete(asset._id);
   }
 

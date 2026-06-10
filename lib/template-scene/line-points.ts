@@ -36,12 +36,14 @@ export function normalizeLinePoints(points: unknown): number[] {
   );
 
   if (numeric.length >= 6) {
-    const [x0, y0, , , x1, y1] = numeric;
+    const [x0, y0] = numeric;
+    const tailX = numeric[numeric.length - 2];
+    const tailY = numeric[numeric.length - 1];
     return [
       Math.round(x0),
       Math.round(y0),
-      Math.round(x1),
-      Math.round(y1),
+      Math.round(tailX),
+      Math.round(tailY),
     ];
   }
 

@@ -89,14 +89,19 @@ export const renderTemplateTest = action({
       new Blob([Uint8Array.from(pngBuffer)], { type: "image/png" }),
     );
 
-    await ctx.runMutation(
-      internal.automations.internalMutations.replaceTemplateRenderPreview,
-      {
-        templateId: args.templateId,
-        newStorageId: storageId,
-        previousStorageId: template.lastRenderPreviewStorageId,
-      },
-    );
+    try {
+      await ctx.runMutation(
+        internal.automations.internalMutations.replaceTemplateRenderPreview,
+        {
+          templateId: args.templateId,
+          newStorageId: storageId,
+          previousStorageId: template.lastRenderPreviewStorageId,
+        },
+      );
+    } catch (error) {
+      await ctx.storage.delete(storageId);
+      throw error;
+    }
 
     const previewUrl = await ctx.storage.getUrl(storageId);
     if (!previewUrl) {

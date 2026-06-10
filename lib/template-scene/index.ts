@@ -619,26 +619,21 @@ function normalizeSceneNodeAttrsForClass(
     return nextAttrs;
   }
 
+  const nextAttrs = { ...attrs };
+
   if (className === "Line" || className === "Arrow") {
-    return {
-      ...attrs,
-      points: normalizeLinePoints(attrs.points),
-    };
+    nextAttrs.points = normalizeLinePoints(attrs.points);
   }
 
   if (className === "Rect" && attrs.cornerRadius === 0) {
-    const nextAttrs = { ...attrs };
     delete nextAttrs.cornerRadius;
-    return nextAttrs;
   }
 
   if (attrs.rotation === 0) {
-    const nextAttrs = { ...attrs };
     delete nextAttrs.rotation;
-    return nextAttrs;
   }
 
-  return attrs;
+  return nextAttrs;
 }
 
 function validateSceneNodeAttrs(

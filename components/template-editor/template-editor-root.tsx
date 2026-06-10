@@ -16,6 +16,34 @@ import {
 } from "@/lib/automations/types";
 import { useQuery } from "convex/react";
 import { Monitor } from "lucide-react";
+import { useEffect, useState } from "react";
+
+const DESKTOP_EDITOR_MIN_WIDTH_PX = 1024;
+
+function useCanRenderDesktopEditor() {
+  const [canRender, setCanRender] = useState(() => {
+    if (typeof window === "undefined") {
+      return false;
+    }
+
+    return window.matchMedia(`(min-width: ${DESKTOP_EDITOR_MIN_WIDTH_PX}px)`).matches;
+  });
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(
+      `(min-width: ${DESKTOP_EDITOR_MIN_WIDTH_PX}px)`,
+    );
+    const onChange = () => {
+      setCanRender(mediaQuery.matches);
+    };
+
+    onChange();
+    mediaQuery.addEventListener("change", onChange);
+    return () => mediaQuery.removeEventListener("change", onChange);
+  }, []);
+
+  return canRender;
+}
 
 type TemplateEditorRootProps = {
   automationType: string;
@@ -31,9 +59,10 @@ export default function TemplateEditorRoot({
   const slug: AutomationTypeSlug = isValidAutomationType
     ? automationType
     : "result";
+  const canRenderDesktopEditor = useCanRenderDesktopEditor();
   const template = useQuery(
     api.automations.queries.getTemplate,
-    isValidAutomationType && templateId !== "new"
+    isValidAutomationType && templateId !== "new" && canRenderDesktopEditor
       ? { templateId: templateId as Id<"automationTemplates"> }
       : "skip",
   );
