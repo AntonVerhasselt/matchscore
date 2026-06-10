@@ -1,13 +1,13 @@
 /**
- * Downloads catalog Google Fonts and generates a URL manifest for server render.
+ * Resolves Google Fonts CSS URLs and writes the server render manifest.
  *
  * Usage: pnpm sync-template-fonts
  *
- * Convex Node actions cannot read bundled .woff2 files from the repo at runtime,
- * so the manifest stores stable https://fonts.gstatic.com URLs. The render action
- * downloads them to os.tmpdir() on first use and registers via FontLibrary.use().
+ * Does not write .woff2 files into the repo. The generated manifest stores
+ * stable https://fonts.gstatic.com URLs; the render action downloads them to
+ * os.tmpdir() on first use (see register_scene_fonts.ts).
  */
-import { mkdir, writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -19,7 +19,6 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
-const FONTS_DIR = path.join(ROOT, "convex/automations/render/fonts");
 const MANIFEST_PATH = path.join(
   ROOT,
   "lib/template-scene/server-font-manifest.generated.ts",
@@ -27,10 +26,6 @@ const MANIFEST_PATH = path.join(
 
 const CSS_USER_AGENT =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
-
-function slugifyFamily(family: string): string {
-  return family.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-}
 
 function extractWoff2Urls(css: string): string[] {
   const urls = new Set<string>();
@@ -63,24 +58,6 @@ async function resolveFontFamilyUrls(family: string): Promise<string[]> {
   return urls;
 }
 
-async function cacheFontFamilyLocally(
-  family: string,
-  urls: string[],
-): Promise<void> {
-  const familyDir = path.join(FONTS_DIR, slugifyFamily(family));
-  await mkdir(familyDir, { recursive: true });
-
-  for (let index = 0; index < urls.length; index += 1) {
-    const url = urls[index]!;
-    const filePath = path.join(familyDir, `${String(index).padStart(2, "0")}.woff2`);
-    const fontResponse = await fetch(url);
-    if (!fontResponse.ok) {
-      throw new Error(`Failed to download ${url}: ${fontResponse.status}`);
-    }
-    await writeFile(filePath, Buffer.from(await fontResponse.arrayBuffer()));
-  }
-}
-
 async function main() {
   const manifest: Record<string, string[]> = {};
   const familiesToSync = [
@@ -93,7 +70,6 @@ async function main() {
     try {
       const urls = await resolveFontFamilyUrls(family);
       manifest[family] = urls;
-      await cacheFontFamilyLocally(family, urls);
       process.stdout.write(`ok (${urls.length} urls)\n`);
     } catch (error) {
       process.stdout.write("failed\n");

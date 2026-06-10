@@ -6,6 +6,7 @@ import { api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { action, internalAction } from "../_generated/server";
 import { DEFAULT_MOCK_MATCH } from "../../lib/template-scene/mock-match";
+import { normalizeSceneDocument } from "../../lib/template-scene";
 import {
   renderSolidColorSpikePng,
   renderTemplateToPng,
@@ -34,11 +35,29 @@ export const renderTemplateTest = action({
       assets.map((asset) => [asset._id, asset.storageId]),
     );
 
+    const rawSceneDocument = args.sceneDocument ?? template.sceneDocument;
+    let sceneDocument;
+    try {
+      sceneDocument = normalizeSceneDocument(
+        rawSceneDocument,
+        template.canvasPreset,
+        template.automationType,
+      );
+    } catch (error) {
+      throw new ConvexError(
+        error instanceof Error ? error.message : "Invalid scene document",
+      );
+    }
+
+    await ctx.runQuery(
+      api.templateAssets.queries.assertSceneDocumentAssetReferences,
+      { sceneDocument },
+    );
+
     let pngBuffer: Buffer;
     try {
       pngBuffer = await renderTemplateToPng({
-        sceneDocument:
-          args.sceneDocument ?? template.sceneDocument,
+        sceneDocument,
         automationType: template.automationType,
         canvasPreset: template.canvasPreset,
         match: DEFAULT_MOCK_MATCH,

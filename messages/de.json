@@ -385,7 +385,6 @@
         "renderTestClose": "Schließen",
         "renderTestSuccess": "Render-Test abgeschlossen.",
         "renderTestFailed": "Render-Test fehlgeschlagen. Versuchen Sie es nach dem Speichern erneut.",
-        "renderTestUnsavedWarning": "Der Render-Test verwendet die zuletzt gespeicherte Version, nicht Ihre ungespeicherten Änderungen. Fortfahren?",
         "panelTabs": {
           "variables": "Variablen",
           "assets": "Assets",

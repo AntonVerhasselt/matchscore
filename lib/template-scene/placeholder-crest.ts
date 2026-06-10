@@ -1,19 +1,21 @@
-import type { ImageBindingKey } from "./index";
+import type { BindingPreviewMode, ImageBindingKey } from "./index";
 
-export type BindingPreviewMode = "design" | "preview";
+function getPrimaryColor(
+  isHome: boolean,
+  previewMode: BindingPreviewMode,
+): string {
+  if (isHome) {
+    return previewMode === "preview" ? "#2563eb" : "#1d4ed8";
+  }
+  return previewMode === "preview" ? "#dc2626" : "#b91c1c";
+}
 
 export function createPlaceholderCrestSvg(
   bindingKey: ImageBindingKey,
   previewMode: BindingPreviewMode = "preview",
 ): string {
   const isHome = bindingKey === "homeClubLogo";
-  const primary = isHome
-    ? previewMode === "preview"
-      ? "#2563eb"
-      : "#1d4ed8"
-    : previewMode === "preview"
-      ? "#dc2626"
-      : "#b91c1c";
+  const primary = getPrimaryColor(isHome, previewMode);
   const secondary = isHome ? "#dbeafe" : "#fee2e2";
   const label = isHome ? "HOME" : "AWAY";
 

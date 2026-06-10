@@ -118,6 +118,12 @@ export function buildGoogleFontsStylesheetUrl(families: string[]): string {
   return buildGoogleFontsStylesheetUrlForFamilies(uniqueFamilies);
 }
 
+/**
+ * Builds a Google Fonts CSS2 URL for pre-validated family names.
+ * Callers (e.g. buildGoogleFontsStylesheetUrl, sync-template-fonts) must pass
+ * trusted catalog or server-only names; this only trims, deduplicates, and
+ * URL-encodes via encodeGoogleFontFamily.
+ */
 export function buildGoogleFontsStylesheetUrlForFamilies(
   families: string[],
 ): string {

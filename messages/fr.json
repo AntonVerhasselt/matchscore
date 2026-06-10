@@ -385,7 +385,6 @@
         "renderTestClose": "Fermer",
         "renderTestSuccess": "Test de rendu terminé.",
         "renderTestFailed": "Échec du test de rendu. Réessayez après avoir enregistré.",
-        "renderTestUnsavedWarning": "Le test de rendu utilise la dernière version enregistrée, pas vos modifications non enregistrées. Continuer ?",
         "panelTabs": {
           "variables": "Variables",
           "assets": "Ressources",

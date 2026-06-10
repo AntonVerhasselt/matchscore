@@ -385,7 +385,6 @@
         "renderTestClose": "Sluiten",
         "renderTestSuccess": "Render test voltooid.",
         "renderTestFailed": "Render test mislukt. Probeer opnieuw na het opslaan.",
-        "renderTestUnsavedWarning": "De render test gebruikt de laatst opgeslagen versie, niet je huidige niet-opgeslagen wijzigingen. Doorgaan?",
         "panelTabs": {
           "variables": "Variabelen",
           "assets": "Assets",

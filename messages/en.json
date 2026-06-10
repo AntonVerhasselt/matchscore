@@ -385,7 +385,6 @@
         "renderTestClose": "Close",
         "renderTestSuccess": "Render test completed.",
         "renderTestFailed": "Render test failed. Try again after saving.",
-        "renderTestUnsavedWarning": "The render test uses the last saved version, not your current unsaved changes. Continue?",
         "panelTabs": {
           "variables": "Variables",
           "assets": "Assets",
