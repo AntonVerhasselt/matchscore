@@ -158,9 +158,9 @@ export function AutomationTypeCard({
   const isGloballyEnabled = automation?.isGloballyEnabled ?? true;
   const templateCount = automation?.templateCount ?? 0;
   const isAnyPostingChannelSaving = savingPostingChannel !== null;
-  const templateCountLabel = automation?.templateCountIsCapped
-    ? t("templates.cappedShortCount", { count: templateCount })
-    : t("templates.shortCount", { count: templateCount });
+  const templateCountLabel = t("templates.shortCount", { count: templateCount });
+  const showNoTemplatesHint =
+    isGloballyEnabled && templateCount === 0 && automation !== undefined;
 
   const handleGlobalStatusChange = async (checked: boolean) => {
     if (!automation || isSavingGlobalStatus || isAnyPostingChannelSaving) {
@@ -228,6 +228,11 @@ export function AutomationTypeCard({
                 <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
                   {t(`types.${automationType}.description`)}
                 </p>
+                {showNoTemplatesHint ? (
+                  <p className="mt-2 text-sm text-amber-700 dark:text-amber-400">
+                    {t("templates.activeNoTemplatesHint")}
+                  </p>
+                ) : null}
               </div>
             </div>
 

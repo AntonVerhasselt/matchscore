@@ -33,20 +33,16 @@ export default function AutomationTemplatesPage() {
     [automations, backendAutomationType],
   );
 
+  const isLoading = templates === undefined;
   const templateRows = templates ?? [];
   const templateCount = automation?.templateCount ?? templateRows.length;
   const statusLabel = (automation?.isGloballyEnabled ?? true)
     ? t("templates.statusActive")
     : t("templates.statusInactive");
-  const metaDescription = automation?.templateCountIsCapped
-    ? t("templates.cappedMeta", {
-        count: templateCount,
-        status: statusLabel,
-      })
-    : t("templates.meta", {
-        count: templateCount,
-        status: statusLabel,
-      });
+  const metaDescription = t("templates.meta", {
+    count: templateCount,
+    status: statusLabel,
+  });
 
   if (!isValidAutomationType) {
     notFound();
@@ -74,6 +70,7 @@ export default function AutomationTemplatesPage() {
       <TemplateList
         automationType={slug}
         templates={templateRows}
+        isLoading={isLoading}
       />
     </>
   );

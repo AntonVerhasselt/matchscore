@@ -207,8 +207,8 @@ describe("automation phase 1 foundations", () => {
   test("rejects unsupported scene node classes", () => {
     const scene = createStarterSceneDocument("instagram_square");
     scene.stage.children?.[0]?.children?.push({
-      className: "Circle" as "Rect",
-      attrs: { x: 100, y: 100, radius: 50 },
+      className: "Path" as "Rect",
+      attrs: { id: "path-1", data: "M0 0" },
     });
 
     expect(() =>
@@ -746,5 +746,171 @@ describe("automation phase 6 server render prep", () => {
 
   test("font manifest uses remote https urls for convex runtime loading", () => {
     assertTemplateFontManifestUsesRemoteUrls();
+  });
+});
+
+describe("template shape presets", () => {
+  test("accepts expanded Konva shape classes in scene documents", () => {
+    const scene = normalizeSceneDocument(
+      {
+        schemaVersion: 1,
+        stage: {
+          className: "Stage",
+          attrs: { width: 1080, height: 1080 },
+          children: [
+            {
+              className: "Layer",
+              attrs: {},
+              children: [
+                {
+                  className: "Circle",
+                  attrs: {
+                    id: "circle-1",
+                    x: 200,
+                    y: 200,
+                    radius: 80,
+                    fill: "#111827",
+                  },
+                },
+                {
+                  className: "Star",
+                  attrs: {
+                    id: "star-1",
+                    x: 500,
+                    y: 500,
+                    numPoints: 5,
+                    innerRadius: 30,
+                    outerRadius: 80,
+                    fill: "#dc2626",
+                  },
+                },
+                {
+                  className: "Line",
+                  attrs: {
+                    id: "line-1",
+                    x: 100,
+                    y: 100,
+                    points: [0, 0, 240, 0],
+                    stroke: "#111827",
+                    strokeWidth: 4,
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      },
+      "instagram_square",
+      "match_announcement",
+    );
+
+    const layerChildren = scene.stage.children?.[0]?.children ?? [];
+    expect(layerChildren.map((node) => node.className)).toEqual([
+      "Circle",
+      "Star",
+      "Line",
+    ]);
+  });
+
+  test("normalizes legacy multi-point lines to two vertices on save", () => {
+    const scene = normalizeSceneDocument(
+      {
+        schemaVersion: 1,
+        stage: {
+          className: "Stage",
+          attrs: { width: 1080, height: 1080 },
+          children: [
+            {
+              className: "Layer",
+              attrs: {},
+              children: [
+                {
+                  className: "Line",
+                  attrs: {
+                    id: "line-legacy",
+                    x: 40,
+                    y: 40,
+                    points: [0, 0, 200, 100],
+                    stroke: "#111827",
+                    strokeWidth: 4,
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      },
+      "instagram_square",
+      "match_announcement",
+    );
+
+    expect(scene.stage.children?.[0]?.children?.[0]?.attrs.points).toEqual([
+      0, 0, 200, 100,
+    ]);
+  });
+
+  test("normalizes legacy three-point lines to start and end vertices on save", () => {
+    const scene = normalizeSceneDocument(
+      {
+        schemaVersion: 1,
+        stage: {
+          className: "Stage",
+          attrs: { width: 1080, height: 1080 },
+          children: [
+            {
+              className: "Layer",
+              attrs: {},
+              children: [
+                {
+                  className: "Line",
+                  attrs: {
+                    id: "line-legacy-3pt",
+                    x: 40,
+                    y: 40,
+                    points: [0, 0, 120, 0, 240, 0],
+                    stroke: "#111827",
+                    strokeWidth: 4,
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      },
+      "instagram_square",
+      "match_announcement",
+    );
+
+    expect(scene.stage.children?.[0]?.children?.[0]?.attrs.points).toEqual([
+      0, 0, 240, 0,
+    ]);
+  });
+
+  test("rejects unsupported Konva classes", () => {
+    expect(() =>
+      normalizeSceneDocument(
+        {
+          schemaVersion: 1,
+          stage: {
+            className: "Stage",
+            attrs: { width: 1080, height: 1080 },
+            children: [
+              {
+                className: "Layer",
+                attrs: {},
+                children: [
+                  {
+                    className: "Path",
+                    attrs: { id: "path-1", data: "M0 0" },
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        "instagram_square",
+        "match_announcement",
+      ),
+    ).toThrow("Unsupported scene node class");
   });
 });

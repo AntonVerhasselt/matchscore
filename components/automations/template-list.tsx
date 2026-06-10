@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { CreateTemplateButton } from "@/components/automations/create-template-button";
 import { TemplateListItem } from "@/components/automations/template-list-item";
+import { Skeleton } from "@/components/ui/skeleton";
 import type {
   AutomationTemplateSummary,
   AutomationTypeSlug,
@@ -13,13 +14,25 @@ import type {
 type TemplateListProps = {
   automationType: AutomationTypeSlug;
   templates: AutomationTemplateSummary[];
+  isLoading?: boolean;
 };
 
 export function TemplateList({
   automationType,
   templates,
+  isLoading = false,
 }: TemplateListProps) {
   const t = useTranslations("app.automations.templates");
+
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <Skeleton key={index} className="h-20 w-full" />
+        ))}
+      </div>
+    );
+  }
 
   if (templates.length === 0) {
     return (

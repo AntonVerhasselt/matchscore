@@ -2,6 +2,7 @@ import {
   isValidKonvaFontStyle,
   isValidTextDecoration,
 } from "./text-style";
+import { normalizeLinePoints } from "./line-points";
 import { createPlaceholderCrestDataUrl } from "./placeholder-crest";
 
 type CanvasPreset =
@@ -25,6 +26,11 @@ export type SceneNodeClassName =
   | "Layer"
   | "Group"
   | "Rect"
+  | "Circle"
+  | "RegularPolygon"
+  | "Star"
+  | "Line"
+  | "Arrow"
   | "Text"
   | "Image";
 
@@ -105,6 +111,33 @@ export {
 export { ellipsizeText, measureTextForFit } from "./text-measure";
 
 export {
+  ALL_SHAPE_PRESET_IDS,
+  SHAPE_CATEGORIES,
+  SHAPE_PRESET_DRAG_MIME,
+  createShapeNode,
+  isRadiusShapeClassName,
+  isShapePresetId,
+  isVectorShapeClassName,
+  parseShapePresetDragPayload,
+} from "./shape-presets";
+export type {
+  ShapeCategoryId,
+  ShapePresetDefinition,
+  ShapePresetDragPayload,
+  ShapePresetId,
+} from "./shape-presets";
+
+export {
+  LINE_DASH_PRESETS,
+  LINE_VERTEX_COUNT,
+  getLineDashPreset,
+  getLineVertexPositions,
+  normalizeLinePoints,
+  updateLineVertex,
+} from "./line-points";
+export type { LineDashPreset } from "./line-points";
+
+export {
   getFontFilesForFamilies,
   getGoogleCatalogFamilies,
 } from "./server-font-registry";
@@ -166,6 +199,11 @@ const ALLOWED_NODE_CLASSES = new Set<SceneNodeClassName>([
   "Layer",
   "Group",
   "Rect",
+  "Circle",
+  "RegularPolygon",
+  "Star",
+  "Line",
+  "Arrow",
   "Text",
   "Image",
 ]);
@@ -529,6 +567,41 @@ function normalizeSceneNodeAttrs(
     attrs.height = Math.max(Math.round(height * scaleY), 1);
   }
 
+  const radius = asFiniteNumber(rawAttrs.radius);
+  if (radius !== undefined && (scaleX !== 1 || scaleY !== 1)) {
+    attrs.radius = Math.max(
+      Math.round(radius * Math.max(scaleX, scaleY)),
+      1,
+    );
+  }
+
+  const innerRadius = asFiniteNumber(rawAttrs.innerRadius);
+  const outerRadius = asFiniteNumber(rawAttrs.outerRadius);
+  if (
+    innerRadius !== undefined &&
+    outerRadius !== undefined &&
+    (scaleX !== 1 || scaleY !== 1)
+  ) {
+    const scale = Math.max(scaleX, scaleY);
+    attrs.innerRadius = Math.max(Math.round(innerRadius * scale), 1);
+    attrs.outerRadius = Math.max(Math.round(outerRadius * scale), 1);
+  }
+
+  const rawPoints = rawAttrs.points;
+  if (
+    Array.isArray(rawPoints) &&
+    rawPoints.length >= 2 &&
+    (scaleX !== 1 || scaleY !== 1)
+  ) {
+    attrs.points = rawPoints.map((point, index) => {
+      if (typeof point !== "number" || !Number.isFinite(point)) {
+        throw new Error("Line points must be numeric");
+      }
+      const scale = index % 2 === 0 ? scaleX : scaleY;
+      return Math.round(point * scale);
+    });
+  }
+
   return attrs;
 }
 
@@ -540,6 +613,25 @@ function normalizeSceneNodeAttrsForClass(
   if (className === "Text" && getTextBindingKey(attrs.bindingKey, automationType)) {
     const nextAttrs = { ...attrs };
     delete nextAttrs.text;
+    return nextAttrs;
+  }
+
+  if (className === "Line" || className === "Arrow") {
+    return {
+      ...attrs,
+      points: normalizeLinePoints(attrs.points),
+    };
+  }
+
+  if (className === "Rect" && attrs.cornerRadius === 0) {
+    const nextAttrs = { ...attrs };
+    delete nextAttrs.cornerRadius;
+    return nextAttrs;
+  }
+
+  if (attrs.rotation === 0) {
+    const nextAttrs = { ...attrs };
+    delete nextAttrs.rotation;
     return nextAttrs;
   }
 
@@ -601,6 +693,92 @@ function validateSceneNodeAttrs(
   }
   if (hasBindingKey) {
     throw new Error("bindingKey is only supported on Text and Image nodes");
+  }
+
+  validateShapeSceneNodeAttrs(className, attrs);
+}
+
+function validateShapeSceneNodeAttrs(
+  className: SceneNodeClassName,
+  attrs: SceneNodeAttrs,
+) {
+  if (className === "Circle") {
+    validatePositiveNumberAttr(attrs.radius, "radius");
+    return;
+  }
+
+  if (className === "RegularPolygon") {
+    validatePositiveNumberAttr(attrs.radius, "radius");
+    const sides = attrs.sides;
+    if (
+      typeof sides !== "number" ||
+      !Number.isFinite(sides) ||
+      sides < 3 ||
+      sides > 12 ||
+      !Number.isInteger(sides)
+    ) {
+      throw new Error("Invalid RegularPolygon sides");
+    }
+    return;
+  }
+
+  if (className === "Star") {
+    validatePositiveNumberAttr(attrs.innerRadius, "innerRadius");
+    validatePositiveNumberAttr(attrs.outerRadius, "outerRadius");
+    const numPoints = attrs.numPoints;
+    if (
+      typeof numPoints !== "number" ||
+      !Number.isFinite(numPoints) ||
+      numPoints < 3 ||
+      numPoints > 12 ||
+      !Number.isInteger(numPoints)
+    ) {
+      throw new Error("Invalid Star numPoints");
+    }
+    return;
+  }
+
+  if (className === "Line" || className === "Arrow") {
+    validateLinePointsAttr(normalizeLinePoints(attrs.points));
+    validatePositiveNumberAttr(attrs.strokeWidth, "strokeWidth", 0.5);
+    if (attrs.dash !== undefined) {
+      if (
+        !Array.isArray(attrs.dash) ||
+        attrs.dash.some(
+          (value) => typeof value !== "number" || !Number.isFinite(value),
+        )
+      ) {
+        throw new Error("Invalid line dash pattern");
+      }
+    }
+    if (className === "Arrow") {
+      validatePositiveNumberAttr(attrs.pointerLength, "pointerLength", 1);
+      validatePositiveNumberAttr(attrs.pointerWidth, "pointerWidth", 1);
+    }
+  }
+}
+
+function validateLinePointsAttr(value: unknown) {
+  if (
+    !Array.isArray(value) ||
+    value.length !== 4 ||
+    value.some((point) => typeof point !== "number" || !Number.isFinite(point))
+  ) {
+    throw new Error("Line points must contain exactly two coordinate pairs");
+  }
+}
+
+function validatePositiveNumberAttr(
+  value: unknown,
+  label: string,
+  minimum = 1,
+) {
+  if (
+    typeof value !== "number" ||
+    !Number.isFinite(value) ||
+    value < minimum
+  ) {
+    throw new Error(`Invalid ${label}`);
   }
 }
 
