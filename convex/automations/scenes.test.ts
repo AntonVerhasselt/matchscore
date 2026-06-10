@@ -30,6 +30,38 @@ import {
 import { prepareImageLayout, prepareTextForRender } from "../../lib/template-scene/prepare-render-node";
 import { getFontUrlsForFamilies, assertTemplateFontManifestUsesRemoteUrls } from "../../lib/template-scene/server-font-registry";
 import { createStarterSceneDocument } from "./scenes";
+import {
+  normalizeHexColor,
+  pickContrastingTextColor,
+  relativeLuminance,
+  resolveSceneBackgroundFill,
+} from "../../lib/template-scene/color-contrast";
+
+describe("template scene color contrast", () => {
+  test("picks black text on light backgrounds", () => {
+    expect(pickContrastingTextColor("#ffffff")).toBe("#000000");
+    expect(pickContrastingTextColor("#fef3c7")).toBe("#000000");
+  });
+
+  test("picks white text on dark backgrounds", () => {
+    expect(pickContrastingTextColor("#000000")).toBe("#ffffff");
+    expect(pickContrastingTextColor("#111827")).toBe("#ffffff");
+    expect(pickContrastingTextColor("#1e3a8a")).toBe("#ffffff");
+  });
+
+  test("normalizes shorthand and missing hash hex values", () => {
+    expect(normalizeHexColor("fff")).toBe("#ffffff");
+    expect(normalizeHexColor("#ABC")).toBe("#aabbcc");
+    expect(normalizeHexColor("not-a-color")).toBeNull();
+  });
+
+  test("resolves solid and image background fills", () => {
+    const scene = createStarterSceneDocument("instagram_square");
+    const background = scene.stage.children?.[0]?.children?.[0] ?? null;
+    expect(resolveSceneBackgroundFill(background)).toBe("#ffffff");
+    expect(relativeLuminance("#ffffff")).toBeGreaterThan(0.55);
+  });
+});
 
 describe("automation phase 1 foundations", () => {
   test("defines exactly the two MVP automation types", () => {

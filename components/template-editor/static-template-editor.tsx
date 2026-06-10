@@ -86,6 +86,11 @@ import {
   type TextBindingKey,
   type TextOverflowMode,
 } from "@/lib/template-scene";
+import {
+  normalizeHexColor,
+  pickContrastingTextColor,
+  resolveSceneBackgroundFill,
+} from "@/lib/template-scene/color-contrast";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -662,7 +667,7 @@ export function StaticTemplateEditor({
       const node =
         payload.kind === "image"
           ? createLogoNode(sceneDocument, nodeId, payload.bindingKey, point)
-          : createTextBindingNode(nodeId, payload.bindingKey, point);
+          : createTextBindingNode(sceneDocument, nodeId, payload.bindingKey, point);
 
       commitSceneDocument((current) => appendSceneNodeToFirstLayer(current, node));
       setSelectedNodeId(nodeId);
@@ -2472,31 +2477,61 @@ function TextColorPicker({
   label: string;
   onChange: (fill: string) => void;
 }) {
-  const inputId = useId();
-  const normalized = value || "#000000";
+  const hexInputId = useId();
+  const colorInputRef = useRef<HTMLInputElement>(null);
+  const normalized = normalizeHexColor(value) ?? "#000000";
+  const [hexDraft, setHexDraft] = useState(normalized);
+
+  useEffect(() => {
+    setHexDraft(normalized);
+  }, [normalized]);
+
+  const commitHexDraft = () => {
+    const nextColor = normalizeHexColor(hexDraft);
+    if (nextColor) {
+      onChange(nextColor);
+      setHexDraft(nextColor);
+      return;
+    }
+
+    setHexDraft(normalized);
+  };
 
   return (
-    <label
-      htmlFor={inputId}
-      className="flex h-10 w-full min-w-0 cursor-pointer items-center gap-3 border border-input bg-background px-2.5 transition-colors hover:bg-muted/40"
-    >
-      <span
-        aria-hidden
-        className="size-9 shrink-0 border border-border shadow-sm"
+    <div className="flex h-8 w-full min-w-0 items-stretch overflow-hidden border border-input bg-background">
+      <button
+        type="button"
+        aria-label={label}
+        className="w-9 shrink-0 cursor-pointer border-r border-input transition-opacity hover:opacity-90"
         style={{ backgroundColor: normalized }}
+        onClick={() => colorInputRef.current?.click()}
       />
-      <span className="min-w-0 flex-1 text-sm font-medium">{label}</span>
-      <span className="shrink-0 font-mono text-xs uppercase text-muted-foreground">
-        {normalized}
-      </span>
+      <Input
+        id={hexInputId}
+        value={hexDraft}
+        aria-label={`${label} hex`}
+        spellCheck={false}
+        autoComplete="off"
+        className="h-full min-w-0 flex-1 rounded-none border-0 bg-transparent px-2 font-mono text-xs uppercase shadow-none focus-visible:ring-0"
+        onChange={(event) => setHexDraft(event.target.value)}
+        onBlur={commitHexDraft}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            commitHexDraft();
+          }
+        }}
+      />
       <input
-        id={inputId}
+        ref={colorInputRef}
         type="color"
         value={normalized}
         className="sr-only"
+        tabIndex={-1}
+        aria-hidden
         onChange={(event) => onChange(event.target.value)}
       />
-    </label>
+    </div>
   );
 }
 
@@ -3485,6 +3520,13 @@ function appendSceneNodeToFirstLayer(
   };
 }
 
+function getSceneBackgroundFill(sceneDocument: SceneDocument): string {
+  return resolveSceneBackgroundFill(
+    findBackgroundNode(sceneDocument),
+    DEFAULT_BACKGROUND_FILL,
+  );
+}
+
 function createFixedTextNode(
   sceneDocument: SceneDocument,
   nodeId: string,
@@ -3507,6 +3549,7 @@ function createFixedTextNode(
   const maxX = Math.max(0, stageWidth - width);
   const minY = Math.min(0, stageHeight - height);
   const maxY = Math.max(0, stageHeight - height);
+  const fill = pickContrastingTextColor(getSceneBackgroundFill(sceneDocument));
 
   return {
     className: "Text",
@@ -3522,7 +3565,7 @@ function createFixedTextNode(
       fontFamily: "Arial",
       fontStyle: style.fontStyle ?? "normal",
       lineHeight,
-      fill: "#111827",
+      fill,
       align: "center",
     },
   };
@@ -3556,12 +3599,14 @@ function parseTextPresetDragPayload(raw: string): TextPresetDragPayload | null {
 }
 
 function createTextBindingNode(
+  sceneDocument: SceneDocument,
   nodeId: string,
   bindingKey: TextBindingKey,
   point: { x: number; y: number },
 ): SceneNode {
   const fontSize = 52;
   const token = `{{ ${bindingKey} }}`;
+  const fill = pickContrastingTextColor(getSceneBackgroundFill(sceneDocument));
 
   return {
     className: "Text",
@@ -3573,7 +3618,7 @@ function createTextBindingNode(
       width: estimateSingleLineTextWidth(token, fontSize),
       fontSize,
       fontFamily: "Arial",
-      fill: "#ffffff",
+      fill,
       bindingKey,
     },
   };

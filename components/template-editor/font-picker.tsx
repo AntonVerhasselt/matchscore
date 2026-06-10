@@ -149,7 +149,7 @@ export function FontPicker({
         ref={buttonRef}
         id={buttonId}
         type="button"
-        className="flex h-7 w-full min-w-0 items-center justify-between gap-1 border bg-background px-2 text-left text-xs hover:bg-muted/50"
+        className="flex h-8 w-full min-w-0 items-center justify-between gap-1.5 border bg-background px-2.5 text-left text-xs hover:bg-muted/50"
         style={{ fontFamily: value }}
         aria-expanded={open}
         aria-haspopup="listbox"
