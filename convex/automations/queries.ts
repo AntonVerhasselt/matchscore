@@ -2,7 +2,6 @@ import { v } from "convex/values";
 import { query } from "../_generated/server";
 import {
   AUTOMATION_TYPES,
-  TEMPLATE_COUNT_CAP,
   getEffectivePostingChannelStatuses,
   normalizePostingChannelStatuses,
   type PostingChannelStatuses,
@@ -27,7 +26,6 @@ const automationSummaryValidator = v.object({
   updatedAt: v.number(),
   updatedByUserId: v.union(v.string(), v.null()),
   templateCount: v.number(),
-  templateCountIsCapped: v.boolean(),
 });
 
 type LegacyAutomationStatusFields = {
@@ -67,8 +65,7 @@ export const listAutomations = query({
             .eq("organizationId", membership.organizationId)
             .eq("automationType", automationType),
         )
-        .take(TEMPLATE_COUNT_CAP + 1);
-      const templateCountIsCapped = templatesForCount.length > TEMPLATE_COUNT_CAP;
+        .collect();
 
       results.push({
         _id: automation._id,
@@ -81,8 +78,7 @@ export const listAutomations = query({
         ),
         updatedAt: automation.updatedAt,
         updatedByUserId: automation.updatedByUserId ?? null,
-        templateCount: Math.min(templatesForCount.length, TEMPLATE_COUNT_CAP),
-        templateCountIsCapped,
+        templateCount: templatesForCount.length,
       });
     }
 
@@ -108,14 +104,14 @@ export const listTemplates = query({
               .eq("automationType", automationType),
           )
           .order("desc")
-          .take(100)
+          .collect()
       : await ctx.db
           .query("automationTemplates")
           .withIndex("by_organizationId", (q) =>
             q.eq("organizationId", membership.organizationId),
           )
           .order("desc")
-          .take(100);
+          .collect();
 
     return templates.map((template) => ({
       _id: template._id,
@@ -148,6 +144,7 @@ export const getTemplate = query({
       canvasPreset: template.canvasPreset,
       schemaVersion: template.schemaVersion,
       sceneDocument: template.sceneDocument,
+      lastRenderPreviewStorageId: template.lastRenderPreviewStorageId,
       createdAt: template.createdAt,
       updatedAt: template.updatedAt,
     };

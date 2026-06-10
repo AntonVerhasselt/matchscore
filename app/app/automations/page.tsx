@@ -11,6 +11,8 @@ import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { useEffect, useMemo, useRef } from "react";
 
+import { Skeleton } from "@/components/ui/skeleton";
+
 export default function AutomationsPage() {
   const t = useTranslations("app.automations");
   const automations = useQuery(api.automations.queries.listAutomations);
@@ -47,13 +49,19 @@ export default function AutomationsPage() {
       <AppPageHeader title={t("title")} description={t("description")} />
 
       <div className="space-y-3">
-        {AUTOMATION_TYPE_ORDER.map((automationType) => (
-          <AutomationTypeCard
-            key={automationType}
-            automationType={automationType}
-            automation={automationsByType.get(toBackendAutomationType(automationType))}
-          />
-        ))}
+        {automations === undefined
+          ? AUTOMATION_TYPE_ORDER.map((automationType) => (
+              <Skeleton key={automationType} className="h-52 w-full" />
+            ))
+          : AUTOMATION_TYPE_ORDER.map((automationType) => (
+              <AutomationTypeCard
+                key={automationType}
+                automationType={automationType}
+                automation={automationsByType.get(
+                  toBackendAutomationType(automationType),
+                )}
+              />
+            ))}
       </div>
     </>
   );

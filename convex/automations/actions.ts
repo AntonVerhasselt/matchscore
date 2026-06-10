@@ -2,7 +2,7 @@
 
 import { ConvexError, v } from "convex/values";
 
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { action, internalAction } from "../_generated/server";
 import { DEFAULT_MOCK_MATCH } from "../../lib/template-scene/mock-match";
@@ -88,6 +88,21 @@ export const renderTemplateTest = action({
     const storageId = await ctx.storage.store(
       new Blob([Uint8Array.from(pngBuffer)], { type: "image/png" }),
     );
+
+    try {
+      await ctx.runMutation(
+        internal.automations.internalMutations.replaceTemplateRenderPreview,
+        {
+          templateId: args.templateId,
+          newStorageId: storageId,
+          previousStorageId: template.lastRenderPreviewStorageId,
+        },
+      );
+    } catch (error) {
+      await ctx.storage.delete(storageId);
+      throw error;
+    }
+
     const previewUrl = await ctx.storage.getUrl(storageId);
     if (!previewUrl) {
       throw new ConvexError("Failed to generate preview URL");

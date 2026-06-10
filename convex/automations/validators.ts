@@ -46,6 +46,7 @@ export const automationTemplateDetailValidator = v.object({
   canvasPreset: canvasPresetValidator,
   schemaVersion: v.number(),
   sceneDocument: v.any(),
+  lastRenderPreviewStorageId: v.optional(v.id("_storage")),
   createdAt: v.number(),
   updatedAt: v.number(),
 });

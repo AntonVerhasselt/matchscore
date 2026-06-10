@@ -6,7 +6,6 @@ import {
   AlignRight,
   ArrowLeft,
   Bold,
-  Circle,
   Italic,
   Minus,
   Plus,
@@ -22,7 +21,6 @@ import {
   Save,
   Shapes,
   SlidersHorizontal,
-  Square,
   Palette,
   Trash2,
   Type,
@@ -44,10 +42,15 @@ import {
   useState,
 } from "react";
 import {
+  Arrow as KonvaArrow,
+  Circle as KonvaCircle,
   Group,
   Image as KonvaImage,
   Layer,
+  Line as KonvaLine,
   Rect,
+  RegularPolygon,
+  Star as KonvaStar,
   Stage,
   Text as KonvaText,
   Transformer,
@@ -85,7 +88,19 @@ import {
   type SceneNodeAttrs,
   type TextBindingKey,
   type TextOverflowMode,
+  createShapeNode,
+  getFilledShapeStrokeProps,
+  getLineDashPreset,
+  isVectorShapeClassName,
+  LINE_DASH_PRESETS,
+  normalizeLinePoints,
+  parseShapePresetDragPayload,
+  SHAPE_PRESET_DRAG_MIME,
+  type LineDashPreset,
+  type ShapePresetId,
 } from "@/lib/template-scene";
+import { LinePointHandles } from "@/components/template-editor/line-point-handles";
+import { cn } from "@/lib/utils";
 import {
   normalizeHexColor,
   pickContrastingTextColor,
@@ -125,6 +140,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FontPicker } from "@/components/template-editor/font-picker";
+import { ShapesPanel } from "@/components/template-editor/shapes-panel";
+import { useTemplateAutosave } from "@/hooks/use-template-autosave";
 
 const VARIABLE_DRAG_MIME = "application/x-matchscore-template-variable";
 const ASSET_DRAG_MIME = "application/x-matchscore-template-asset";
@@ -310,10 +327,13 @@ export function StaticTemplateEditor({
       return;
     }
 
+    const usesLinePointHandles =
+      selectedNode !== null && isVectorShapeClassName(selectedNode.className);
     const selectedKonvaNode =
       selectedNode &&
       !isLockedNode(selectedNode) &&
       selectedNodeId !== editingTextNodeId &&
+      !usesLinePointHandles &&
       !(isBackgroundNode(selectedNode) && selectedNode.className !== "Image")
         ? selectedNodeId
           ? nodeRefs.current.get(selectedNodeId)
@@ -359,7 +379,22 @@ export function StaticTemplateEditor({
   );
 
   const updateSceneAttrs = useCallback(
-    (nodeId: string, attrs: SceneNodeAttrs) => {
+    (
+      nodeId: string,
+      attrs: SceneNodeAttrs,
+      options?: { recordHistory?: boolean },
+    ) => {
+      if (options?.recordHistory === false) {
+        setSceneDocument((current) => {
+          if (!current) {
+            return current;
+          }
+          setIsDirty(true);
+          return updateSceneNodeAttrs(current, nodeId, attrs);
+        });
+        return;
+      }
+
       commitSceneDocument((current) => updateSceneNodeAttrs(current, nodeId, attrs));
     },
     [commitSceneDocument],
@@ -595,16 +630,44 @@ export function StaticTemplateEditor({
     [generateUploadUrl, saveTemplateAsset],
   );
 
-  const handleUploadAsset = useCallback(
-    async (file: File): Promise<TemplateAsset | null> => {
+  const handleUploadAssets = useCallback(
+    async (files: File[]): Promise<TemplateAsset[]> => {
+      if (files.length === 0) {
+        return [];
+      }
+
       setIsUploadingAsset(true);
+      const uploaded: TemplateAsset[] = [];
+      let failedCount = 0;
+
       try {
-        const asset = await uploadTemplateAsset(file);
-        showSuccessToast(t("editor.assetUploadSuccess"));
-        return asset;
-      } catch {
-        showErrorToast(t("editor.assetUploadFailed"));
-        return null;
+        for (const file of files) {
+          try {
+            const asset = await uploadTemplateAsset(file);
+            uploaded.push(asset);
+          } catch {
+            failedCount += 1;
+          }
+        }
+
+        if (uploaded.length > 0 && failedCount === 0) {
+          showSuccessToast(
+            uploaded.length === 1
+              ? t("editor.assetUploadSuccess")
+              : t("editor.assetUploadSuccessMultiple", { count: uploaded.length }),
+          );
+        } else if (uploaded.length > 0) {
+          showSuccessToast(
+            t("editor.assetUploadPartialSuccess", {
+              uploaded: uploaded.length,
+              failed: failedCount,
+            }),
+          );
+        } else {
+          showErrorToast(t("editor.assetUploadFailed"));
+        }
+
+        return uploaded;
       } finally {
         setIsUploadingAsset(false);
       }
@@ -629,6 +692,35 @@ export function StaticTemplateEditor({
       }
     },
     [deleteTemplateAsset, t],
+  );
+
+  const insertShapeNode = useCallback(
+    (presetId: ShapePresetId, point: { x: number; y: number }) => {
+      if (!sceneDocument) {
+        return;
+      }
+
+      const backgroundFill = getSceneBackgroundFill(sceneDocument);
+      const fill = pickContrastingTextColor(backgroundFill);
+      const stroke = fill;
+      const nodeId = `shape-${presetId}-${Date.now()}`;
+      const node = createShapeNode(presetId, nodeId, point, {
+        stageWidth: stageDimensions.width,
+        stageHeight: stageDimensions.height,
+        fill,
+        stroke,
+      });
+
+      commitSceneDocument((current) => appendSceneNodeToFirstLayer(current, node));
+      setSelectedNodeId(nodeId);
+      setActivePanelTab("properties");
+    },
+    [
+      commitSceneDocument,
+      sceneDocument,
+      stageDimensions.height,
+      stageDimensions.width,
+    ],
   );
 
   const insertTextPresetNode = useCallback(
@@ -741,6 +833,27 @@ export function StaticTemplateEditor({
     setSelectedNodeId(BACKGROUND_NODE_ID);
   }, [replaceSceneDocument, sceneDocument]);
 
+  const handleShapeDragStart = useCallback(
+    (
+      event: React.DragEvent<HTMLElement>,
+      payload: { kind: "shape-preset"; presetId: ShapePresetId },
+    ) => {
+      event.dataTransfer.effectAllowed = "copy";
+      event.dataTransfer.setData(SHAPE_PRESET_DRAG_MIME, JSON.stringify(payload));
+    },
+    [],
+  );
+
+  const handleShapeInsert = useCallback(
+    (presetId: ShapePresetId) => {
+      insertShapeNode(presetId, {
+        x: Math.round(stageDimensions.width / 2),
+        y: Math.round(stageDimensions.height / 2),
+      });
+    },
+    [insertShapeNode, stageDimensions.height, stageDimensions.width],
+  );
+
   const handleTextPresetDragStart = useCallback(
     (
       event: React.DragEvent<HTMLElement>,
@@ -817,6 +930,18 @@ export function StaticTemplateEditor({
         return;
       }
 
+      const shapePresetPayload = parseShapePresetDragPayload(
+        event.dataTransfer.getData(SHAPE_PRESET_DRAG_MIME),
+      );
+      if (shapePresetPayload) {
+        const rect = stageFrameRef.current.getBoundingClientRect();
+        insertShapeNode(shapePresetPayload.presetId, {
+          x: Math.round((event.clientX - rect.left) / scale),
+          y: Math.round((event.clientY - rect.top) / scale),
+        });
+        return;
+      }
+
       const textPresetPayload = parseTextPresetDragPayload(
         event.dataTransfer.getData(TEXT_PRESET_DRAG_MIME),
       );
@@ -858,6 +983,7 @@ export function StaticTemplateEditor({
     },
     [
       insertAssetNode,
+      insertShapeNode,
       insertTextPresetNode,
       insertVariableNode,
       scale,
@@ -866,48 +992,52 @@ export function StaticTemplateEditor({
     ],
   );
 
-  const handleSave = useCallback(async () => {
-    const flushed = flushInlineTextEditingState({
-      sceneDocument,
-      history,
-      editingTextNodeId,
-      editingTextValue,
-    });
-    const documentToSave = flushed.sceneDocument;
-    if (!documentToSave) {
-      return;
-    }
-
-    if (flushed.didFlush) {
-      cancelTextEditing();
-      setSceneDocument(documentToSave);
-      setHistory(flushed.history);
-    }
-
-    setIsSaving(true);
-    try {
-      const normalizedSceneDocument = normalizeSceneDocument(
-        documentToSave,
-        template.canvasPreset,
-        backendAutomationType,
-      );
-      await updateTemplate({
-        templateId: template._id,
-        name: templateName,
-        sceneDocument: normalizedSceneDocument,
+  const handleSave = useCallback(
+    async (options?: { showSuccessToast?: boolean }) => {
+      const flushed = flushInlineTextEditingState({
+        sceneDocument,
+        history,
+        editingTextNodeId,
+        editingTextValue,
       });
-      setSceneDocument(normalizedSceneDocument);
-      setHistory((currentHistory) =>
-        replaceCurrentHistoryEntry(currentHistory, normalizedSceneDocument),
-      );
-      setIsDirty(false);
-      showSuccessToast(t("editor.saveSuccess"));
-    } catch {
-      showErrorToast(t("editor.saveFailed"));
-    } finally {
-      setIsSaving(false);
-    }
-  }, [
+      const documentToSave = flushed.sceneDocument;
+      if (!documentToSave) {
+        return;
+      }
+
+      if (flushed.didFlush) {
+        cancelTextEditing();
+        setSceneDocument(documentToSave);
+        setHistory(flushed.history);
+      }
+
+      setIsSaving(true);
+      try {
+        const normalizedSceneDocument = normalizeSceneDocument(
+          documentToSave,
+          template.canvasPreset,
+          backendAutomationType,
+        );
+        await updateTemplate({
+          templateId: template._id,
+          name: templateName,
+          sceneDocument: normalizedSceneDocument,
+        });
+        setSceneDocument(normalizedSceneDocument);
+        setHistory((currentHistory) =>
+          replaceCurrentHistoryEntry(currentHistory, normalizedSceneDocument),
+        );
+        setIsDirty(false);
+        if (options?.showSuccessToast !== false) {
+          showSuccessToast(t("editor.saveSuccess"));
+        }
+      } catch {
+        showErrorToast(t("editor.saveFailed"));
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [
     backendAutomationType,
     cancelTextEditing,
     editingTextNodeId,
@@ -919,7 +1049,29 @@ export function StaticTemplateEditor({
     template.canvasPreset,
     templateName,
     updateTemplate,
-  ]);
+    ],
+  );
+
+  const autosaveSignature = useMemo(
+    () => ({
+      sceneDocument,
+      templateName,
+      historyIndex: history.index,
+    }),
+    [history.index, sceneDocument, templateName],
+  );
+
+  const autosave = useCallback(
+    () => handleSave({ showSuccessToast: false }),
+    [handleSave],
+  );
+
+  useTemplateAutosave({
+    isDirty,
+    isSaving,
+    changeSignature: autosaveSignature,
+    save: autosave,
+  });
 
   const handleRenderTest = useCallback(async () => {
     if (!sceneDocument) {
@@ -954,7 +1106,7 @@ export function StaticTemplateEditor({
       if (isModifierPressed && key === "s") {
         event.preventDefault();
         if (isDirty && !isSaving) {
-          void handleSave();
+          void handleSave({ showSuccessToast: true });
         }
         return;
       }
@@ -1038,7 +1190,11 @@ export function StaticTemplateEditor({
         </Badge>
         <div className="ml-auto flex items-center gap-3">
           <span className="text-xs text-muted-foreground">
-            {isDirty ? t("editor.unsavedChanges") : t("editor.savedChanges")}
+            {isSaving
+              ? t("editor.saving")
+              : isDirty
+                ? t("editor.unsavedChanges")
+                : t("editor.savedChanges")}
           </span>
           <div className="flex items-center gap-1">
             <Button
@@ -1090,7 +1246,7 @@ export function StaticTemplateEditor({
             type="button"
             size="sm"
             disabled={!isDirty || isSaving}
-            onClick={() => void handleSave()}
+            onClick={() => void handleSave({ showSuccessToast: true })}
           >
             <Save aria-hidden />
             {isSaving ? t("editor.saving") : t("editor.save")}
@@ -1144,9 +1300,22 @@ export function StaticTemplateEditor({
                 />
               ))}
               <Layer>
+                {selectedNode &&
+                selectedNodeId &&
+                isVectorShapeClassName(selectedNode.className) &&
+                !isLockedNode(selectedNode) ? (
+                  <LinePointHandles
+                    node={selectedNode}
+                    scale={scale}
+                    onPointChange={(attrs, options) =>
+                      updateSceneAttrs(selectedNodeId, attrs, options)
+                    }
+                  />
+                ) : null}
                 <Transformer
                   ref={transformerRef}
-                  rotateEnabled={false}
+                  rotateEnabled
+                  rotationSnaps={[0, 45, 90, 135, 180, 225, 270, 315]}
                   ignoreStroke
                 />
               </Layer>
@@ -1186,9 +1355,11 @@ export function StaticTemplateEditor({
             onNodeDelete={deleteSelectedNode}
             onTextPresetDragStart={handleTextPresetDragStart}
             onTextPresetInsert={handleTextPresetInsert}
+            onShapeDragStart={handleShapeDragStart}
+            onShapeInsert={handleShapeInsert}
             onVariableDragStart={handleVariableDragStart}
             onVariableActivate={handleVariableActivate}
-            onAssetUpload={handleUploadAsset}
+            onAssetUpload={handleUploadAssets}
             onAssetDragStart={handleAssetDragStart}
             onAssetActivate={handleAssetActivate}
             onAssetDelete={handleDeleteAsset}
@@ -1249,6 +1420,8 @@ function EditorRightPanel({
   onNodeDelete,
   onTextPresetDragStart,
   onTextPresetInsert,
+  onShapeDragStart,
+  onShapeInsert,
   onVariableDragStart,
   onVariableActivate,
   onAssetUpload,
@@ -1290,12 +1463,17 @@ function EditorRightPanel({
     text: string,
     point?: { x: number; y: number },
   ) => void;
+  onShapeDragStart: (
+    event: React.DragEvent<HTMLElement>,
+    payload: { kind: "shape-preset"; presetId: ShapePresetId },
+  ) => void;
+  onShapeInsert: (presetId: ShapePresetId) => void;
   onVariableDragStart: (
     event: React.DragEvent<HTMLElement>,
     payload: VariableDragPayload,
   ) => void;
   onVariableActivate: (payload: VariableDragPayload) => void;
-  onAssetUpload: (file: File) => Promise<TemplateAsset | null>;
+  onAssetUpload: (files: File[]) => Promise<TemplateAsset[]>;
   onAssetDragStart: (
     event: React.DragEvent<HTMLElement>,
     assetId: Id<"templateAssets">,
@@ -1359,7 +1537,12 @@ function EditorRightPanel({
             onTextPresetInsert={onTextPresetInsert}
           />
         ) : null}
-        {activeTab === "shapes" ? <ShapesPanel /> : null}
+        {activeTab === "shapes" ? (
+          <ShapesPanel
+            onShapeDragStart={onShapeDragStart}
+            onShapeInsert={onShapeInsert}
+          />
+        ) : null}
         {activeTab === "background" ? (
           <BackgroundPanel
             backgroundNode={backgroundNode}
@@ -1604,7 +1787,7 @@ function AssetsPanel({
   assets: TemplateAsset[];
   isUploading: boolean;
   deletingAssetId: Id<"templateAssets"> | null;
-  onUpload: (file: File) => Promise<TemplateAsset | null>;
+  onUpload: (files: File[]) => Promise<TemplateAsset[]>;
   onAssetDragStart: (
     event: React.DragEvent<HTMLElement>,
     assetId: Id<"templateAssets">,
@@ -1868,7 +2051,7 @@ function BackgroundPanel({
   backgroundNode: SceneNode | null;
   assets: TemplateAsset[];
   isUploading: boolean;
-  onUpload: (file: File) => Promise<TemplateAsset | null>;
+  onUpload: (files: File[]) => Promise<TemplateAsset[]>;
   onColorChange: (fill: string) => void;
   onImageChange: (asset: TemplateAsset) => void;
   onImageRemove: () => void;
@@ -1934,12 +2117,12 @@ function BackgroundPanel({
           isUploading ? t("uploadingAsset") : t("uploadBackgroundImage")
         }
         disabled={isUploading}
-        onUpload={async (file) => {
-          const asset = await onUpload(file);
-          if (asset) {
-            onImageChange(asset);
+        onUpload={async (files) => {
+          const assets = await onUpload(files);
+          if (assets[0]) {
+            onImageChange(assets[0]);
           }
-          return asset;
+          return assets;
         }}
       />
       {assets.length > 0 ? (
@@ -1979,7 +2162,7 @@ function AssetUploadInput({
   id: string;
   label: string;
   disabled: boolean;
-  onUpload: (file: File) => Promise<TemplateAsset | null>;
+  onUpload: (files: File[]) => Promise<TemplateAsset[]>;
 }) {
   return (
     <div className="space-y-2">
@@ -1987,13 +2170,14 @@ function AssetUploadInput({
         id={id}
         type="file"
         accept={ALLOWED_TEMPLATE_ASSET_MIME_TYPES.join(",")}
+        multiple
         disabled={disabled}
         className="sr-only"
         onChange={(event) => {
-          const file = event.target.files?.[0];
+          const selectedFiles = Array.from(event.target.files ?? []);
           event.currentTarget.value = "";
-          if (file) {
-            void onUpload(file);
+          if (selectedFiles.length > 0) {
+            void onUpload(selectedFiles);
           }
         }}
       />
@@ -2225,37 +2409,6 @@ function PropertiesPanelShell({
         onChange={onChange}
         onDelete={onDelete}
       />
-    </div>
-  );
-}
-
-function ShapesPanel() {
-  const t = useTranslations("app.automations.editor");
-  return (
-    <div className="space-y-5">
-      <PanelHeader
-        title={t("shapesPanelTitle")}
-        description={t("shapesPanelDescription")}
-      />
-      <div className="grid grid-cols-2 gap-3">
-        <ShapePreview icon={Square} label={t("shapeSquare")} />
-        <ShapePreview icon={Circle} label={t("shapeCircle")} />
-      </div>
-    </div>
-  );
-}
-
-function ShapePreview({
-  icon: Icon,
-  label,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-}) {
-  return (
-    <div className="flex h-24 flex-col items-center justify-center gap-2 border border-dashed bg-muted/30 text-muted-foreground">
-      <Icon className="size-7" aria-hidden />
-      <span className="text-xs font-medium">{label}</span>
     </div>
   );
 }
@@ -2580,10 +2733,10 @@ function PanelStepperInput({
 
   return (
     <div
-      className={
-        className ??
-        "flex h-8 w-full min-w-0 items-stretch overflow-hidden border border-input bg-background"
-      }
+      className={cn(
+        "flex h-8 w-full min-w-0 items-stretch overflow-hidden rounded-md border border-input bg-background",
+        className,
+      )}
     >
       <button
         type="button"
@@ -2728,9 +2881,14 @@ function SceneNodeRenderer({
   editingTextNodeId: string | null;
   onSelect: (nodeId: string) => void;
   onTextEditStart: (nodeId: string) => void;
-  onChange: (nodeId: string, attrs: SceneNodeAttrs) => void;
+  onChange: (
+    nodeId: string,
+    attrs: SceneNodeAttrs,
+    options?: { recordHistory?: boolean },
+  ) => void;
 }) {
   const nodeId = stringAttr(node.attrs, "id");
+  const nodeRotation = optionalNumberAttr(node.attrs, "rotation") ?? 0;
   const isBackground = isBackgroundNode(node);
   const isVisible = node.attrs.visible !== false;
   const isLocked = isLockedNode(node);
@@ -2761,6 +2919,7 @@ function SceneNodeRenderer({
             nodeRefs.current.delete(nodeId);
           }
         },
+        rotation: nodeRotation,
         draggable: !isLocked && (isBackground ? node.className === "Image" : true),
         onClick: () => onSelect(nodeId),
         onTap: () => onSelect(nodeId),
@@ -2794,15 +2953,119 @@ function SceneNodeRenderer({
     );
   }
 
-  if (node.className === "Rect") {
+  if (
+    node.className === "Rect" ||
+    node.className === "Circle" ||
+    node.className === "RegularPolygon" ||
+    node.className === "Star"
+  ) {
+    const strokeProps = getFilledShapeStrokeProps(node.attrs);
+    const fill = stringAttr(node.attrs, "fill") ?? "#111827";
+
+    if (node.className === "Rect") {
+      return (
+        <Rect
+          {...sharedProps}
+          x={numberAttr(node.attrs, "x", 0)}
+          y={numberAttr(node.attrs, "y", 0)}
+          width={numberAttr(node.attrs, "width", 100)}
+          height={numberAttr(node.attrs, "height", 100)}
+          cornerRadius={optionalNumberAttr(node.attrs, "cornerRadius") ?? 0}
+          fill={fill}
+          stroke={strokeProps.stroke}
+          strokeWidth={strokeProps.strokeWidth}
+          strokeEnabled={strokeProps.strokeEnabled}
+        />
+      );
+    }
+
+    if (node.className === "Circle") {
+      return (
+        <KonvaCircle
+          {...sharedProps}
+          x={numberAttr(node.attrs, "x", 0)}
+          y={numberAttr(node.attrs, "y", 0)}
+          radius={numberAttr(node.attrs, "radius", 50)}
+          fill={fill}
+          stroke={strokeProps.stroke}
+          strokeWidth={strokeProps.strokeWidth}
+          strokeEnabled={strokeProps.strokeEnabled}
+        />
+      );
+    }
+
+    if (node.className === "RegularPolygon") {
+      return (
+        <RegularPolygon
+          {...sharedProps}
+          x={numberAttr(node.attrs, "x", 0)}
+          y={numberAttr(node.attrs, "y", 0)}
+          sides={numberAttr(node.attrs, "sides", 3)}
+          radius={numberAttr(node.attrs, "radius", 50)}
+          fill={fill}
+          stroke={strokeProps.stroke}
+          strokeWidth={strokeProps.strokeWidth}
+          strokeEnabled={strokeProps.strokeEnabled}
+        />
+      );
+    }
+
     return (
-      <Rect
+      <KonvaStar
         {...sharedProps}
         x={numberAttr(node.attrs, "x", 0)}
         y={numberAttr(node.attrs, "y", 0)}
-        width={numberAttr(node.attrs, "width", 100)}
-        height={numberAttr(node.attrs, "height", 100)}
-        fill={stringAttr(node.attrs, "fill") ?? "#111827"}
+        numPoints={numberAttr(node.attrs, "numPoints", 5)}
+        innerRadius={numberAttr(node.attrs, "innerRadius", 20)}
+        outerRadius={numberAttr(node.attrs, "outerRadius", 50)}
+        fill={fill}
+        stroke={strokeProps.stroke}
+        strokeWidth={strokeProps.strokeWidth}
+        strokeEnabled={strokeProps.strokeEnabled}
+      />
+    );
+  }
+
+  if (node.className === "Line") {
+    const points = normalizeLinePoints(node.attrs.points);
+    const strokeWidth = numberAttr(node.attrs, "strokeWidth", 4);
+    return (
+      <KonvaLine
+        {...sharedProps}
+        x={numberAttr(node.attrs, "x", 0)}
+        y={numberAttr(node.attrs, "y", 0)}
+        points={points}
+        stroke={stringAttr(node.attrs, "stroke") ?? "#111827"}
+        strokeWidth={strokeWidth}
+        strokeScaleEnabled={false}
+        hitStrokeWidth={Math.max(strokeWidth * 4, 24)}
+        dash={getLineDash(node.attrs.dash)}
+        lineCap={
+          stringAttr(node.attrs, "lineCap") === "square" ? "square" : "round"
+        }
+      />
+    );
+  }
+
+  if (node.className === "Arrow") {
+    const points = normalizeLinePoints(node.attrs.points);
+    const strokeWidth = numberAttr(node.attrs, "strokeWidth", 4);
+    return (
+      <KonvaArrow
+        {...sharedProps}
+        x={numberAttr(node.attrs, "x", 0)}
+        y={numberAttr(node.attrs, "y", 0)}
+        points={points}
+        pointerLength={numberAttr(node.attrs, "pointerLength", 12)}
+        pointerWidth={numberAttr(node.attrs, "pointerWidth", 12)}
+        pointerAtBeginning={node.attrs.pointerAtBeginning === true}
+        fill={stringAttr(node.attrs, "fill") ?? stringAttr(node.attrs, "stroke") ?? "#111827"}
+        stroke={stringAttr(node.attrs, "stroke") ?? "#111827"}
+        strokeWidth={strokeWidth}
+        strokeScaleEnabled={false}
+        hitStrokeWidth={Math.max(strokeWidth * 4, 24)}
+        lineCap="round"
+        lineJoin="round"
       />
     );
   }
@@ -2981,7 +3244,32 @@ function NodePropertiesPanel({
   const isText = node.className === "Text";
   const isImage = node.className === "Image";
   const isBackgroundImage = isImage && isBackgroundNode(node);
-  const supportsFill = node.className === "Rect" || node.className === "Text";
+  const isVectorLine = isVectorShapeClassName(node.className);
+  const supportsFill =
+    node.className === "Rect" ||
+    node.className === "Circle" ||
+    node.className === "RegularPolygon" ||
+    node.className === "Star" ||
+    node.className === "Text";
+  const supportsFillColor =
+    supportsFill && !isText && !isVectorLine;
+  const supportsStrokeColor =
+    isVectorLine ||
+    node.className === "Rect" ||
+    node.className === "Circle" ||
+    node.className === "RegularPolygon" ||
+    node.className === "Star";
+  const supportsStrokeWidth = supportsStrokeColor;
+  const supportsCornerRadius = node.className === "Rect";
+  const supportsLineDash = isVectorLine;
+  const supportsRotation = !isBackgroundImage && !isVectorLine;
+  const showDimensions =
+    node.className === "Rect" ||
+    node.className === "Image" ||
+    node.className === "Group";
+  const lineDashPreset = isVectorLine
+    ? getLineDashPreset(node.attrs.dash)
+    : null;
   const textBindingKey = isText
     ? getTextBindingKey(node.attrs.bindingKey, automationType)
     : null;
@@ -2989,13 +3277,16 @@ function NodePropertiesPanel({
     ? getAvailableTextBindingKeys(automationType)
     : [];
   const imageBindingKey = isImage ? getImageBindingKey(node.attrs.bindingKey) : null;
-  const imageAssetId = isImage ? stringAttr(node.attrs, "assetId") : null;
   const canDelete = !isBackgroundNode(node);
 
   const fontStyle = stringAttr(node.attrs, "fontStyle");
   const { bold, italic } = parseKonvaFontStyle(fontStyle);
   const underlined = getTextDecoration(stringAttr(node.attrs, "textDecoration")) === "underline";
   const isUppercase = getTextTransform(node.attrs.textTransform) === "uppercase";
+  const strokeWidth = supportsStrokeWidth
+    ? numberAttr(node.attrs, "strokeWidth", isVectorLine ? 4 : 0)
+    : 0;
+  const showStrokeColor = supportsStrokeColor && strokeWidth > 0;
 
   return (
     <div className="min-w-0 space-y-2">
@@ -3012,7 +3303,7 @@ function NodePropertiesPanel({
         </Button>
       ) : null}
 
-      {!isText ? (
+      {showDimensions ? (
         <div className="grid grid-cols-2 gap-1.5">
           <PanelNumberInput
             ariaLabel={t("width")}
@@ -3031,14 +3322,92 @@ function NodePropertiesPanel({
         </div>
       ) : null}
 
-      {supportsFill && !isText ? (
-        <Input
-          type="color"
-          aria-label={t("fill")}
-          value={stringAttr(node.attrs, "fill") ?? "#000000"}
-          className="h-7 w-9 shrink-0 p-0.5"
-          onChange={(event) => onChange({ fill: event.target.value })}
-        />
+      {supportsFillColor ? (
+        <div className="space-y-1">
+          <Label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            {t("fillColor")}
+          </Label>
+          <TextColorPicker
+            label={t("fillColor")}
+            value={stringAttr(node.attrs, "fill") ?? "#111827"}
+            onChange={(fill) => onChange({ fill })}
+          />
+        </div>
+      ) : null}
+
+      {supportsStrokeWidth ? (
+        <div className="space-y-1">
+          <Label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            {t("strokeWidth")}
+          </Label>
+          <PanelStepperInput
+            ariaLabel={t("strokeWidth")}
+            decreaseLabel={t("decreaseStrokeWidth")}
+            increaseLabel={t("increaseStrokeWidth")}
+            value={strokeWidth}
+            min={0}
+            max={64}
+            className="h-7"
+            onChange={(nextStrokeWidth) => onChange({ strokeWidth: nextStrokeWidth })}
+          />
+        </div>
+      ) : null}
+
+      {showStrokeColor ? (
+        <div className="space-y-1">
+          <Label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            {t("strokeColor")}
+          </Label>
+          <TextColorPicker
+            label={t("strokeColor")}
+            value={stringAttr(node.attrs, "stroke") ?? "#111827"}
+            onChange={(stroke) => onChange({ stroke })}
+          />
+        </div>
+      ) : null}
+
+      {supportsCornerRadius ? (
+        <div className="space-y-1">
+          <Label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            {t("cornerRadius")}
+          </Label>
+          <PanelStepperInput
+            ariaLabel={t("cornerRadius")}
+            decreaseLabel={t("decreaseCornerRadius")}
+            increaseLabel={t("increaseCornerRadius")}
+            value={optionalNumberAttr(node.attrs, "cornerRadius") ?? 0}
+            min={0}
+            max={400}
+            className="h-7"
+            onChange={(cornerRadius) => onChange({ cornerRadius })}
+          />
+        </div>
+      ) : null}
+
+      {supportsLineDash && lineDashPreset ? (
+        <div className="space-y-1">
+          <Label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            {t("lineStyle")}
+          </Label>
+          <div className="grid grid-cols-3 gap-1">
+            {(["solid", "dashed", "dotted"] as const).map((preset) => (
+              <Button
+                key={preset}
+                type="button"
+                size="xs"
+                variant={lineDashPreset === preset ? "default" : "outline"}
+                className="h-7 px-1 text-[10px]"
+                onClick={() =>
+                  onChange({
+                    dash: LINE_DASH_PRESETS[preset],
+                  })
+                }
+              >
+                {t(`lineStyle.${preset}`)}
+              </Button>
+            ))}
+          </div>
+        </div>
       ) : null}
 
       {isText ? (
@@ -3173,7 +3542,7 @@ function NodePropertiesPanel({
                 max={3}
                 step={0.1}
                 decimals={1}
-                className="flex h-7 w-[8.5rem] shrink-0 items-stretch overflow-hidden border border-input/70 bg-muted/10"
+                className="h-7 w-[8.5rem] shrink-0"
                 onChange={(value) => onChange({ lineHeight: value })}
               />
             </div>
@@ -3182,16 +3551,9 @@ function NodePropertiesPanel({
       ) : null}
 
       {isImage && imageBindingKey ? (
-        <div className="space-y-3 border-t pt-4">
-          <div>
-            <h3 className="text-sm font-medium">{t("content")}</h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {t("imageContentDescription")}
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="image-binding-key">{t("variableBinding")}</Label>
-            <Select
+        <div className="space-y-2 border-t pt-2">
+          <Label htmlFor="image-binding-key">{t("variableBinding")}</Label>
+          <Select
               value={imageBindingKey}
               onValueChange={(value) =>
                 onChange({
@@ -3211,18 +3573,6 @@ function NodePropertiesPanel({
                 ))}
               </SelectContent>
             </Select>
-          </div>
-        </div>
-      ) : null}
-
-      {isImage && imageAssetId ? (
-        <div className="space-y-3 border-t pt-4">
-          <div>
-            <h3 className="text-sm font-medium">{t("content")}</h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {t("staticImageContentDescription")}
-            </p>
-          </div>
         </div>
       ) : null}
 
@@ -3244,6 +3594,24 @@ function NodePropertiesPanel({
               <SelectItem value="fill">{t("objectFitFill")}</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+      ) : null}
+
+      {supportsRotation ? (
+        <div className="space-y-1 border-t pt-2">
+          <Label className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            {t("rotation")}
+          </Label>
+          <PanelStepperInput
+            ariaLabel={t("rotation")}
+            decreaseLabel={t("decreaseRotation")}
+            increaseLabel={t("increaseRotation")}
+            value={Math.round(optionalNumberAttr(node.attrs, "rotation") ?? 0)}
+            min={-360}
+            max={360}
+            className="h-7"
+            onChange={(rotation) => onChange({ rotation })}
+          />
         </div>
       ) : null}
     </div>
@@ -3901,19 +4269,67 @@ function isEditableShortcutTarget(target: EventTarget | null): boolean {
 function bakeNodeTransform(node: Konva.Node): SceneNodeAttrs {
   const scaleX = node.scaleX();
   const scaleY = node.scaleY();
-  const width = "width" in node ? node.width() : 0;
-  const height = "height" in node ? node.height() : 0;
+  const className = node.getClassName();
 
-  // Scale is intentionally cleared because it is baked into width/height.
   node.scaleX(1);
   node.scaleY(1);
 
-  return {
+  const base = {
     x: Math.round(node.x()),
     y: Math.round(node.y()),
+    rotation: Math.round(node.rotation()),
+  };
+
+  if (className === "Circle" || className === "RegularPolygon") {
+    const radiusNode = node as Konva.Circle;
+    return {
+      ...base,
+      radius: Math.max(
+        Math.round(radiusNode.radius() * Math.max(scaleX, scaleY)),
+        1,
+      ),
+    };
+  }
+
+  if (className === "Star") {
+    const starNode = node as Konva.Star;
+    const scale = Math.max(scaleX, scaleY);
+    return {
+      ...base,
+      innerRadius: Math.max(Math.round(starNode.innerRadius() * scale), 1),
+      outerRadius: Math.max(Math.round(starNode.outerRadius() * scale), 1),
+    };
+  }
+
+  if (className === "Line" || className === "Arrow") {
+    const lineNode = node as Konva.Line;
+    const points = lineNode.points();
+    return {
+      ...base,
+      points: points.map((point, index) =>
+        Math.round(point * (index % 2 === 0 ? scaleX : scaleY)),
+      ),
+    };
+  }
+
+  const width = "width" in node ? node.width() : 0;
+  const height = "height" in node ? node.height() : 0;
+
+  return {
+    ...base,
     width: Math.max(Math.round(width * scaleX), 1),
     height: Math.max(Math.round(height * scaleY), 1),
   };
+}
+
+function getLineDash(value: unknown): number[] | undefined {
+  if (
+    !Array.isArray(value) ||
+    value.some((item) => typeof item !== "number" || !Number.isFinite(item))
+  ) {
+    return undefined;
+  }
+  return value;
 }
 
 function numberAttr(

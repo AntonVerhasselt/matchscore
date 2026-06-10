@@ -5,7 +5,7 @@
 > Branch context: `feature/club-automations-templates`  
 > Scope: Convex database design, automation/template APIs, react-konva editor, storage conventions, server render foundation, and phase-by-phase testing.  
 > Non-scope for MVP: match/calendar storage, actual scheduled posting, Meta/social posting, subscription/watermark enforcement, and `starting_eleven`.
-> Current implementation status: Phases 1-5 are merged to `main`; Phase 6 is implemented on `templates-phase-6` (PR pending); Phase 7 remains planned work.
+> Current implementation status: Phases 1-6 are merged to `main` (Phase 6 via PR #15). Phase 7 is implemented on `templates-phase-7` and is ready for manual handoff testing. Post-MVP deferred items (match data, posting, social OAuth, etc.) remain out of scope.
 
 This document combines the approved product/backend brief and the react-konva technical guide into one phased implementation plan. Each phase must produce a small integrated slice: backend state, frontend UI, automated checks, browser verification, and database verification. After a phase passes those checks, the implementer should stop and hand it to the user for manual testing before continuing.
 
@@ -1522,7 +1522,7 @@ Real federation club logos arrive with the match/posting integration later; no D
 
 Goal: prove that a template from Convex can be rendered server-side to PNG with acceptable visual parity (layout, bindings, static assets, catalog fonts). This still does not implement scheduled posting or external API delivery.
 
-Implementation status: **completed** on `templates-phase-6` (PR pending merge to `main`).
+Implementation status: **completed and merged to `main`** (PR #15).
 
 ### Confirmed product decisions (Phase 6)
 
@@ -1733,6 +1733,8 @@ Phase 6 is complete when a scene produces a server-rendered PNG with acceptable 
 
 Goal: stabilize the automation/template MVP before connecting real match data or social posting, and add only the smallest missing authoring tools if they are needed for handoff.
 
+Implementation status: **implemented on `templates-phase-7`** — core MVP handoff scope is complete; a few planned-but-non-blocking items remain deferred (see **Remaining gaps** below).
+
 ### Backend Scope
 
 Implement or verify:
@@ -1806,6 +1808,68 @@ User testing script:
 4. Confirm editing still works after refresh/navigation.
 
 Phase 7 is complete only when the MVP is stable enough to hand off before match data and posting integration.
+
+### Phase 7 Implementation Notes
+
+**Delivered on `templates-phase-7`**
+
+#### Core Phase 7 scope (plan)
+
+| Planned item | Status | Where |
+| --- | --- | --- |
+| `deleteTemplate` hard delete | Done | `convex/automations/mutations.ts` — deletes row; removes `lastRenderPreviewStorageId` and `thumbnailStorageId` from `_storage` |
+| Delete last template → automation stays enabled | Done (behavior) | `deleteTemplate` never touches `organizationAutomations`; no template-count guard on enable mutations |
+| Delete template dialog | Done | `components/automations/delete-template-dialog.tsx` + `template-list-item.tsx` with Sonner feedback |
+| Empty states (0 templates) | Done | `components/automations/template-list.tsx` dashed empty state + create CTA |
+| Route navigation | Done | `AppPageBackLink` on template list page; editor back link via `backHref` in `template-editor-root.tsx` |
+| Loading states | Done | Skeleton cards on `/app/automations` (`page.tsx`); skeleton rows in `template-list.tsx`; `template-editor-skeleton.tsx` for dynamic import |
+| Shapes tab | Done (expanded) | `components/template-editor/shapes-panel.tsx` + `lib/template-scene/shape-presets.ts` — see **Extras** below |
+| Responsive editor | Done (alternate approach) | Mobile gate at `< lg` (1024px) instead of collapsible drawers — see **Deviations** |
+| Club-facing copy | Mostly done | Automations UI uses "club" in `messages/*.json`; invite flow still interpolates `{organizationName}` |
+
+#### Extras (beyond original Phase 7 plan)
+
+These were added during Phase 7 implementation or the properties-panel polish pass:
+
+| Extra | Where |
+| --- | --- |
+| **Shapes tab — full preset library (17 presets)** | `lib/template-scene/shape-presets.ts`, `components/template-editor/shapes-panel.tsx` — rects, circle, triangles, polygons, stars, lines, arrows; drag/click/keyboard insert |
+| **Expanded allowed Konva classes** | `lib/template-scene/index.ts` — `Circle`, `RegularPolygon`, `Star`, `Line`, `Arrow` added to validation + editor render path in `static-template-editor.tsx` |
+| **Shape property editor** | `NodePropertiesPanel` — fill color, stroke width, stroke color (conditional), corner radius, line dash presets, rotation |
+| **Line endpoint handles (2 anchors)** | `lib/template-scene/line-points.ts` (`LINE_VERTEX_COUNT = 2`), `components/template-editor/line-point-handles.tsx` — start/end only; legacy 3-point lines normalize to start+end on save |
+| **Properties panel UX polish** | Rotation moved to bottom for all element types; stroke color hidden when `strokeWidth === 0`; `PanelStepperInput` layout fixed via `cn()` merge; image "Inhoud" description blocks removed |
+| **Debounced autosave** | `hooks/use-template-autosave.ts` (2500ms idle debounce); toolbar shows saving / unsaved / saved; manual Save + Cmd/Ctrl+S still toasts; `beforeunload` warning when dirty |
+| **Mobile editor gate** | `template-editor-root.tsx` — editor hidden below `lg` with viewport-too-small message (i18n nl/en/fr/de) |
+| **Overview hint (automation on, 0 templates)** | `components/automations/automation-type-card.tsx` — amber `activeNoTemplatesHint` |
+| **Render preview blob cleanup** | `lastRenderPreviewStorageId` on `automationTemplates` (`convex/schema.ts`); `convex/automations/internalMutations.ts` `replaceTemplateRenderPreview` deletes previous blob on each render test; delete template also cleans storage |
+| **Org deletion cleanup helper** | `convex/automations/cleanup.ts` — `deleteOrganizationAutomationData()` (documented, not wired to org deletion yet) |
+| **Removed template list `.take(100)` cap** | `convex/automations/queries.ts` — full list per org/type; `templateCountIsCapped` UI removed |
+| **Scene validation tests for shapes** | `convex/automations/scenes.test.ts` — expanded shape classes, 2-point line normalization; **48 tests** total across scene + render suites |
+
+#### Deviations from original Phase 7 plan
+
+| Planned | Built | Reason |
+| --- | --- | --- |
+| Shapes tab: `Rect` only | 17 presets across 4 categories including circles, polygons, stars, lines, arrows | Intentional MVP authoring expansion; `Path` and filters remain rejected |
+| Responsive: drawers/collapse on small screens | Hard mobile gate below 1024px | Simpler UX for a desktop-first Canva-like editor; touch editing on phone is poor anyway |
+| Template list bounded/paginated | Unbounded `.collect()` | Removed artificial 100-template cap; MVP clubs have few templates; revisit if counts grow |
+| Random template selection helper | Not implemented | Deferred to posting integration phase; no cron/posting yet |
+| Org cleanup wired to `deleteOrganization` | Helper only | No org-delete mutation exists yet; helper is ready for future wiring |
+| Focused delete / last-template tests | Not added | Scene/render tests expanded; delete mutation behavior untested in automation |
+
+#### Remaining gaps (non-blocking for MVP handoff)
+
+1. **`selectRandomTemplate` helper** — design-only deferral until posting pipeline.
+2. **Org deletion wiring** — `deleteOrganizationAutomationData` exists but is not called.
+3. **Focused Convex tests** for `deleteTemplate`, last-template-stays-enabled, and multi-org permission boundaries.
+4. **Production build verification** — run `pnpm build` before merge (not recorded in this branch note).
+5. **Page-level query error UI** — failed `listAutomations` / `getTemplate` show loading/empty states; no dedicated error boundary.
+6. **Overlay guide layer** — still deferred from Phase 5.
+7. **Debounced numeric property inputs** — still commit on each change (autosave debounces the save, not panel keystrokes).
+
+#### Post-MVP (unchanged — Final Deferred Roadmap)
+
+Match/calendar integration, posting pipeline, social OAuth, thumbnails, template duplication, email nudges, asset orphan sweep, club-uploaded custom fonts, and advanced Konva features remain out of scope until explicitly requested.
 
 ## Final Deferred Roadmap
 

@@ -75,6 +75,7 @@ export default defineSchema({
     canvasPreset: canvasPresetValidator,
     schemaVersion: v.number(),
     thumbnailStorageId: v.optional(v.id("_storage")),
+    lastRenderPreviewStorageId: v.optional(v.id("_storage")),
     createdByUserId: v.string(),
     updatedByUserId: v.optional(v.string()),
     createdAt: v.number(),
