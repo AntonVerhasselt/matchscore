@@ -15,6 +15,7 @@ import {
   EyeOff,
   GripVertical,
   ImageIcon,
+  ImagePlay,
   Layers,
   Lock,
   Redo2,
@@ -65,9 +66,11 @@ import {
   buildKonvaFontStyle,
   calculateObjectFit,
   calculateTextFit,
+  ellipsizeText,
   getTextDecoration,
   collectSceneFontFamilies,
   loadGoogleFonts,
+  measureTextForFit,
   normalizeSceneDocument,
   parseKonvaFontStyle,
   toggleUnderline,
@@ -82,7 +85,6 @@ import {
   type SceneNodeAttrs,
   type TextBindingKey,
   type TextOverflowMode,
-  type TextTransform,
 } from "@/lib/template-scene";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -105,7 +107,7 @@ import {
 } from "@/lib/automations/types";
 import { CANVAS_PRESET_LABELS } from "@/lib/automations/canvas-presets";
 import { showErrorToast, showSuccessToast } from "@/lib/user-feedback";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useAction } from "convex/react";
 import {
   ALLOWED_TEMPLATE_ASSET_MIME_TYPES,
   MAX_TEMPLATE_ASSET_BYTE_SIZE,
@@ -204,6 +206,7 @@ export function StaticTemplateEditor({
   const deleteTemplateAsset = useMutation(
     api.templateAssets.mutations.deleteTemplateAsset,
   );
+  const renderTemplateTest = useAction(api.automations.actions.renderTemplateTest);
   const templateAssets = useQuery(api.templateAssets.queries.listTemplateAssets);
   const backendAutomationType = toBackendAutomationType(automationType);
   const initialSceneDocument = useMemo(() => {
@@ -235,6 +238,9 @@ export function StaticTemplateEditor({
     useState<Id<"templateAssets"> | null>(null);
   const [titleInputWidth, setTitleInputWidth] = useState(40);
   const [editingTextNodeId, setEditingTextNodeId] = useState<string | null>(null);
+  const [isRenderingTest, setIsRenderingTest] = useState(false);
+  const [renderPreviewUrl, setRenderPreviewUrl] = useState<string | null>(null);
+  const [renderPreviewOpen, setRenderPreviewOpen] = useState(false);
   const [editingTextValue, setEditingTextValue] = useState("");
   const nodeRefs = useRef(new Map<string, Konva.Node>());
   const transformerRef = useRef<Konva.Transformer>(null);
@@ -910,6 +916,27 @@ export function StaticTemplateEditor({
     updateTemplate,
   ]);
 
+  const handleRenderTest = useCallback(async () => {
+    if (!sceneDocument) {
+      return;
+    }
+
+    setIsRenderingTest(true);
+    try {
+      const result = await renderTemplateTest({
+        templateId: template._id,
+        sceneDocument,
+      });
+      setRenderPreviewUrl(result.previewUrl);
+      setRenderPreviewOpen(true);
+      showSuccessToast(t("editor.renderTestSuccess"));
+    } catch {
+      showErrorToast(t("editor.renderTestFailed"));
+    } finally {
+      setIsRenderingTest(false);
+    }
+  }, [renderTemplateTest, sceneDocument, t, template._id]);
+
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (isEditableShortcutTarget(event.target)) {
@@ -1046,6 +1073,16 @@ export function StaticTemplateEditor({
           </Button>
           <Button
             type="button"
+            variant="outline"
+            size="sm"
+            disabled={isRenderingTest || isSaving}
+            onClick={() => void handleRenderTest()}
+          >
+            <ImagePlay aria-hidden />
+            {isRenderingTest ? t("editor.renderTestRunning") : t("editor.renderTest")}
+          </Button>
+          <Button
+            type="button"
             size="sm"
             disabled={!isDirty || isSaving}
             onClick={() => void handleSave()}
@@ -1157,6 +1194,32 @@ export function StaticTemplateEditor({
           />
         </aside>
       </div>
+
+      <AlertDialog open={renderPreviewOpen} onOpenChange={setRenderPreviewOpen}>
+        <AlertDialogContent className="max-w-3xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("editor.renderTestTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("editor.renderTestDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {renderPreviewUrl ? (
+            <div className="overflow-hidden rounded-md border bg-muted/20 p-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={renderPreviewUrl}
+                alt={t("editor.renderTestImageAlt")}
+                className="mx-auto max-h-[70vh] w-auto max-w-full object-contain"
+              />
+            </div>
+          ) : null}
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setRenderPreviewOpen(false)}>
+              {t("editor.renderTestClose")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
@@ -3774,31 +3837,6 @@ function parseAssetDragPayload(rawPayload: string): AssetDragPayload | null {
   }
 
   return null;
-}
-
-function measureTextForFit(
-  text: string,
-  fontSize: number,
-  fontFamily: string,
-): { width: number; height: number } {
-  const averageCharacterWidth = fontFamily === "Georgia" ? 0.58 : 0.54;
-  const lines = text.split("\n");
-  return {
-    width:
-      Math.max(...lines.map((line) => line.length), 1) *
-      fontSize *
-      averageCharacterWidth,
-    height: lines.length * fontSize,
-  };
-}
-
-function ellipsizeText(text: string, width: number, fontSize: number): string {
-  const maxCharacters = Math.max(Math.floor(width / (fontSize * 0.54)) - 1, 1);
-  if (text.length <= maxCharacters) {
-    return text;
-  }
-
-  return `${text.slice(0, maxCharacters)}...`;
 }
 
 function isEditableShortcutTarget(target: EventTarget | null): boolean {
