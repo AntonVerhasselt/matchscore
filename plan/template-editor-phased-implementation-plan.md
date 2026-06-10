@@ -1494,7 +1494,7 @@ What stays deferred: **club-uploaded custom fonts** (`.ttf` uploads). Only the f
 ### Implementation approach (catalog fonts) — as built
 
 1. **Generated manifest:** `lib/template-scene/server-font-manifest.generated.ts` — maps each catalog family (plus server-only `Arimo`, `Tinos`) to stable `https://fonts.gstatic.com/.../*.woff2` URLs.
-2. **Sync script:** `pnpm sync-template-fonts` (`scripts/sync-template-fonts.ts`) resolves URLs from Google Fonts CSS for every family in `GOOGLE_FONT_CATALOG` + `SERVER_ONLY_FONT_FAMILIES`. Run when the catalog changes; commit the regenerated manifest. Optionally caches files locally under `convex/automations/render/fonts/` for dev inspection — **not committed** (large, unused at runtime on Convex).
+2. **Sync script:** `pnpm sync-template-fonts` (`scripts/sync-template-fonts.ts`) resolves URLs from Google Fonts CSS for every family in `GOOGLE_FONT_CATALOG` + `SERVER_ONLY_FONT_FAMILIES`. Run when the catalog changes; commit the regenerated manifest. Optionally caches files locally under `convex/automations/render/fonts/` for dev inspection — **gitignored**, not used at runtime on Convex (production downloads from the manifest URLs instead).
 3. **Registry helper:** `lib/template-scene/server-font-registry.ts` (pure TypeScript):
    - `getFontUrlsForFamilies(families)` → `{ family, urls }[]` for catalog and system-mapped fonts
    - `assertTemplateFontManifestUsesRemoteUrls()` in tests
@@ -1858,6 +1858,6 @@ The phased implementation is considered complete for this MVP when:
 - `match_announcement` and `match_result` expose only valid bindings.
 - The editor uses fixed logical canvas presets and visual scaling.
 - The saved scene contains no editor-only state.
-- The server render test can produce a PNG from the stored scene.
+- The server render test can produce a PNG from the current editor canvas (or saved scene for production posting).
 - Automated checks, browser checks, and database checks pass at each phase before user handoff.
 
