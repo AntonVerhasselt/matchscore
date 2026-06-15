@@ -10,6 +10,8 @@
     "test": "vitest run",
     "test:template-render": "tsx scripts/test-template-render.ts",
     "sync-template-fonts": "tsx scripts/sync-template-fonts.ts",
+    "probe:voetbal-api": "tsx scripts/probe-voetbalinbelgie-api.ts",
+    "probe:voetbal-api:snapshot": "PROBE_ALLOW_UNAUTHORIZED=1 tsx scripts/probe-voetbalinbelgie-api.ts",
     "db:clear-dev": "npx convex run dev/clearDatabase:clearAll '{}'"
   },
   "dependencies": {
