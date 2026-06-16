@@ -31,72 +31,57 @@ import { FormEvent, useEffect, useState } from "react";
 export default function OnboardingPage() {
   const t = useTranslations("onboarding");
   const tHero = useTranslations("landing.hero");
-  const [storedTeamId, setStoredTeamId] = useState<Id<"footballTeams"> | null>(
-    null,
+  const [storedTeamId] = useState<Id<"footballTeams"> | null>(
+    () => readSelectedFootballTeamId(),
   );
-  const [hasLoadedStoredTeam, setHasLoadedStoredTeam] = useState(false);
+  const [isChangingTeam, setIsChangingTeam] = useState(
+    () => readSelectedFootballTeamId() === null,
+  );
   const [selectedTeamId, setSelectedTeamId] = useState<Id<"footballTeams"> | null>(
-    null,
+    () => readSelectedFootballTeamId(),
   );
   const [selectedTeam, setSelectedTeam] =
     useState<FootballTeamSearchResult | null>(null);
-  const [isChangingTeam, setIsChangingTeam] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const teamId = readSelectedFootballTeamId();
-    setStoredTeamId(teamId);
-    if (teamId) {
-      setSelectedTeamId(teamId);
-      setIsChangingTeam(false);
-    } else {
-      setIsChangingTeam(true);
-    }
-    setHasLoadedStoredTeam(true);
-  }, []);
+  const shouldResolveStoredTeam =
+    storedTeamId !== null && !isChangingTeam;
 
   const storedTeam = useQuery(
     api.football.queries.getFootballTeamForSelection,
-    hasLoadedStoredTeam && storedTeamId && !isChangingTeam
-      ? { footballTeamId: storedTeamId }
-      : "skip",
+    shouldResolveStoredTeam ? { footballTeamId: storedTeamId } : "skip",
   );
 
+  const storedTeamResolvedMissing =
+    shouldResolveStoredTeam && storedTeam === null;
+
+  useEffect(() => {
+    if (storedTeamResolvedMissing) {
+      clearSelectedFootballTeamId();
+    }
+  }, [storedTeamResolvedMissing]);
+
+  const isChoosingTeam = isChangingTeam || storedTeamResolvedMissing;
+
   const isResolvingStoredTeam =
-    hasLoadedStoredTeam &&
-    storedTeamId !== null &&
-    !isChangingTeam &&
+    shouldResolveStoredTeam &&
+    !storedTeamResolvedMissing &&
     storedTeam === undefined;
 
-  const storedTeamMissing =
-    hasLoadedStoredTeam &&
-    storedTeamId !== null &&
-    !isChangingTeam &&
-    storedTeam === null;
+  const activeTeamId = isChoosingTeam
+    ? selectedTeamId
+    : (storedTeam?._id ?? selectedTeamId);
 
-  useEffect(() => {
-    if (storedTeamMissing) {
-      clearSelectedFootballTeamId();
-      setStoredTeamId(null);
-      setSelectedTeamId(null);
-      setSelectedTeam(null);
-      setIsChangingTeam(true);
-    }
-  }, [storedTeamMissing]);
-
-  useEffect(() => {
-    if (storedTeam && !isChangingTeam) {
-      setSelectedTeam(storedTeam);
-      setSelectedTeamId(storedTeam._id);
-    }
-  }, [isChangingTeam, storedTeam]);
+  const activeTeam = isChoosingTeam
+    ? selectedTeam
+    : (storedTeam ?? selectedTeam);
 
   const showConfirmation =
-    !isChangingTeam &&
+    !isChoosingTeam &&
     !isResolvingStoredTeam &&
-    selectedTeamId !== null &&
-    selectedTeam !== null;
+    activeTeamId !== null &&
+    activeTeam !== null;
 
   const handleTeamChange = (
     teamId: Id<"footballTeams"> | null,
@@ -112,17 +97,17 @@ export default function OnboardingPage() {
   };
 
   const handleChangeTeam = () => {
+    clearSelectedFootballTeamId();
     setIsChangingTeam(true);
     setSelectedTeamId(null);
     setSelectedTeam(null);
-    clearSelectedFootballTeamId();
   };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
 
-    if (!selectedTeamId) {
+    if (!activeTeamId) {
       setError(t("teamRequired"));
       return;
     }
@@ -131,11 +116,11 @@ export default function OnboardingPage() {
 
     try {
       clearSelectedFootballTeamId();
-      await completeOnboarding(selectedTeamId);
+      await completeOnboarding(activeTeamId);
     } catch (err) {
       unstable_rethrow(err);
-      if (selectedTeamId) {
-        storeSelectedFootballTeamId(selectedTeamId);
+      if (activeTeamId) {
+        storeSelectedFootballTeamId(activeTeamId);
       }
       const message =
         err instanceof Error
@@ -173,12 +158,12 @@ export default function OnboardingPage() {
                 <Loader2 className="size-4 animate-spin" aria-hidden />
                 {t("pleaseWait")}
               </div>
-            ) : showConfirmation && selectedTeam ? (
+            ) : showConfirmation && activeTeam ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-4 border bg-muted/30 p-4">
                   <FootballTeamAvatar
-                    name={selectedTeam.name}
-                    logoUrl={selectedTeam.logoUrl}
+                    name={activeTeam.name}
+                    logoUrl={activeTeam.logoUrl}
                     size="lg"
                   />
                   <div className="min-w-0 flex-1">
@@ -186,7 +171,7 @@ export default function OnboardingPage() {
                       {t("yourClub")}
                     </p>
                     <p className="truncate font-heading text-lg font-bold uppercase tracking-tight">
-                      {selectedTeam.name}
+                      {activeTeam.name}
                     </p>
                   </div>
                 </div>
@@ -215,7 +200,7 @@ export default function OnboardingPage() {
             <Button
               type="submit"
               className="w-full font-heading uppercase tracking-wide"
-              disabled={loading || !selectedTeamId}
+              disabled={loading || !activeTeamId}
             >
               {loading ? t("pleaseWait") : t("submit")}
             </Button>

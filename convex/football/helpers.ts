@@ -76,13 +76,10 @@ export async function findFootballTeamForUpsert(
     case "slug_path_and_name": {
       return await ctx.db
         .query("footballTeams")
-        .filter((q) =>
-          q.and(
-            q.eq(q.field("slugPath"), key.slugPath),
-            q.eq(q.field("name"), key.name),
-          ),
+        .withIndex("by_slugPath_and_name", (q) =>
+          q.eq("slugPath", key.slugPath).eq("name", key.name),
         )
-        .first();
+        .unique();
     }
   }
 }

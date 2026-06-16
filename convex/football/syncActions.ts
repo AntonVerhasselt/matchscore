@@ -2,7 +2,7 @@ import { v } from "convex/values";
 
 import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
-import { runSyncCompetition } from "./runSyncCompetition";
+import { runSyncCompetition, type SyncCompetitionResult } from "./runSyncCompetition";
 
 const syncCompetitionResultValidator = v.object({
   status: v.union(
@@ -36,9 +36,15 @@ export const syncLinkedCompetitions = internalAction({
       {},
     );
 
-    const results = [];
+    const results: SyncCompetitionResult[] = [];
     for (const path of paths) {
-      results.push(await runSyncCompetition(ctx, { path, force: false }));
+      try {
+        results.push(await runSyncCompetition(ctx, { path, force: false }));
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Unknown competition sync error";
+        results.push({ status: "error", path, message });
+      }
     }
 
     console.log(

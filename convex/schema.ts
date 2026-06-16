@@ -52,6 +52,8 @@ export default defineSchema({
       "sourceCompetitionId",
     ])
     .index("by_stamnummer_and_name", ["stamnummer", "name"])
+    .index("by_slugPath_and_name", ["slugPath", "name"])
+    .index("by_slugPath", ["slugPath"])
     .index("by_name", ["name"])
     .index("by_logoSourceUrl", ["logoSourceUrl"]),
 

@@ -53,6 +53,19 @@ function parseRelatedTeams(raw: unknown): RelatedTeam[] {
   });
 }
 
+function parsePointsPunished(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "0";
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "number" && !Number.isNaN(value)) {
+    return String(value);
+  }
+  throw new Error("Invalid competition field: leaguetable.pointsPunished");
+}
+
 function parseLeagueTable(raw: unknown): LeagueTableRow[] {
   if (!Array.isArray(raw)) {
     throw new Error("Invalid leaguetable");
@@ -75,10 +88,7 @@ function parseLeagueTable(raw: unknown): LeagueTableRow[] {
       points: requireNumber(row.points, "leaguetable.points"),
       goalsFor: requireNumber(row.goalsFor, "leaguetable.goalsFor"),
       goalsAgainst: requireNumber(row.goalsAgainst, "leaguetable.goalsAgainst"),
-      pointsPunished:
-        typeof row.pointsPunished === "string"
-          ? row.pointsPunished
-          : String(row.pointsPunished ?? "0"),
+      pointsPunished: parsePointsPunished(row.pointsPunished),
     };
   });
 }

@@ -88,12 +88,19 @@ export async function runSyncCompetition(
       return { status: "error", path, message };
     }
 
+    const mergedMatches = mergeCompetitionMatches(
+      dto.meta.id,
+      dto.results,
+      dto.program,
+    );
+
     await ctx.runMutation(
-      internal.football.internalMutations.replaceCompetitionStandings,
+      internal.football.internalMutations.replaceCompetitionSnapshot,
       {
         competitionId,
         sourceCompetitionId: dto.meta.id,
-        rows: dto.leaguetable.map((row) => ({
+        competitionPath: path,
+        standings: dto.leaguetable.map((row) => ({
           vibTeamName: row.name,
           position: row.position,
           matches: row.matches,
@@ -107,34 +114,23 @@ export async function runSyncCompetition(
           shirt: row.shirt,
           vibLogoFile: row.logo,
         })),
+        matches: mergedMatches.map((row) => ({
+          vibMatchKey: buildVibMatchKey(
+            dto.meta.id,
+            row.date,
+            row.home,
+            row.away,
+          ),
+          homeVibTeamName: row.home,
+          awayVibTeamName: row.away,
+          kickoffAt: Date.parse(row.date),
+          status: row.status,
+          homeGoals: row.homeGoals,
+          awayGoals: row.awayGoals,
+          resultText: row.result,
+        })),
       },
     );
-
-    const mergedMatches = mergeCompetitionMatches(
-      dto.meta.id,
-      dto.results,
-      dto.program,
-    );
-
-    for (const row of mergedMatches) {
-      await ctx.runMutation(internal.football.internalMutations.upsertMatch, {
-        sourceCompetitionId: dto.meta.id,
-        competitionPath: path,
-        vibMatchKey: buildVibMatchKey(
-          dto.meta.id,
-          row.date,
-          row.home,
-          row.away,
-        ),
-        homeVibTeamName: row.home,
-        awayVibTeamName: row.away,
-        kickoffAt: Date.parse(row.date),
-        status: row.status,
-        homeGoals: row.homeGoals,
-        awayGoals: row.awayGoals,
-        resultText: row.result,
-      });
-    }
 
     await ctx.runMutation(
       internal.football.internalMutations.patchCompetitionSyncStatus,

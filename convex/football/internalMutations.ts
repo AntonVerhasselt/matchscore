@@ -1,8 +1,10 @@
 import { ConvexError, v } from "convex/values";
 
+import type { GenericMutationCtx } from "convex/server";
 import { applyDisplayNameDisambiguation } from "../lib/voetbalinbelgie/disambiguateTeamNames";
 import { normalizeCompetitionPath } from "../lib/voetbalinbelgie/allowlist";
 import { internalMutation } from "../_generated/server";
+import type { DataModel, Doc, Id } from "../_generated/dataModel";
 import {
   findFootballTeamForUpsert,
   findOrphanFootballTeamForUpgrade,
@@ -14,6 +16,156 @@ import {
   upsertFootballTeamArgsValidator,
   upsertMatchArgsValidator,
 } from "./validators";
+
+type MatchUpsertInput = {
+  vibMatchKey: string;
+  homeVibTeamName: string;
+  awayVibTeamName: string;
+  kickoffAt: number;
+  status: string;
+  homeGoals?: number;
+  awayGoals?: number;
+  resultText?: string;
+};
+
+const matchSnapshotInputValidator = v.object({
+  vibMatchKey: v.string(),
+  homeVibTeamName: v.string(),
+  awayVibTeamName: v.string(),
+  kickoffAt: v.number(),
+  status: v.string(),
+  homeGoals: v.optional(v.number()),
+  awayGoals: v.optional(v.number()),
+  resultText: v.optional(v.string()),
+});
+
+async function loadCompetitionForPath(
+  ctx: GenericMutationCtx<DataModel>,
+  competitionPath: string,
+): Promise<Doc<"competitions">> {
+  const competition = await ctx.db
+    .query("competitions")
+    .withIndex("by_path", (q) =>
+      q.eq("path", normalizeCompetitionPath(competitionPath)),
+    )
+    .unique();
+
+  if (!competition) {
+    throw new ConvexError(`Competition not found for path ${competitionPath}`);
+  }
+
+  return competition;
+}
+
+function assertCompetitionSourceMatch(
+  competition: Doc<"competitions">,
+  sourceCompetitionId: number,
+): void {
+  if (competition.sourceCompetitionId !== sourceCompetitionId) {
+    throw new ConvexError(
+      `Competition/sourceCompetitionId mismatch for path ${competition.path}: expected ${competition.sourceCompetitionId}, got ${sourceCompetitionId}`,
+    );
+  }
+}
+
+async function replaceStandingsForCompetition(
+  ctx: GenericMutationCtx<DataModel>,
+  competitionId: Id<"competitions">,
+  sourceCompetitionId: number,
+  rows: Array<{
+    vibTeamName: string;
+    position: number;
+    matches: number;
+    wins: number;
+    ties: number;
+    losses: number;
+    points: number;
+    goalsFor: number;
+    goalsAgainst: number;
+    pointsPunished: string;
+    shirt?: string;
+    vibLogoFile?: string;
+  }>,
+): Promise<number> {
+  const existingRows = await ctx.db
+    .query("competitionStandings")
+    .filter((q) => q.eq(q.field("competitionId"), competitionId))
+    .collect();
+
+  for (const row of existingRows) {
+    await ctx.db.delete(row._id);
+  }
+
+  for (const row of rows) {
+    const teamId = await requireFootballTeamId(
+      ctx,
+      sourceCompetitionId,
+      row.vibTeamName,
+    );
+
+    await ctx.db.insert("competitionStandings", {
+      competitionId,
+      teamId,
+      position: row.position,
+      matches: row.matches,
+      wins: row.wins,
+      ties: row.ties,
+      losses: row.losses,
+      points: row.points,
+      goalsFor: row.goalsFor,
+      goalsAgainst: row.goalsAgainst,
+      pointsPunished: row.pointsPunished,
+      shirt: row.shirt,
+      vibLogoFile: row.vibLogoFile,
+    });
+  }
+
+  return rows.length;
+}
+
+async function upsertMatchForCompetition(
+  ctx: GenericMutationCtx<DataModel>,
+  competitionId: Id<"competitions">,
+  sourceCompetitionId: number,
+  args: MatchUpsertInput,
+): Promise<Id<"matches">> {
+  const homeTeamId = await requireFootballTeamId(
+    ctx,
+    sourceCompetitionId,
+    args.homeVibTeamName,
+  );
+  const awayTeamId = await requireFootballTeamId(
+    ctx,
+    sourceCompetitionId,
+    args.awayVibTeamName,
+  );
+
+  const now = Date.now();
+  const fields = {
+    competitionId,
+    vibMatchKey: args.vibMatchKey,
+    homeTeamId,
+    awayTeamId,
+    kickoffAt: args.kickoffAt,
+    status: args.status,
+    homeGoals: args.homeGoals,
+    awayGoals: args.awayGoals,
+    resultText: args.resultText,
+    updatedAt: now,
+  };
+
+  const existing = await ctx.db
+    .query("matches")
+    .withIndex("by_vibMatchKey", (q) => q.eq("vibMatchKey", args.vibMatchKey))
+    .unique();
+
+  if (existing) {
+    await ctx.db.patch(existing._id, fields);
+    return existing._id;
+  }
+
+  return await ctx.db.insert("matches", fields);
+}
 
 export const upsertFootballTeam = internalMutation({
   args: upsertFootballTeamArgsValidator,
@@ -99,41 +251,56 @@ export const replaceCompetitionStandings = internalMutation({
     rows: v.array(competitionStandingInputValidator),
   },
   returns: v.number(),
+  handler: async (ctx, args) =>
+    replaceStandingsForCompetition(
+      ctx,
+      args.competitionId,
+      args.sourceCompetitionId,
+      args.rows,
+    ),
+});
+
+export const replaceCompetitionSnapshot = internalMutation({
+  args: {
+    competitionId: v.id("competitions"),
+    sourceCompetitionId: v.number(),
+    competitionPath: v.string(),
+    standings: v.array(competitionStandingInputValidator),
+    matches: v.array(matchSnapshotInputValidator),
+  },
+  returns: v.object({
+    standingCount: v.number(),
+    matchCount: v.number(),
+  }),
   handler: async (ctx, args) => {
-    const existingRows = await ctx.db
-      .query("competitionStandings")
-      .filter((q) => q.eq(q.field("competitionId"), args.competitionId))
-      .collect();
-
-    for (const row of existingRows) {
-      await ctx.db.delete(row._id);
-    }
-
-    for (const row of args.rows) {
-      const teamId = await requireFootballTeamId(
-        ctx,
-        args.sourceCompetitionId,
-        row.vibTeamName,
+    const competition = await loadCompetitionForPath(ctx, args.competitionPath);
+    if (competition._id !== args.competitionId) {
+      throw new ConvexError(
+        `Competition id mismatch for path ${args.competitionPath}`,
       );
+    }
+    assertCompetitionSourceMatch(competition, args.sourceCompetitionId);
 
-      await ctx.db.insert("competitionStandings", {
-        competitionId: args.competitionId,
-        teamId,
-        position: row.position,
-        matches: row.matches,
-        wins: row.wins,
-        ties: row.ties,
-        losses: row.losses,
-        points: row.points,
-        goalsFor: row.goalsFor,
-        goalsAgainst: row.goalsAgainst,
-        pointsPunished: row.pointsPunished,
-        shirt: row.shirt,
-        vibLogoFile: row.vibLogoFile,
-      });
+    const standingCount = await replaceStandingsForCompetition(
+      ctx,
+      args.competitionId,
+      args.sourceCompetitionId,
+      args.standings,
+    );
+
+    for (const match of args.matches) {
+      await upsertMatchForCompetition(
+        ctx,
+        args.competitionId,
+        args.sourceCompetitionId,
+        match,
+      );
     }
 
-    return args.rows.length;
+    return {
+      standingCount,
+      matchCount: args.matches.length,
+    };
   },
 });
 
@@ -141,53 +308,15 @@ export const upsertMatch = internalMutation({
   args: upsertMatchArgsValidator,
   returns: v.id("matches"),
   handler: async (ctx, args) => {
-    const competition = await ctx.db
-      .query("competitions")
-      .withIndex("by_path", (q) =>
-        q.eq("path", normalizeCompetitionPath(args.competitionPath)),
-      )
-      .unique();
+    const competition = await loadCompetitionForPath(ctx, args.competitionPath);
+    assertCompetitionSourceMatch(competition, args.sourceCompetitionId);
 
-    if (!competition) {
-      throw new ConvexError(`Competition not found for path ${args.competitionPath}`);
-    }
-
-    const homeTeamId = await requireFootballTeamId(
+    return await upsertMatchForCompetition(
       ctx,
+      competition._id,
       args.sourceCompetitionId,
-      args.homeVibTeamName,
+      args,
     );
-    const awayTeamId = await requireFootballTeamId(
-      ctx,
-      args.sourceCompetitionId,
-      args.awayVibTeamName,
-    );
-
-    const now = Date.now();
-    const fields = {
-      competitionId: competition._id,
-      vibMatchKey: args.vibMatchKey,
-      homeTeamId,
-      awayTeamId,
-      kickoffAt: args.kickoffAt,
-      status: args.status,
-      homeGoals: args.homeGoals,
-      awayGoals: args.awayGoals,
-      resultText: args.resultText,
-      updatedAt: now,
-    };
-
-    const existing = await ctx.db
-      .query("matches")
-      .withIndex("by_vibMatchKey", (q) => q.eq("vibMatchKey", args.vibMatchKey))
-      .unique();
-
-    if (existing) {
-      await ctx.db.patch(existing._id, fields);
-      return existing._id;
-    }
-
-    return await ctx.db.insert("matches", fields);
   },
 });
 

@@ -60,18 +60,18 @@ export function useTemplateThumbnailCapture({
         return;
       }
 
-      const contentHash = await hashTemplateThumbnailContent(
-        templateName,
-        normalizedSceneDocument,
-      );
-
-      if (contentHash === lastUploadedHashRef.current) {
-        return;
-      }
-
       isCapturingRef.current = true;
 
       try {
+        const contentHash = await hashTemplateThumbnailContent(
+          templateName,
+          normalizedSceneDocument,
+        );
+
+        if (contentHash === lastUploadedHashRef.current) {
+          return;
+        }
+
         await prepareStageForCapture?.();
 
         // Let React commit preview/selection changes before cloning the stage.

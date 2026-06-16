@@ -48,8 +48,8 @@ export function LinkedTeamSettings() {
 
   const isLoading =
     membership === undefined ||
-    linkedTeam === undefined ||
-    teamSummary === undefined;
+    (footballTeamId !== undefined &&
+      (linkedTeam === undefined || teamSummary === undefined));
 
   const hasTeamChange =
     selectedTeamId !== null && selectedTeamId !== footballTeamId;

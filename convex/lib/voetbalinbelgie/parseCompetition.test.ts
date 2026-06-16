@@ -75,4 +75,51 @@ describe("parseCompetitionJson", () => {
     expect(dto.program).toHaveLength(1);
     expect(dto.results[0]?.homeGoals).toBe(2);
   });
+
+  test("parses pointsPunished from string, number, and missing values", () => {
+    const stringValue = parseCompetitionJson({
+      competition: {
+        ...competitionFixture.competition,
+        leaguetable: [{ ...competitionFixture.competition.leaguetable[0], pointsPunished: "3" }],
+      },
+    });
+    expect(stringValue.leaguetable[0]?.pointsPunished).toBe("3");
+
+    const numberValue = parseCompetitionJson({
+      competition: {
+        ...competitionFixture.competition,
+        leaguetable: [{ ...competitionFixture.competition.leaguetable[0], pointsPunished: 2 }],
+      },
+    });
+    expect(numberValue.leaguetable[0]?.pointsPunished).toBe("2");
+
+    const missingValue = parseCompetitionJson({
+      competition: {
+        ...competitionFixture.competition,
+        leaguetable: [
+          {
+            ...competitionFixture.competition.leaguetable[0],
+            pointsPunished: undefined,
+          },
+        ],
+      },
+    });
+    expect(missingValue.leaguetable[0]?.pointsPunished).toBe("0");
+  });
+
+  test("rejects invalid pointsPunished types", () => {
+    expect(() =>
+      parseCompetitionJson({
+        competition: {
+          ...competitionFixture.competition,
+          leaguetable: [
+            {
+              ...competitionFixture.competition.leaguetable[0],
+              pointsPunished: { invalid: true },
+            },
+          ],
+        },
+      }),
+    ).toThrow("Invalid competition field: leaguetable.pointsPunished");
+  });
 });

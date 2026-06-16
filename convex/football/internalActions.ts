@@ -102,6 +102,15 @@ export const importClubBatch = internalAction({
   returns: importBatchResultValidator,
   handler: async (ctx, args) => {
     const batchSize = args.batchSize ?? IMPORT_BATCH_SIZE;
+    if (!Number.isInteger(batchSize) || batchSize <= 0) {
+      throw new Error(`batchSize must be a positive integer, got ${batchSize}`);
+    }
+    if (!Number.isInteger(args.startIndex) || args.startIndex < 0) {
+      throw new Error(
+        `startIndex must be a non-negative integer, got ${args.startIndex}`,
+      );
+    }
+
     const stamnummersHtml = await fetchStamnummersHtml();
     const entries = parseStamnummersHtml(stamnummersHtml);
     const batch = entries.slice(args.startIndex, args.startIndex + batchSize);
@@ -135,6 +144,12 @@ export const importClubBatch = internalAction({
 
     const nextStartIndex = args.startIndex + batch.length;
     const done = nextStartIndex >= entries.length;
+
+    if (!done && batch.length === 0) {
+      throw new Error(
+        `importClubBatch made no progress at startIndex ${args.startIndex}`,
+      );
+    }
 
     if (!done) {
       await ctx.scheduler.runAfter(

@@ -177,7 +177,6 @@ export const saveTemplateThumbnail = mutation({
   args: {
     templateId: v.id("automationTemplates"),
     newStorageId: v.id("_storage"),
-    previousStorageId: v.optional(v.id("_storage")),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -193,7 +192,7 @@ export const saveTemplateThumbnail = mutation({
       {
         templateId: args.templateId,
         newStorageId: args.newStorageId,
-        previousStorageId: args.previousStorageId,
+        previousStorageId: template.thumbnailStorageId ?? undefined,
       },
     );
 

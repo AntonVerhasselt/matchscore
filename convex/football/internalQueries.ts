@@ -140,7 +140,7 @@ export const isClubPageImportComplete = internalQuery({
   handler: async (ctx, args) => {
     const teams = await ctx.db
       .query("footballTeams")
-      .filter((q) => q.eq(q.field("slugPath"), args.slugPath))
+      .withIndex("by_slugPath", (q) => q.eq("slugPath", args.slugPath))
       .collect();
 
     if (teams.length === 0) {

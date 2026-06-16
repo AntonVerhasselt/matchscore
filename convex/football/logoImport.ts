@@ -17,7 +17,14 @@ export async function downloadLogoToStorage(
     return existing;
   }
 
-  const response = await fetch(logoSourceUrl);
+  const response = await fetch(logoSourceUrl, {
+    signal: AbortSignal.timeout(10_000),
+  }).catch((error: unknown) => {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`Logo fetch timed out for ${logoSourceUrl}`);
+    }
+    throw error;
+  });
   if (!response.ok) {
     throw new Error(
       `Logo fetch failed (${response.status}) for ${logoSourceUrl}`,

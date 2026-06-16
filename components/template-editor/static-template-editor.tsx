@@ -1006,7 +1006,9 @@ export function StaticTemplateEditor({
     ],
   );
 
-  previewModeRef.current = previewMode;
+  useEffect(() => {
+    previewModeRef.current = previewMode;
+  }, [previewMode]);
 
   const prepareStageForCapture = useCallback(async () => {
     restorePreviewModeRef.current = previewModeRef.current;

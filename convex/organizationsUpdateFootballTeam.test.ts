@@ -1,9 +1,10 @@
 /// <reference types="vite/client" />
 
 import { convexTest } from "convex-test";
-import { describe, expect, test } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 
-import { internal } from "./_generated/api";
+import { api, internal } from "./_generated/api";
+import { authComponent } from "./auth/instance";
 import schema from "./schema";
 
 const modules = Object.fromEntries(
@@ -15,9 +16,19 @@ const modules = Object.fromEntries(
 const PATH_2A = "/competities/2025-2026/antwerpen/mannen/2a/";
 const PATH_4A = "/competities/2025-2026/antwerpen/mannen/4a/";
 
-describe("updateOrganizationFootballTeam data effects", () => {
-  test("patching org team updates name but keeps slug unchanged", async () => {
+describe("updateOrganizationFootballTeam", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  test("updates linked team and organization name while preserving slug", async () => {
     const t = convexTest(schema, modules);
+
+    vi.spyOn(authComponent, "getAuthUser").mockResolvedValue({
+      _id: "user-1",
+      email: "member@example.com",
+      name: "Member",
+    } as Awaited<ReturnType<typeof authComponent.getAuthUser>>);
 
     const team2a = await t.mutation(
       internal.football.internalMutations.upsertFootballTeam,
@@ -43,21 +54,27 @@ describe("updateOrganizationFootballTeam data effects", () => {
       },
     );
 
-    const organizationId = await t.run(async (ctx) =>
-      ctx.db.insert("organizations", {
+    const organizationId = await t.run(async (ctx) => {
+      const orgId = await ctx.db.insert("organizations", {
         name: "KSV Aartselaar",
         slug: "ksv-aartselaar-original-slug",
         footballTeamId: team2a,
         createdByUserId: "user-1",
         createdAt: Date.now(),
-      }),
-    );
-
-    await t.run(async (ctx) => {
-      await ctx.db.patch(organizationId, {
-        footballTeamId: team4a,
-        name: "KSV Aartselaar B",
       });
+
+      await ctx.db.insert("organizationMembers", {
+        organizationId: orgId,
+        userId: "user-1",
+        email: "member@example.com",
+        joinedAt: Date.now(),
+      });
+
+      return orgId;
+    });
+
+    await t.mutation(api.organizations.mutations.updateOrganizationFootballTeam, {
+      footballTeamId: team4a,
     });
 
     const organization = await t.run(async (ctx) => ctx.db.get(organizationId));

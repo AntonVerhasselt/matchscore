@@ -37,12 +37,17 @@ async function main() {
 
   let previousCount = -1;
   let stablePolls = 0;
+  let importCompleted = false;
 
   for (let attempt = 0; attempt < 120; attempt += 1) {
     await sleep(15_000);
 
     const countRaw = runConvex("football/internalQueries:countFootballTeams", {});
     const count = Number.parseInt(countRaw.replace(/\n/g, ""), 10);
+
+    if (Number.isNaN(count)) {
+      throw new Error(`Invalid football team count response: ${countRaw}`);
+    }
 
     console.log(`Imported teams: ${count}`);
 
@@ -55,8 +60,15 @@ async function main() {
 
     if (count >= 1600 && stablePolls >= 2) {
       console.log("Import batches appear complete. Running repair + validation…");
+      importCompleted = true;
       break;
     }
+  }
+
+  if (!importCompleted) {
+    throw new Error(
+      "Football club import polling did not reach a stable completion state",
+    );
   }
 
   try {
