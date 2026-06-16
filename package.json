@@ -9,6 +9,7 @@
     "lint": "eslint . --ignore-pattern \"convex/_generated/**\"",
     "test": "vitest run",
     "test:template-render": "tsx scripts/test-template-render.ts",
+    "test:voetbalinbelgie-api": "tsx scripts/test-voetbalinbelgie-api.ts",
     "sync-template-fonts": "tsx scripts/sync-template-fonts.ts",
     "db:clear-dev": "npx convex run dev/clearDatabase:clearAll '{}'"
   },
