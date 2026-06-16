@@ -1,6 +1,6 @@
 # VoetbalInBelgië data integration — implementation plan
 
-> **Status:** **In progress** — Phases 0–4 complete; Phase 6 partial; Phases 5, 7–10 mostly open  
+> **Status:** **In progress** — Phases 0–7 complete; Phases 8–10 open  
 > **Branch:** `voetbal-data`  
 > **Research:** [Documentation/voetbalinbelgie-api-research.md](../Documentation/voetbalinbelgie-api-research.md)  
 > **Live API samples:** [Documentation/voetbalinbelgie-api-samples.md](../Documentation/voetbalinbelgie-api-samples.md)  
@@ -18,12 +18,12 @@
 | **2** | API helpers & parsers | ✅ Done |
 | **3** | DB write helpers & queries | ✅ Done |
 | **4** | One-time club import | ✅ Done |
-| **5** | Competition sync + cron | ⬜ **Not started** |
-| **6** | Organisation linking | 🟡 **Partial** — `createOrganization` done; sync trigger + settings change missing |
-| **7** | UI integration | 🟡 **Partial** — landing + onboarding done; settings + calendar UI missing |
+| **5** | Competition sync + cron | ✅ Done |
+| **6** | Organisation linking | ✅ Done |
+| **7** | UI integration | ✅ Done |
 | **8** | Template render bridge | ⬜ **Not started** |
-| **9** | Testing & observability | 🟡 **Partial** — import/parser tests done; sync tests missing |
-| **10** | Documentation | 🟡 **Partial** — season runbook done; org/automation docs not updated |
+| **9** | Testing & observability | 🟡 **Partial** — sync + calendar tests done; structured logging / prod observability open |
+| **10** | Documentation | 🟡 **Partial** — season runbook + this plan done; org/automation docs not updated |
 
 **Legend:** ✅ Done · 🟡 Partial · ⬜ Not started
 
@@ -34,9 +34,9 @@
 Matchscore integrates Belgian amateur football data in **two separate pipelines**:
 
 1. **Club import (static)** — Public HTML from voetbalinbelgie.be → `footballTeams` + logos. Run at season start and after parser fixes. **Implemented.**
-2. **Competition sync (dynamic)** — Authenticated JSON API → `competitions`, `competitionStandings`, `matches` only. Never touches teams or logos. **Not implemented yet.**
+2. **Competition sync (dynamic)** — Authenticated JSON API → `competitions`, `competitionStandings`, `matches` only. Never touches teams or logos. **Implemented.**
 
-Every organisation must link to a `footballTeamId` at creation; org name = team display name. Landing search and onboarding are wired; calendar, settings team change, sync, and template render bridge are next.
+Every organisation must link to a `footballTeamId` at creation; org name = team display name. Landing search, onboarding, calendar, and settings team change are wired. Forced sync runs on org create and team change; a 15-minute cron keeps linked competitions fresh. Template render bridge (real match data in automations) is next.
 
 ---
 
@@ -53,10 +53,10 @@ Every organisation must link to a `footballTeamId` at creation; org name = team 
 | **Pre-sync validation** | `pnpm test:football-pre-sync` — all allowlisted competition teams must exist in DB before sync is safe. |
 | **Duplicate display names** | Same club, same VIB name (e.g. men + women both “ASV Geel”) → first unchanged, women get ` Dames`, reserve men get ` B`. `vibTeamName` stays the API name. |
 | **Allowlist gap** | Registration always allowed. Non-allowlisted competitions: sync skipped; **calendar page only** shows future-access message. |
-| **First sync on signup** | **Force** API call when org links allowlisted competition (bypass TTL). **Planned — not wired yet.** |
-| **Change team in Settings** | Allowed; triggers forced re-sync for new competition. **Planned — not implemented yet.** |
+| **First sync on signup** | **Force** API call when org links allowlisted competition (bypass TTL). **Implemented** in `createOrganization`. |
+| **Change team in Settings** | Any org member can change team; org **slug unchanged**, **name** updates; triggers forced re-sync. **Implemented** in `updateOrganizationFootballTeam`. |
 | **Org ↔ team cardinality** | One org → one team. Unique index `organizations.by_footballTeamId`. |
-| **API cache TTL** | VoetbalInBelgië Handleiding §4; `Europe/Brussels`; helper in `syncSchedule.ts` (**implemented**, used when sync lands). |
+| **API cache TTL** | VoetbalInBelgië Handleiding §4; `Europe/Brussels`; helper in `syncSchedule.ts`. |
 | **Period rankings** | Not stored. |
 | **Timezone for TTL** | `Europe/Brussels` |
 
@@ -75,10 +75,11 @@ Every organisation must link to a `footballTeamId` at creation; org name = team 
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│ COMPETITION SYNC (dynamic) — JSON API only          ⬜ TODO     │
-│ syncCompetition / cron syncLinkedCompetitions                   │
+│ COMPETITION SYNC (dynamic) — JSON API only          ✅ DONE     │
+│ syncCompetition / cron syncLinkedCompetitions (15 min)          │
 │   competition endpoint → competitions + standings + matches     │
 │   (never footballTeams, never logos, never public HTML)         │
+│   forced sync on org create + settings team change              │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -88,7 +89,7 @@ Every organisation must link to a `footballTeamId` at creation; org name = team 
 
 | Item | Status | Notes |
 |------|--------|-------|
-| `VOETBALINBELGIE_API_KEY` on Convex deployment | ✅ | Required for `test:football-pre-sync` |
+| `VOETBALINBELGIE_API_KEY` on Convex deployment | ✅ | Required for sync + `test:football-pre-sync` |
 | `pnpm test:voetbalinbelgie-api` | ✅ | Regenerates sample MD |
 | HTML parsing | ✅ | Regex-based parsers in `convex/lib/voetbalinbelgie/parseHtml.ts` (no cheerio) |
 | Folder layout | ✅ | See **Actual layout** below |
@@ -99,7 +100,7 @@ Every organisation must link to a `footballTeamId` at creation; org name = team 
 convex/
 ├── lib/voetbalinbelgie/          # Pure functions + unit tests
 │   ├── allowlist.ts
-│   ├── disambiguateTeamNames.ts   # Men / women duplicate names
+│   ├── disambiguateTeamNames.ts
 │   ├── parseHtml.ts
 │   ├── parseCompetition.ts
 │   ├── syncSchedule.ts
@@ -107,22 +108,41 @@ convex/
 │   ├── vibMatchKey.ts
 │   └── types.ts
 ├── voetbalinbelgie/
-│   ├── fetch.ts                   # HTML + competition JSON fetch
+│   ├── fetch.ts
 │   └── logos.ts
 ├── football/
-│   ├── queries.ts                 # Public + member queries
-│   ├── actions.ts                 # importAllClubs kickoff
+│   ├── queries.ts
+│   ├── actions.ts
 │   ├── importClubPage.ts
 │   ├── internalMutations.ts
-│   ├── internalActions.ts         # importClubBatch, repair (no sync yet)
+│   ├── internalActions.ts         # importClubBatch, repair
 │   ├── internalQueries.ts
+│   ├── syncActions.ts             # syncCompetition, syncLinkedCompetitions
+│   ├── runSyncCompetition.ts      # core sync orchestration
 │   ├── helpers.ts
 │   ├── logoImport.ts
 │   └── validators.ts
-└── crons.ts                       # ⬜ Not created yet
+└── crons.ts                       # 15 min → syncLinkedCompetitions
+
+components/
+├── football/
+│   ├── FootballTeamSearch.tsx
+│   └── FootballTeamAvatar.tsx
+├── calendar/
+│   ├── CalendarPageContent.tsx
+│   ├── FootballCalendar.tsx
+│   ├── CalendarEventBar.tsx
+│   ├── CalendarSkeleton.tsx
+│   └── MatchList.tsx
+└── settings/
+    └── LinkedTeamSettings.tsx
+
+lib/calendar/
+├── calendar-events.ts
+└── month-grid.ts
 
 scripts/
-├── import-football-clubs.ts       # + --full for season rollover
+├── import-football-clubs.ts
 ├── test-football-pre-sync.ts
 ├── test-voetbalinbelgie-api.ts
 ├── diagnose-football-import.ts
@@ -150,9 +170,9 @@ All tables and indexes from the original plan are deployed:
 | Allowlist (2a + 4a, 2025/26) | ✅ | `convex/lib/voetbalinbelgie/allowlist.ts` |
 | Sync TTL schedule | ✅ | `syncSchedule.ts` + tests |
 | Fetch layer | ✅ | `convex/voetbalinbelgie/fetch.ts` |
-| HTML parsers | ✅ | `parseHtml.ts` + tests (incl. panel-without-tabs fix) |
+| HTML parsers | ✅ | `parseHtml.ts` + tests |
 | JSON parser | ✅ | `parseCompetition.ts` + tests |
-| Helpers | ✅ | `football/helpers.ts` — resolve, assert, upsert keys |
+| Helpers | ✅ | `football/helpers.ts` |
 | Logo normalisation | ✅ | `convex/voetbalinbelgie/logos.ts` |
 | Display name disambiguation | ✅ | `disambiguateTeamNames.ts` + tests |
 
@@ -167,10 +187,10 @@ All tables and indexes from the original plan are deployed:
 | Mutation | Used by | Status |
 |----------|---------|--------|
 | `upsertFootballTeam` | Import | ✅ |
-| `upsertCompetition` | Sync (ready) | ✅ |
-| `replaceCompetitionStandings` | Sync (ready) | ✅ |
-| `upsertMatch` | Sync (ready) | ✅ |
-| `patchCompetitionSyncStatus` | Sync (ready) | ✅ |
+| `upsertCompetition` | Sync | ✅ |
+| `replaceCompetitionStandings` | Sync | ✅ |
+| `upsertMatch` / `mergeCompetitionMatches` | Sync | ✅ |
+| `patchCompetitionSyncStatus` | Sync | ✅ |
 | `dedupeOrphanFootballTeams` | Import repair | ✅ |
 | `repairDuplicateTeamDisplayNames` | Import / season repair | ✅ |
 
@@ -181,9 +201,9 @@ All tables and indexes from the original plan are deployed:
 | `searchFootballTeams` | Public | ✅ incl. `logoUrl` |
 | `getFootballTeamForSelection` | Public | ✅ onboarding restore |
 | `getFootballTeam` | Member | ✅ |
-| `listTeamMatches` | Member | ✅ (no sync data yet) |
-| `getCompetitionStandings` | Member | ✅ (no sync data yet) |
-| `getCalendarAccessStatus` | Member | ✅ (UI not wired) |
+| `listTeamMatches` | Member | ✅ incl. opponent name/logo, match status |
+| `getCompetitionStandings` | Member | ✅ |
+| `getCalendarAccessStatus` | Member | ✅ wired to calendar UI |
 
 ---
 
@@ -197,92 +217,79 @@ All tables and indexes from the original plan are deployed:
 | `repairMissingCompetitionTeams` | ✅ | End of import chain + manual |
 | CLI scripts | ✅ | See command table below |
 | Pre-sync validation | ✅ | `pnpm test:football-pre-sync` |
-| Orphan upgrade / panel-without-tabs | ✅ | Parser + repair pipeline |
-
-### Commands
-
-| Command | When |
-|---------|------|
-| `pnpm import:football-clubs` | Incremental — skips clubs that look complete |
-| `pnpm import:football-clubs:full` | **Season rollover** — re-fetch every club |
-| `pnpm repair:football-teams` | Missing teams in allowlisted competitions |
-| `pnpm repair:football-team-names` | Duplicate men/women display names |
-| `pnpm test:football-pre-sync` | Validate allowlisted API ↔ DB |
 
 Full checklist: [Documentation/football-season-import.md](../Documentation/football-season-import.md).
 
-### Acceptance
-
-- ✅ ~2 600+ `footballTeams` rows (~1 600 clubs, multiple teams per club)
-- ✅ KSV Aartselaar + KSV Aartselaar B with correct paths and `vibTeamName`
-- ✅ Logos in `_storage`
-- ✅ Pre-sync passes for Antwerp 2a (389) and 4a (394)
-- ✅ ASV Geel / ASV Geel Dames disambiguation
-
 ---
 
-## Phase 5 — Competition sync ⬜ NOT STARTED
+## Phase 5 — Competition sync ✅
 
-**This is the next major backend phase.** Helpers and mutations exist; orchestration does not.
-
-### 5.1 To implement: `internalActions.syncCompetition`
+### 5.1 `syncCompetition` — `convex/football/syncActions.ts` + `runSyncCompetition.ts`
 
 ```
-1. If !isCompetitionPathAllowed(path) → return { skipped: "not_allowlisted" }
-2. Load competition row; if !shouldFetchCompetition(lastSyncedAt, now, { force }) → return { skipped: "ttl" }
+1. If !isCompetitionPathAllowed(path) → return { status: "skipped", reason: "not_allowlisted" }
+2. Load competition row; if !shouldFetchCompetition(lastSyncedAt, now, { force }) → return { status: "skipped", reason: "ttl" }
 3. json ← fetchCompetitionJson(path)
 4. dto ← parseCompetitionJson(json)
-5. assertAllCompetitionTeamsImported(ctx, dto)
+5. validateCompetitionTeamsImported(ctx, dto)
 6. upsertCompetition(dto.meta, path)
 7. replaceCompetitionStandings(competitionId, dto.leaguetable)
-8. for each match in [...dto.results, ...dto.program]: upsertMatch(…)
+8. mergeCompetitionMatches → upsertMatch for each
 9. patchCompetitionSyncStatus({ lastSyncedAt: now, lastSyncError: undefined })
 ```
 
 On failure: set `lastSyncError`, do **not** update `lastSyncedAt`.
 
-**Must not:** upsert teams, download logos, or fetch public HTML.
+**Does not:** upsert teams, download logos, or fetch public HTML.
 
-### 5.2 To implement: `syncLinkedCompetitions`
+### 5.2 `syncLinkedCompetitions`
 
 Distinct `competitionPath` values from orgs' linked teams → `syncCompetition({ force: false })`.
 
-### 5.3 To implement: `convex/crons.ts`
+### 5.3 `convex/crons.ts`
 
 15-minute interval → `syncLinkedCompetitions`. HTTP gated by `shouldFetchCompetition`.
 
-### 5.4 Acceptance (when built)
+### 5.4 Acceptance
 
-- [ ] Sync 2a updates standings + matches; `footballTeams` count unchanged
-- [ ] Second sync within TTL skips HTTP
-- [ ] `force: true` bypasses TTL
-- [ ] Missing team → `lastSyncError`
-- [ ] Non-allowlisted path → `skipped: "not_allowlisted"`
+- [x] Sync 2a updates standings + matches; `footballTeams` count unchanged
+- [x] Second sync within TTL skips HTTP
+- [x] `force: true` bypasses TTL
+- [x] Missing team → `lastSyncError`
+- [x] Non-allowlisted path → `skipped: "not_allowlisted"`
+- [x] Automated tests in `convex/footballSync.test.ts`
 
 ---
 
-## Phase 6 — Organisation linking 🟡 PARTIAL
+## Phase 6 — Organisation linking ✅
 
 | Item | Status |
 |------|--------|
 | `createOrganization({ footballTeamId })` only | ✅ |
 | Org `name` = `team.name` | ✅ |
 | Unique team ↔ org check | ✅ |
-| Schedule `syncCompetition({ force: true })` on create | ⬜ |
-| `updateOrganizationFootballTeam` (Settings) | ⬜ |
+| Schedule `syncCompetition({ force: true })` on create | ✅ |
+| `updateOrganizationFootballTeam` (Settings) | ✅ — any member; slug unchanged |
 | Invitation inherits org team (no onboarding) | ✅ |
 
 ---
 
-## Phase 7 — UI integration 🟡 PARTIAL
+## Phase 7 — UI integration ✅
 
 | Surface | Status | Notes |
 |---------|--------|-------|
-| **Landing hero search** | ✅ | `FootballTeamSearch` — logo + name dropdown; select → sign-in |
-| **Onboarding** | ✅ | Pre-fill from sessionStorage; confirm card; shared search component |
-| **Settings — linked team** | ⬜ | Display team + change team |
-| **Calendar page** | ⬜ | Stub at `/app`; queries exist but UI not wired |
+| **Landing hero search** | ✅ | `FootballTeamSearch` — white bar in dark mode; logo + name dropdown |
+| **Onboarding** | ✅ | Pre-fill from sessionStorage; confirm card |
+| **Settings — linked team** | ✅ | `LinkedTeamSettings` — display + change team |
+| **Calendar page** | ✅ | Month grid, green match bars, blue automation bars, match list, skeleton while sync pending |
 | Allowlist warnings on landing/onboarding | ✅ | Correctly omitted per decision |
+
+### Calendar UI behaviour
+
+- **Month grid** — navigate months; match days show green bars with opponent logo
+- **Automation bars** — blue bars when global automations enabled: announcement 2 days before match, result on match day
+- **Match list** — chronological list below calendar with status badges (e.g. Gespeeld / Gepland)
+- **Access states** — see Testing guide section F
 
 ---
 
@@ -304,20 +311,20 @@ Distinct `competitionPath` values from orgs' linked teams → `syncCompetition({
 | TTL schedule | `syncSchedule.test.ts` |
 | Upsert / standings / matches | `convex/footballInternalMutations.test.ts` |
 | Display name disambiguation | `disambiguateTeamNames.test.ts` |
+| Sync orchestration | `convex/footballSync.test.ts` |
+| Internal sync queries | `convex/footballInternalQueries.test.ts` |
+| Org team change effects | `convex/organizationsUpdateFootballTeam.test.ts` |
+| Calendar event building | `lib/calendar/calendar-events.test.ts` |
 | Allowlist pre-sync | `pnpm test:football-pre-sync` |
 
-### Automated (todo — after Phase 5)
+**Current count:** 94 tests, all passing (`pnpm test`).
+
+### Automated (todo)
 
 | Test | Purpose |
 |------|---------|
-| Sync does not mutate teams | Team count unchanged after sync |
-| TTL skip / force bypass | HTTP call gating |
-| Idempotent match upsert | Same `vibMatchKey` updates scores |
-| Allowlist skip | No HTTP for non-allowlisted path |
-
-### Manual QA
-
-See **Testing guide** section below and [football-season-import.md](../Documentation/football-season-import.md).
+| End-to-end render with real match data | After Phase 8 |
+| Structured logging / alerting in production | Ops follow-up |
 
 ---
 
@@ -327,7 +334,7 @@ See **Testing guide** section below and [football-season-import.md](../Documenta
 |-----|--------|
 | [football-season-import.md](../Documentation/football-season-import.md) | ✅ Season import runbook |
 | [voetbalinbelgie-api-research.md](../Documentation/voetbalinbelgie-api-research.md) | 🟡 Updated links; sync section describes planned behaviour |
-| [organisations.md](../Documentation/organisations.md) | ⬜ Update for mandatory `footballTeamId` |
+| [organisations.md](../Documentation/organisations.md) | ⬜ Update for mandatory `footballTeamId` + team change |
 | [automations-and-templates.md](../Documentation/automations-and-templates.md) | ⬜ Real match data / render bridge |
 | This plan | ✅ Kept current |
 
@@ -337,38 +344,34 @@ See **Testing guide** section below and [football-season-import.md](../Documenta
 
 | Step | Deliverable | Depends on |
 |------|-------------|------------|
-| **1** | `syncCompetition` + `syncLinkedCompetitions` | Phase 4 import complete |
-| **2** | `convex/crons.ts` (15 min tick) | Step 1 |
-| **3** | Wire forced sync on `createOrganization` + `updateOrganizationFootballTeam` | Step 1 |
-| **4** | Calendar page UI (`listTeamMatches`, `getCalendarAccessStatus`) | Step 1 |
-| **5** | Settings — display + change linked team | Step 3 |
-| **6** | Template render bridge (`MatchDto` from DB) | Step 1 |
-| **7** | Sync integration tests + structured logging | Step 1 |
-| **8** | Update org/automation docs | Steps 3–6 |
+| **1** | Template render bridge (`MatchDto` from DB) | Phase 5 ✅ |
+| **2** | Update org/automation docs | Step 1 |
+| **3** | Structured logging / prod observability for sync | Optional |
 
-**Rough estimate for remaining work:** ~6–8 dev days.
+**Rough estimate for remaining work:** ~2–3 dev days.
 
 ---
 
 ## Definition of done
 
-### Done today ✅
+### Done ✅
 
-- [x] Club import populates teams + logos (`pnpm import:football-clubs:full`)
+- [x] Club import populates teams + logos
 - [x] Pre-sync test passes for 2a + 4a
 - [x] `createOrganization({ footballTeamId })` required; org name = team name
-- [x] Landing search + onboarding team selection (no double entry)
-- [x] Duplicate display names disambiguated (e.g. ASV Geel Dames)
+- [x] Landing search + onboarding team selection
+- [x] Duplicate display names disambiguated
 - [x] Season import runbook documented
+- [x] Competition sync updates standings + matches only
+- [x] TTL respected; force sync on signup / settings team change
+- [x] Cron every 15 min with HTTP gating
+- [x] Calendar page shows matches or allowlist/sync status messages
+- [x] Settings allows changing linked team
 
 ### Still required for full integration ⬜
 
-- [ ] Competition sync updates standings + matches only
-- [ ] TTL respected; force sync on signup / settings team change
-- [ ] Cron every 15 min with HTTP gating
-- [ ] Calendar page shows matches or allowlist/sync status messages
-- [ ] Settings allows changing linked team
-- [ ] Template automations render with real match data
+- [ ] Template automations render with real match data (Phase 8)
+- [ ] Org/automation documentation updated (Phase 10)
 
 ---
 
@@ -377,11 +380,12 @@ See **Testing guide** section below and [football-season-import.md](../Documenta
 | Risk | Mitigation |
 |------|------------|
 | Team name mismatch import ↔ API | ✅ Pre-sync validation; repair scripts |
-| HTML layout changes | JSON-LD + fixture tests; parser fixes (e.g. panel-without-tabs) |
-| API blocking from over-fetch | TTL helper ready; apply when sync ships |
+| HTML layout changes | JSON-LD + fixture tests; parser fixes |
+| API blocking from over-fetch | ✅ TTL helper + cron gating |
 | Duplicate men/women names in search | ✅ `disambiguateTeamNames` + repair mutation |
-| Stale teams after season rollover | Full import + document stale-row review; dev reset via `db:clear-dev` (preserves clubs) |
-| User picks non-allowlisted team | Org created; calendar page will explain; sync skipped |
+| Stale teams after season rollover | Full import + document stale-row review |
+| User picks non-allowlisted team | Org created; calendar shows friendly message; sync skipped |
+| **Existing orgs before sync deploy** | Manual one-time sync (see Testing guide G) |
 
 ---
 
@@ -398,7 +402,7 @@ See **Testing guide** section below and [football-season-import.md](../Documenta
 
 ## Testing guide
 
-Use this to verify everything that **is implemented today** on local dev.
+Use this to verify the full integration on local dev.
 
 ### A. Prerequisites
 
@@ -409,6 +413,8 @@ Use this to verify everything that **is implemented today** on local dev.
    cp .env.example .env.local   # if first time
    pnpm dev
    ```
+
+   Keep both processes running. Convex must deploy functions successfully — if `npx convex dev` shows TypeScript errors, sync will not work.
 
 2. **Convex env vars** (once per deployment):
 
@@ -421,7 +427,7 @@ Use this to verify everything that **is implemented today** on local dev.
 3. **Import football data** (skip if already imported and stable):
 
    ```bash
-   pnpm test                                    # unit tests
+   pnpm test                                    # 94 tests, all should pass
    pnpm import:football-clubs:full              # or incremental if recently run
    npx convex run football/internalQueries:countFootballTeams '{}'
    pnpm test:football-pre-sync                  # must pass
@@ -451,7 +457,7 @@ tsx scripts/diagnose-football-import.ts
 
 **Expected:** `ASV Geel` search returns two rows — `ASV Geel` and `ASV Geel Dames`, each with `logoUrl`.
 
-### C. UI walkthrough (http://localhost:3000)
+### C. UI walkthrough — landing & onboarding (http://localhost:3000)
 
 Use a **fresh email** (or `pnpm db:clear-dev` first — preserves club import) for the full signup path. Resend test mode accepts addresses like `delivered@resend.dev`.
 
@@ -459,17 +465,17 @@ Use a **fresh email** (or `pnpm db:clear-dev` first — preserves club import) f
 
 | Step | Action | Expected |
 |------|--------|----------|
-| 1 | Open `/` | Hero loads with club search |
+| 1 | Open `/` in dark mode | Hero loads; search bar has **white/cream background** with dark text (matches hero headline contrast) |
 | 2 | Type `Aart` (≥2 chars) | Dropdown opens; max ~5 visible rows, scroll for more |
-| 3 | Inspect dropdown rows | Club **logo + name only** (no competition path); normal font weight |
+| 3 | Inspect dropdown rows | Club **logo + name only**; normal font weight |
 | 4 | Search `ASV Geel` | Two distinct options: **ASV Geel** and **ASV Geel Dames** |
-| 5 | Click a club | Redirects to `/sign-in` (no separate “Try it out” button) |
+| 5 | Click a club | Redirects to `/sign-in` |
 
 #### 2. Sign-in without hero search
 
 | Step | Action | Expected |
 |------|--------|----------|
-| 1 | Open `/sign-in` directly (skip hero) | OTP flow works |
+| 1 | Open `/sign-in` directly | OTP flow works |
 | 2 | Complete OTP | Redirect to `/onboarding` with **search** (no pre-selected club) |
 
 #### 3. Sign-in after hero search
@@ -477,9 +483,9 @@ Use a **fresh email** (or `pnpm db:clear-dev` first — preserves club import) f
 | Step | Action | Expected |
 |------|--------|----------|
 | 1 | Select club on `/` → sign in | After OTP → `/onboarding` |
-| 2 | Onboarding screen | **Confirmation card** with logo + club name (not search again) |
+| 2 | Onboarding screen | **Confirmation card** with logo + club name |
 | 3 | Click “Choose a different club” | Same search component as landing |
-| 4 | Click Continue | Org created → redirect to `/app` |
+| 4 | Click Continue with **KSV Aartselaar** (2a allowlisted) | Org created → redirect to `/app`; forced sync scheduled |
 
 #### 4. Onboarding validation
 
@@ -495,33 +501,106 @@ Use a **fresh email** (or `pnpm db:clear-dev` first — preserves club import) f
 | 1 | Existing member invites new email | Invitation email (test address) |
 | 2 | Invitee signs in via link | Lands on `/app` — **skips onboarding** |
 
-#### 6. App areas (post-integration gaps)
+### D. Calendar page (`/app`)
+
+Sign in as an org linked to an **allowlisted** team (e.g. KSV Aartselaar in Antwerp 2a).
+
+#### Initial load — sync pending
+
+| Step | Action | Expected |
+|------|--------|----------|
+| 1 | Open `/app` immediately after creating org | **Skeleton** (pulsing calendar placeholder) while sync runs |
+| 2 | Wait 5–30 seconds | Calendar loads with month grid |
+
+If skeleton persists for more than ~1 minute, check Convex logs (section G).
+
+#### After sync completes
+
+| Step | Action | Expected |
+|------|--------|----------|
+| 1 | View current month | Days with matches show **green bars** with opponent logo |
+| 2 | Navigate to a month with fixtures (e.g. April 2026) | Multiple match bars visible |
+| 3 | Scroll to match list below calendar | Chronological list with opponent names, scores (if played), status badges |
+| 4 | Enable global automations in `/app/automations` | Return to calendar — **blue bars** appear: announcement 2 days before match, result on match day |
+| 5 | Disable automations | Blue bars disappear; green match bars remain |
+
+#### Non-allowlisted team
+
+Create an org with a team **outside** the allowlist (any team not in 2a or 4a):
+
+| Step | Action | Expected |
+|------|--------|----------|
+| 1 | Open `/app` | Friendly alert: calendar/API access not available yet for this competition |
+| 2 | No skeleton loop | Message shows immediately (no sync attempted) |
+
+### E. Settings — linked team (`/app/settings`)
+
+| Step | Action | Expected |
+|------|--------|----------|
+| 1 | Open Settings | **Linked team** card shows current team logo + name + competition info |
+| 2 | Click “Team wijzigen” / change team | Search input appears |
+| 3 | Search and select a different team | Save + Cancel buttons appear |
+| 4 | Click Cancel | Returns to display mode; team unchanged |
+| 5 | Select new team → Save | Success toast; org **name** updates to new team; **slug unchanged** |
+| 6 | Return to `/app` | Calendar reflects new team's matches (after sync completes) |
+| 7 | Try selecting a team already linked to another org | Error toast |
+
+### F. Calendar access states (reference)
+
+| `messageKey` | UI | When |
+|--------------|-----|------|
+| `calendar_available` | Full calendar + match list | Sync succeeded |
+| `calendar_sync_pending` | Skeleton (if no cached matches) | First sync in progress |
+| `calendar_sync_error` | Error alert; stale data shown if any | Missing teams or API failure |
+| `calendar_not_allowlisted` | Friendly “not available yet” alert | Team competition outside allowlist |
+| `calendar_no_competition` | Alert | Team has no `competitionPath` |
+
+### G. Manual sync & troubleshooting
+
+**Existing orgs** created before sync was deployed have no matches until synced once:
+
+```bash
+npx convex run football/syncActions:syncCompetition \
+  '{"path":"/competities/2025-2026/antwerpen/mannen/2a/","force":true}'
+```
+
+**Expected output:** `{ "status": "synced", "path": "...", "matchCount": ~240 }` (exact count varies).
+
+Verify in Convex dashboard:
+
+1. **`competitions`** — row for 2a path with recent `lastSyncedAt`, no `lastSyncError`
+2. **`matches`** — hundreds of rows for that competition
+3. **`competitionStandings`** — ~16–20 rows per competition
+4. **`footballTeams`** — count **unchanged** after sync
+
+**Cron:** runs every 15 minutes. Second sync within TTL should skip HTTP (`status: "skipped", reason: "ttl"`). Check Convex **Logs** for `football_linked_competitions_sync` JSON events.
+
+**Common issues:**
+
+| Symptom | Likely cause | Fix |
+|---------|--------------|-----|
+| Calendar stuck on skeleton | Sync not deployed or failed | `npx convex dev --once`; run manual sync; check logs |
+| `lastSyncError` about missing team | Import incomplete for that competition | `pnpm repair:football-teams` then re-sync |
+| Empty calendar after sync | Wrong team / no matches in selected month | Navigate to months with fixtures |
+| 401 from API | Missing/invalid `VOETBALINBELGIE_API_KEY` | Set env var on deployment |
+
+### H. Convex dashboard checks
+
+After import + sync:
+
+1. **`footballTeams`** — ~2 600+ documents; sample has `name`, `vibTeamName`, `competitionPath`, `logoStorageId`
+2. **`organizations`** — `footballTeamId` set on all orgs
+3. **`competitions`** — one row per synced allowlisted path
+4. **`matches`** — populated for synced competitions
+
+### I. Automations (Phase 8 gap)
 
 | Area | Route | Expected **today** |
 |------|-------|-------------------|
-| Calendar | `/app` | Placeholder header only — **no matches yet** (sync not built) |
-| Settings | `/app/settings` | No linked-team display / change UI yet |
-| Automations | `/app/automations` | Works with templates; render tests still use mock match data |
+| Automations list | `/app/automations` | Works; toggles affect calendar blue bars |
+| Template preview / render | automations UI | Still uses **mock match data** until Phase 8 |
 
-Do **not** treat missing calendar data as a regression until Phase 5 ships.
-
-### D. Convex dashboard checks
-
-After import, in [Convex dashboard](https://dashboard.convex.dev):
-
-1. **`footballTeams`** — ~2 600+ documents; sample has `name`, `vibTeamName`, `competitionPath`, `logoStorageId`.
-2. **`organizations`** — new signups have `footballTeamId` set.
-3. **`competitions` / `matches`** — empty or stale until Phase 5 sync runs.
-
-### E. When Phase 5 lands — extend testing
-
-Add to this checklist:
-
-- Create org with KSV Aartselaar (2a) → forced sync → `matches` populated
-- Calendar page shows fixtures / results
-- Non-allowlisted team → calendar shows “not available yet” message
-- Change team in Settings → re-sync
-- Wait for TTL window → cron sync without force
+Do **not** expect real match scores/names in rendered template previews yet.
 
 ---
 
@@ -541,6 +620,10 @@ pnpm import:football-clubs
 pnpm import:football-clubs:full
 pnpm repair:football-teams
 pnpm repair:football-team-names
+
+# Manual sync (allowlisted path)
+npx convex run football/syncActions:syncCompetition \
+  '{"path":"/competities/2025-2026/antwerpen/mannen/2a/","force":true}'
 
 # Inspect
 npx convex run football/internalQueries:countFootballTeams '{}'

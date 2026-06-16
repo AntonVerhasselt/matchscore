@@ -256,7 +256,27 @@
     },
     "calendar": {
       "title": "Calendar",
-      "description": "Your calendar will appear here."
+      "description": "Your matches and scheduled automation posts.",
+      "previousMonth": "Previous month",
+      "nextMonth": "Next month",
+      "today": "Today",
+      "nextGame": "Next game",
+      "moreEvents": "+{count} more",
+      "noMatches": "No matches in your calendar yet.",
+      "matchListTitle": "Upcoming matches",
+      "homeVs": "vs {opponent}",
+      "awayAt": "@ {opponent}",
+      "statusUpcoming": "Upcoming",
+      "statusPlayed": "Played",
+      "automationAnnouncement": "Preview post",
+      "automationResult": "Score post",
+      "automationHint": "Blue bars on the calendar show when automations are scheduled to post.",
+      "access": {
+        "notAllowlisted": "We don't have API access to your competition calendar yet. You can still use Matchscore — we're working on expanding coverage.",
+        "noCompetition": "We couldn't find an active competition for your linked team.",
+        "syncError": "We couldn't refresh your calendar: {error}",
+        "unknownError": "Unknown error"
+      }
     },
     "socials": {
       "title": "Connected socials",
@@ -538,6 +558,18 @@
     "languageDescription": "Choose the language for the interface.",
     "localeChangeSuccess": "Language updated.",
     "localeChangeFailed": "Couldn't change language. Please try again.",
+    "linkedTeam": {
+      "title": "Linked club team",
+      "description": "This team drives your calendar, standings, and automated posts.",
+      "loading": "Loading linked team...",
+      "changeTeam": "Change team",
+      "save": "Save team",
+      "saving": "Saving...",
+      "cancel": "Cancel",
+      "changeSuccess": "Linked team updated.",
+      "changeFailed": "Couldn't update linked team. Please try again.",
+      "unavailable": "Linked team details are unavailable."
+    },
     "members": {
       "title": "Club members",
       "description": "Invite colleagues and manage who has access to your club.",

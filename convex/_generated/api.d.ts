@@ -24,6 +24,7 @@ import type * as automations_render_register_scene_fonts from "../automations/re
 import type * as automations_render_render_template_to_png from "../automations/render/render_template_to_png.js";
 import type * as automations_scenes from "../automations/scenes.js";
 import type * as automations_validators from "../automations/validators.js";
+import type * as crons from "../crons.js";
 import type * as dev_clearDatabase from "../dev/clearDatabase.js";
 import type * as dev_seedFootballTeam from "../dev/seedFootballTeam.js";
 import type * as emails_actions from "../emails/actions.js";
@@ -35,6 +36,8 @@ import type * as football_internalMutations from "../football/internalMutations.
 import type * as football_internalQueries from "../football/internalQueries.js";
 import type * as football_logoImport from "../football/logoImport.js";
 import type * as football_queries from "../football/queries.js";
+import type * as football_runSyncCompetition from "../football/runSyncCompetition.js";
+import type * as football_syncActions from "../football/syncActions.js";
 import type * as football_validators from "../football/validators.js";
 import type * as http from "../http.js";
 import type * as lib_email from "../lib/email.js";
@@ -85,6 +88,7 @@ declare const fullApi: ApiFromModules<{
   "automations/render/render_template_to_png": typeof automations_render_render_template_to_png;
   "automations/scenes": typeof automations_scenes;
   "automations/validators": typeof automations_validators;
+  crons: typeof crons;
   "dev/clearDatabase": typeof dev_clearDatabase;
   "dev/seedFootballTeam": typeof dev_seedFootballTeam;
   "emails/actions": typeof emails_actions;
@@ -96,6 +100,8 @@ declare const fullApi: ApiFromModules<{
   "football/internalQueries": typeof football_internalQueries;
   "football/logoImport": typeof football_logoImport;
   "football/queries": typeof football_queries;
+  "football/runSyncCompetition": typeof football_runSyncCompetition;
+  "football/syncActions": typeof football_syncActions;
   "football/validators": typeof football_validators;
   http: typeof http;
   "lib/email": typeof lib_email;

@@ -256,7 +256,27 @@
     },
     "calendar": {
       "title": "Kalender",
-      "description": "Dein Kalender erscheint hier."
+      "description": "Deine Spiele und geplanten automatischen Posts.",
+      "previousMonth": "Vorheriger Monat",
+      "nextMonth": "Nächster Monat",
+      "today": "Heute",
+      "nextGame": "Nächstes Spiel",
+      "moreEvents": "+{count} weitere",
+      "noMatches": "Noch keine Spiele in deinem Kalender.",
+      "matchListTitle": "Anstehende Spiele",
+      "homeVs": "vs {opponent}",
+      "awayAt": "@ {opponent}",
+      "statusUpcoming": "Bevorstehend",
+      "statusPlayed": "Gespielt",
+      "automationAnnouncement": "Preview-Post",
+      "automationResult": "Ergebnis-Post",
+      "automationHint": "Blaue Balken im Kalender zeigen, wann Automatisierungen posten.",
+      "access": {
+        "notAllowlisted": "Wir haben noch keinen API-Zugang zum Kalender deiner Liga. Du kannst Matchscore trotzdem nutzen — wir erweitern die Abdeckung.",
+        "noCompetition": "Für dein verknüpftes Team wurde keine aktive Liga gefunden.",
+        "syncError": "Kalender konnte nicht aktualisiert werden: {error}",
+        "unknownError": "Unbekannter Fehler"
+      }
     },
     "socials": {
       "title": "Verbundene Socials",
@@ -538,6 +558,18 @@
     "languageDescription": "Wähle die Sprache für die Oberfläche.",
     "localeChangeSuccess": "Sprache aktualisiert.",
     "localeChangeFailed": "Sprache konnte nicht geändert werden. Bitte versuche es erneut.",
+    "linkedTeam": {
+      "title": "Verknüpftes Team",
+      "description": "Dieses Team steuert Kalender, Tabelle und automatische Posts.",
+      "loading": "Verknüpftes Team wird geladen...",
+      "changeTeam": "Team ändern",
+      "save": "Team speichern",
+      "saving": "Speichern...",
+      "cancel": "Abbrechen",
+      "changeSuccess": "Verknüpftes Team aktualisiert.",
+      "changeFailed": "Verknüpftes Team konnte nicht aktualisiert werden. Bitte versuche es erneut.",
+      "unavailable": "Details zum verknüpften Team sind nicht verfügbar."
+    },
     "members": {
       "title": "Clubmitglieder",
       "description": "Lade Kolleginnen und Kollegen ein und verwalte den Zugang zu deinem Club.",

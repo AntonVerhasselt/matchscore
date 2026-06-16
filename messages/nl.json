@@ -256,7 +256,27 @@
     },
     "calendar": {
       "title": "Kalender",
-      "description": "Je kalender verschijnt hier."
+      "description": "Je wedstrijden en geplande automatische posts.",
+      "previousMonth": "Vorige maand",
+      "nextMonth": "Volgende maand",
+      "today": "Vandaag",
+      "nextGame": "Volgende wedstrijd",
+      "moreEvents": "+{count} meer",
+      "noMatches": "Nog geen wedstrijden in je kalender.",
+      "matchListTitle": "Komende wedstrijden",
+      "homeVs": "tegen {opponent}",
+      "awayAt": "@ {opponent}",
+      "statusUpcoming": "Gepland",
+      "statusPlayed": "Gespeeld",
+      "automationAnnouncement": "Previewpost",
+      "automationResult": "Uitslagpost",
+      "automationHint": "Blauwe balken op de kalender tonen wanneer automatiseringen posten.",
+      "access": {
+        "notAllowlisted": "We hebben nog geen API-toegang tot de kalender van je competitie. Je kan Matchscore wel gebruiken — we werken aan uitbreiding.",
+        "noCompetition": "We vonden geen actieve competitie voor je gekoppelde team.",
+        "syncError": "We konden je kalender niet verversen: {error}",
+        "unknownError": "Onbekende fout"
+      }
     },
     "socials": {
       "title": "Gekoppelde socials",
@@ -538,6 +558,18 @@
     "languageDescription": "Kies de taal voor de interface.",
     "localeChangeSuccess": "Taal bijgewerkt.",
     "localeChangeFailed": "Taal wijzigen mislukt. Probeer het opnieuw.",
+    "linkedTeam": {
+      "title": "Gekoppeld team",
+      "description": "Dit team bepaalt je kalender, stand en automatische posts.",
+      "loading": "Gekoppeld team laden...",
+      "changeTeam": "Team wijzigen",
+      "save": "Team opslaan",
+      "saving": "Opslaan...",
+      "cancel": "Annuleren",
+      "changeSuccess": "Gekoppeld team bijgewerkt.",
+      "changeFailed": "Gekoppeld team wijzigen mislukt. Probeer het opnieuw.",
+      "unavailable": "Details van het gekoppelde team zijn niet beschikbaar."
+    },
     "members": {
       "title": "Clubleden",
       "description": "Nodig collega's uit en beheer wie toegang heeft tot je club.",

@@ -304,10 +304,10 @@ export function FootballTeamSearch({
         ) : null}
         <div
           className={cn(
-            "flex items-center gap-3 border bg-background",
+            "flex items-center gap-3 border",
             isHero
-              ? "h-12 border-primary-foreground/20 px-4 shadow-lg sm:h-14"
-              : "rounded-md px-3 py-2.5",
+              ? "h-12 border-sidebar-foreground/25 bg-sidebar-foreground px-4 text-sidebar shadow-lg sm:h-14"
+              : "rounded-md bg-background px-3 py-2.5",
           )}
         >
           <FootballTeamAvatar
@@ -320,7 +320,9 @@ export function FootballTeamSearch({
             <p
               className={cn(
                 "truncate font-heading uppercase tracking-tight",
-                isHero ? "text-base font-bold sm:text-lg" : "text-sm font-bold",
+                isHero
+                  ? "text-base font-bold text-sidebar sm:text-lg"
+                  : "text-sm font-bold",
               )}
             >
               {selectedTeam.name}
@@ -335,7 +337,7 @@ export function FootballTeamSearch({
             aria-label={t("clearSelection")}
             className={cn(
               "shrink-0",
-              isHero && "text-muted-foreground hover:text-foreground",
+              isHero && "text-sidebar/60 hover:text-sidebar",
             )}
           >
             <X className="size-4" aria-hidden />
@@ -356,7 +358,8 @@ export function FootballTeamSearch({
       <div className="relative">
         <Search
           className={cn(
-            "pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted-foreground",
+            "pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2",
+            isHero ? "text-sidebar/55" : "text-muted-foreground",
           )}
           aria-hidden
         />
@@ -392,7 +395,7 @@ export function FootballTeamSearch({
           className={cn(
             "w-full pl-11 text-base",
             isHero &&
-              "h-12 border-primary-foreground/20 bg-background font-bold shadow-lg sm:h-14",
+              "h-12 border-sidebar-foreground/25 bg-sidebar-foreground font-bold text-sidebar shadow-lg placeholder:text-sidebar/55 focus-visible:border-sidebar-primary focus-visible:ring-sidebar-primary/30 dark:bg-sidebar-foreground sm:h-14",
           )}
         />
       </div>

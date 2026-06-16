@@ -256,7 +256,27 @@
     },
     "calendar": {
       "title": "Calendrier",
-      "description": "Votre calendrier apparaîtra ici."
+      "description": "Vos matchs et publications automatiques planifiées.",
+      "previousMonth": "Mois précédent",
+      "nextMonth": "Mois suivant",
+      "today": "Aujourd'hui",
+      "nextGame": "Prochain match",
+      "moreEvents": "+{count} de plus",
+      "noMatches": "Aucun match dans votre calendrier pour l'instant.",
+      "matchListTitle": "Matchs à venir",
+      "homeVs": "vs {opponent}",
+      "awayAt": "@ {opponent}",
+      "statusUpcoming": "À venir",
+      "statusPlayed": "Joué",
+      "automationAnnouncement": "Post preview",
+      "automationResult": "Post score",
+      "automationHint": "Les barres bleues indiquent quand les automatisations publieront.",
+      "access": {
+        "notAllowlisted": "Nous n'avons pas encore accès au calendrier de votre compétition via l'API. Vous pouvez utiliser Matchscore — nous travaillons à élargir la couverture.",
+        "noCompetition": "Nous n'avons pas trouvé de compétition active pour votre équipe liée.",
+        "syncError": "Impossible d'actualiser votre calendrier : {error}",
+        "unknownError": "Erreur inconnue"
+      }
     },
     "socials": {
       "title": "Réseaux connectés",
@@ -538,6 +558,18 @@
     "languageDescription": "Choisissez la langue de l'interface.",
     "localeChangeSuccess": "Langue mise à jour.",
     "localeChangeFailed": "Impossible de changer la langue. Veuillez réessayer.",
+    "linkedTeam": {
+      "title": "Équipe liée",
+      "description": "Cette équipe alimente votre calendrier, le classement et les publications automatiques.",
+      "loading": "Chargement de l'équipe liée...",
+      "changeTeam": "Changer d'équipe",
+      "save": "Enregistrer l'équipe",
+      "saving": "Enregistrement...",
+      "cancel": "Annuler",
+      "changeSuccess": "Équipe liée mise à jour.",
+      "changeFailed": "Impossible de mettre à jour l'équipe liée. Veuillez réessayer.",
+      "unavailable": "Les détails de l'équipe liée ne sont pas disponibles."
+    },
     "members": {
       "title": "Membres du club",
       "description": "Invitez des collègues et gérez qui a accès à votre club.",

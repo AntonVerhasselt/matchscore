@@ -3,6 +3,7 @@ import { ConvexError, v } from "convex/values";
 import { internal } from "../_generated/api";
 import { mutation } from "../_generated/server";
 import { authComponent } from "../auth/instance";
+import { isCompetitionPathAllowed } from "../lib/voetbalinbelgie/allowlist";
 import { normalizeEmail } from "../lib/email";
 import { ensureOrganizationAutomations } from "../automations/helpers";
 import { getUserDisplayName } from "../../lib/user-display";
@@ -133,7 +134,71 @@ export const createOrganization = mutation({
 
     await ensureOrganizationAutomations(ctx, organizationId, user._id);
 
+    if (team.competitionPath && isCompetitionPathAllowed(team.competitionPath)) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.football.syncActions.syncCompetition,
+        {
+          path: team.competitionPath,
+          force: true,
+        },
+      );
+    }
+
     return organizationId;
+  },
+});
+
+export const updateOrganizationFootballTeam = mutation({
+  args: {
+    footballTeamId: v.id("footballTeams"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await authComponent.getAuthUser(ctx);
+    const membership = await requireMembership(ctx, user._id);
+
+    const organization = await ctx.db.get(membership.organizationId);
+    if (!organization) {
+      throw new ConvexError("Organisation not found");
+    }
+
+    if (organization.footballTeamId === args.footballTeamId) {
+      return null;
+    }
+
+    const team = await ctx.db.get(args.footballTeamId);
+    if (!team) {
+      throw new ConvexError("Team not found");
+    }
+
+    const existingOrgForTeam = await ctx.db
+      .query("organizations")
+      .withIndex("by_footballTeamId", (q) =>
+        q.eq("footballTeamId", args.footballTeamId),
+      )
+      .unique();
+    if (existingOrgForTeam && existingOrgForTeam._id !== organization._id) {
+      throw new ConvexError("This team is already linked to an organisation");
+    }
+
+    await ctx.db.patch(organization._id, {
+      footballTeamId: args.footballTeamId,
+      name: team.name,
+    });
+
+    if (team.competitionPath && isCompetitionPathAllowed(team.competitionPath)) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.football.syncActions.syncCompetition,
+        {
+          path: team.competitionPath,
+          force: true,
+        },
+      );
+    }
+
+    return null;
   },
 });
 

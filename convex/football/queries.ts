@@ -140,32 +140,53 @@ export const listTeamMatches = query({
       )
       .collect();
 
-    const teamCache = new Map<string, string>();
-    const getTeamName = async (id: typeof teamId) => {
+    const teamCache = new Map<
+      string,
+      { name: string; logoUrl: string | null }
+    >();
+    const getTeamInfo = async (id: typeof teamId) => {
       const key = id as string;
       if (teamCache.has(key)) {
         return teamCache.get(key)!;
       }
       const team = await ctx.db.get(id);
-      const name = team?.name ?? "Unknown team";
-      teamCache.set(key, name);
-      return name;
+      const info = {
+        name: team?.name ?? "Unknown team",
+        logoUrl: team?.logoStorageId
+          ? ((await ctx.storage.getUrl(team.logoStorageId)) ?? null)
+          : null,
+      };
+      teamCache.set(key, info);
+      return info;
     };
 
     const summaries = await Promise.all(
-      [...homeMatches, ...awayMatches].map(async (match) => ({
-        _id: match._id,
-        kickoffAt: match.kickoffAt,
-        status: match.status,
-        homeTeamId: match.homeTeamId,
-        awayTeamId: match.awayTeamId,
-        homeTeamName: await getTeamName(match.homeTeamId),
-        awayTeamName: await getTeamName(match.awayTeamId),
-        homeGoals: match.homeGoals,
-        awayGoals: match.awayGoals,
-        resultText: match.resultText,
-        isHome: match.homeTeamId === teamId,
-      })),
+      [...homeMatches, ...awayMatches].map(async (match) => {
+        const homeTeam = await getTeamInfo(match.homeTeamId);
+        const awayTeam = await getTeamInfo(match.awayTeamId);
+        const isHome = match.homeTeamId === teamId;
+        const opponent = isHome ? awayTeam : homeTeam;
+        const played =
+          typeof match.homeGoals === "number" &&
+          typeof match.awayGoals === "number";
+
+        return {
+          _id: match._id,
+          kickoffAt: match.kickoffAt,
+          status: match.status,
+          homeTeamId: match.homeTeamId,
+          awayTeamId: match.awayTeamId,
+          homeTeamName: homeTeam.name,
+          awayTeamName: awayTeam.name,
+          opponentName: opponent.name,
+          opponentLogoUrl: opponent.logoUrl,
+          homeGoals: match.homeGoals,
+          awayGoals: match.awayGoals,
+          resultText: match.resultText,
+          isHome,
+          matchStatus: played ? ("played" as const) : ("upcoming" as const),
+        };
+      }),
     );
 
     summaries.sort((a, b) => a.kickoffAt - b.kickoffAt);

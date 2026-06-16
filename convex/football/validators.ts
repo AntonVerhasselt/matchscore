@@ -120,10 +120,13 @@ export const teamMatchSummaryValidator = v.object({
   awayTeamId: v.id("footballTeams"),
   homeTeamName: v.string(),
   awayTeamName: v.string(),
+  opponentName: v.string(),
+  opponentLogoUrl: v.union(v.string(), v.null()),
   homeGoals: v.optional(v.number()),
   awayGoals: v.optional(v.number()),
   resultText: v.optional(v.string()),
   isHome: v.boolean(),
+  matchStatus: v.union(v.literal("upcoming"), v.literal("played")),
 });
 
 export const calendarAccessStatusValidator = v.object({
