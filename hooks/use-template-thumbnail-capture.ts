@@ -72,7 +72,9 @@ export function useTemplateThumbnailCapture({
           return;
         }
 
-        restoreCaptureState = await prepareStageForCapture?.();
+        const maybeRestore = await prepareStageForCapture?.();
+        restoreCaptureState =
+          typeof maybeRestore === "function" ? maybeRestore : undefined;
 
         // Let React commit preview/selection changes before cloning the stage.
         await new Promise<void>((resolve) => {
