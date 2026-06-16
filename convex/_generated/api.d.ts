@@ -25,7 +25,10 @@ import type * as automations_render_render_template_to_png from "../automations/
 import type * as automations_scenes from "../automations/scenes.js";
 import type * as automations_validators from "../automations/validators.js";
 import type * as dev_clearDatabase from "../dev/clearDatabase.js";
+import type * as dev_seedFootballTeam from "../dev/seedFootballTeam.js";
 import type * as emails_actions from "../emails/actions.js";
+import type * as football_queries from "../football/queries.js";
+import type * as football_validators from "../football/validators.js";
 import type * as http from "../http.js";
 import type * as lib_email from "../lib/email.js";
 import type * as lib_slugify from "../lib/slugify.js";
@@ -65,7 +68,10 @@ declare const fullApi: ApiFromModules<{
   "automations/scenes": typeof automations_scenes;
   "automations/validators": typeof automations_validators;
   "dev/clearDatabase": typeof dev_clearDatabase;
+  "dev/seedFootballTeam": typeof dev_seedFootballTeam;
   "emails/actions": typeof emails_actions;
+  "football/queries": typeof football_queries;
+  "football/validators": typeof football_validators;
   http: typeof http;
   "lib/email": typeof lib_email;
   "lib/slugify": typeof lib_slugify;

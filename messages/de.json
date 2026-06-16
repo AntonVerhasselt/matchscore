@@ -591,9 +591,12 @@
   },
   "onboarding": {
     "title": "Richte deinen Club ein",
-    "description": "Wähle einen Namen für deinen Club, um zu starten.",
-    "clubName": "Clubname",
-    "clubNamePlaceholder": "z. B. FC Beispiel",
+    "description": "Suche dein Team, um zu starten.",
+    "teamSearch": "Team",
+    "teamSearchPlaceholder": "z. B. Aartselaar",
+    "selectedTeam": "Ausgewählt: {name}",
+    "noTeamsFound": "Keine Teams gefunden.",
+    "teamRequired": "Wähle ein Team, um fortzufahren.",
     "submit": "Weiter",
     "pleaseWait": "Bitte warten...",
     "createFailed": "Dein Club konnte nicht erstellt werden. Bitte versuche es erneut."

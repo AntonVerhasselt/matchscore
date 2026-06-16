@@ -89,15 +89,25 @@ async function findMemberByEmail(ctx: MutationCtx, email: string) {
 
 export const createOrganization = mutation({
   args: {
-    name: v.string(),
+    footballTeamId: v.id("footballTeams"),
   },
   returns: v.id("organizations"),
   handler: async (ctx, args) => {
     const user = await authComponent.getAuthUser(ctx);
-    const trimmedName = args.name.trim();
 
-    if (!trimmedName) {
-      throw new ConvexError("Organisation name is required");
+    const team = await ctx.db.get(args.footballTeamId);
+    if (!team) {
+      throw new ConvexError("Team not found");
+    }
+
+    const existingOrgForTeam = await ctx.db
+      .query("organizations")
+      .withIndex("by_footballTeamId", (q) =>
+        q.eq("footballTeamId", args.footballTeamId),
+      )
+      .unique();
+    if (existingOrgForTeam) {
+      throw new ConvexError("This team is already linked to an organisation");
     }
 
     const existingMembership = await getMembershipForUser(ctx, user._id);
@@ -105,10 +115,11 @@ export const createOrganization = mutation({
       throw new ConvexError("You already belong to an organisation");
     }
 
-    const slug = await generateUniqueSlug(ctx, trimmedName);
+    const slug = await generateUniqueSlug(ctx, team.name);
     const organizationId = await ctx.db.insert("organizations", {
-      name: trimmedName,
+      name: team.name,
       slug,
+      footballTeamId: args.footballTeamId,
       createdByUserId: user._id,
       createdAt: Date.now(),
     });

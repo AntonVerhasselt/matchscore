@@ -5,6 +5,10 @@ import {
   canvasPresetValidator,
   postingChannelStatusesValidator,
 } from "./automations/validators";
+import {
+  footballImportSourceValidator,
+  footballTeamAddressValidator,
+} from "./football/validators";
 import { localeValidator } from "./locales";
 
 export default defineSchema({
@@ -18,13 +22,92 @@ export default defineSchema({
     locale: localeValidator,
   }).index("by_email", ["email"]),
 
+  footballTeams: defineTable({
+    name: v.string(),
+    vibTeamName: v.string(),
+    stamnummer: v.optional(v.string()),
+    slugPath: v.optional(v.string()),
+    slug: v.optional(v.string()),
+    parentStamnummer: v.optional(v.string()),
+    sourceCompetitionId: v.optional(v.number()),
+    competitionPath: v.optional(v.string()),
+    tabLabel: v.optional(v.string()),
+    website: v.optional(v.string()),
+    telephone: v.optional(v.string()),
+    address: v.optional(footballTeamAddressValidator),
+    province: v.optional(v.string()),
+    logoStorageId: v.optional(v.id("_storage")),
+    logoSourceUrl: v.optional(v.string()),
+    vibLogoFile: v.optional(v.string()),
+    importSource: footballImportSourceValidator,
+    importedAt: v.number(),
+  })
+    .index("by_competition_and_vibTeamName", [
+      "sourceCompetitionId",
+      "vibTeamName",
+    ])
+    // Antwerp FC: same team name in two competitions — key by competition id, not name.
+    .index("by_stamnummer_and_sourceCompetitionId", [
+      "stamnummer",
+      "sourceCompetitionId",
+    ])
+    .index("by_name", ["name"]),
+
+  competitions: defineTable({
+    sourceCompetitionId: v.number(),
+    path: v.string(),
+    title: v.string(),
+    district: v.string(),
+    season: v.string(),
+    lastSyncedAt: v.optional(v.number()),
+    lastSyncError: v.optional(v.string()),
+  })
+    .index("by_path", ["path"])
+    .index("by_sourceCompetitionId", ["sourceCompetitionId"]),
+
+  competitionStandings: defineTable({
+    competitionId: v.id("competitions"),
+    teamId: v.id("footballTeams"),
+    position: v.number(),
+    matches: v.number(),
+    wins: v.number(),
+    ties: v.number(),
+    losses: v.number(),
+    points: v.number(),
+    goalsFor: v.number(),
+    goalsAgainst: v.number(),
+    pointsPunished: v.string(),
+    shirt: v.optional(v.string()),
+    vibLogoFile: v.optional(v.string()),
+  }).index("by_competitionId_and_teamId", ["competitionId", "teamId"]),
+
+  matches: defineTable({
+    competitionId: v.id("competitions"),
+    vibMatchKey: v.string(),
+    homeTeamId: v.id("footballTeams"),
+    awayTeamId: v.id("footballTeams"),
+    kickoffAt: v.number(),
+    status: v.string(),
+    homeGoals: v.optional(v.number()),
+    awayGoals: v.optional(v.number()),
+    resultText: v.optional(v.string()),
+    updatedAt: v.number(),
+  })
+    .index("by_vibMatchKey", ["vibMatchKey"])
+    .index("by_competitionId_and_kickoffAt", ["competitionId", "kickoffAt"])
+    .index("by_homeTeamId_and_kickoffAt", ["homeTeamId", "kickoffAt"])
+    .index("by_awayTeamId_and_kickoffAt", ["awayTeamId", "kickoffAt"]),
+
   organizations: defineTable({
     name: v.string(),
     slug: v.string(),
     logoImageUrl: v.optional(v.string()),
+    footballTeamId: v.id("footballTeams"),
     createdByUserId: v.string(),
     createdAt: v.number(),
-  }).index("by_slug", ["slug"]),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_footballTeamId", ["footballTeamId"]),
 
   organizationMembers: defineTable({
     organizationId: v.id("organizations"),

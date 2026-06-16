@@ -11,7 +11,8 @@
     "test:template-render": "tsx scripts/test-template-render.ts",
     "test:voetbalinbelgie-api": "tsx scripts/test-voetbalinbelgie-api.ts",
     "sync-template-fonts": "tsx scripts/sync-template-fonts.ts",
-    "db:clear-dev": "npx convex run dev/clearDatabase:clearAll '{}'"
+    "db:clear-dev": "npx convex run dev/clearDatabase:clearAll '{}'",
+    "seed:football-team": "tsx scripts/seed-football-team.ts"
   },
   "dependencies": {
     "@convex-dev/better-auth": "^0.12.2",

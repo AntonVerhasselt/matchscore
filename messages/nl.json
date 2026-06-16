@@ -591,9 +591,12 @@
   },
   "onboarding": {
     "title": "Stel je club in",
-    "description": "Kies een naam voor je club om te starten.",
-    "clubName": "Clubnaam",
-    "clubNamePlaceholder": "bv. FC Voorbeeld",
+    "description": "Zoek je team om te starten.",
+    "teamSearch": "Team",
+    "teamSearchPlaceholder": "bv. Aartselaar",
+    "selectedTeam": "Geselecteerd: {name}",
+    "noTeamsFound": "Geen teams gevonden.",
+    "teamRequired": "Selecteer een team om verder te gaan.",
     "submit": "Doorgaan",
     "pleaseWait": "Even geduld...",
     "createFailed": "Je club kon niet worden aangemaakt. Probeer het opnieuw."

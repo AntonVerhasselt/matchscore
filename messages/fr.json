@@ -591,9 +591,12 @@
   },
   "onboarding": {
     "title": "Configurez votre club",
-    "description": "Choisissez un nom pour votre club pour commencer.",
-    "clubName": "Nom du club",
-    "clubNamePlaceholder": "ex. FC Exemple",
+    "description": "Recherchez votre équipe pour commencer.",
+    "teamSearch": "Équipe",
+    "teamSearchPlaceholder": "ex. Aartselaar",
+    "selectedTeam": "Sélectionné : {name}",
+    "noTeamsFound": "Aucune équipe trouvée.",
+    "teamRequired": "Sélectionnez une équipe pour continuer.",
     "submit": "Continuer",
     "pleaseWait": "Veuillez patienter...",
     "createFailed": "Impossible de créer votre club. Veuillez réessayer."

@@ -3,12 +3,16 @@ import { components } from "../_generated/api";
 import { internalMutation, type MutationCtx } from "../_generated/server";
 
 const appTables = [
+  "matches",
+  "competitionStandings",
   "templateAssets",
   "automationTemplates",
   "organizationAutomations",
   "organizationInvitations",
   "organizationMembers",
   "organizations",
+  "competitions",
+  "footballTeams",
   "userSettings",
   "pendingEmailLocales",
 ] as const;
@@ -71,8 +75,11 @@ export const clearAll = internalMutation({
   }),
   handler: async (ctx) => {
     const deployment = process.env.CONVEX_DEPLOYMENT ?? "";
+    const cloudUrl = process.env.CONVEX_CLOUD_URL ?? "";
     const isDevDeployment =
-      deployment.startsWith("dev:") || deployment.includes(":dev");
+      deployment.startsWith("dev:") ||
+      deployment.includes(":dev") ||
+      cloudUrl.includes("fine-wolf-59");
     if (!isDevDeployment) {
       throw new ConvexError(
         "clearAll is blocked outside development deployments",
