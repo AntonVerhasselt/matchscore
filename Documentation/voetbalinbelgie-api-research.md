@@ -16,7 +16,7 @@ Matchscore automates social media for **Belgian amateur football clubs**:
 3. The club designs **templates** for match announcements (~2 days before kick-off) and match results (when published).
 4. Automations render PNGs with dynamic bindings (`homeClubName`, `awayClubName`, logos, score, date/time, address) and post to Facebook/Instagram.
 
-Today the app has organisations, automations, and templates — but **no real match data**. Template render tests use `MockMatchDto` in `lib/template-scene/mock-match.ts`.
+Today the app has organisations, automations, templates, and **synced match data** for allowlisted competitions. Template editor preview mode and server render test resolve bindings from `matches` + `footballTeams`. `DEFAULT_MOCK_MATCH` in `lib/template-scene/mock-match.ts` remains the fallback when no sample fixture exists.
 
 Football data must therefore support:
 
@@ -197,7 +197,7 @@ There is **no single universal id** across HTML and JSON for a *team*, but these
 
 - Store `sourceCompetitionId` on each **team** row (from club page tab / later from sync).
 - Store `vibTeamName` exactly as returned in competition JSON (`name` in leaguetable / `home`/`away` in matches).
-- On competition sync, upsert teams from `links.related` + `leaguetable` keyed by `(sourceCompetitionId, vibTeamName)`.
+- On competition sync, resolve match home/away team ids via `(sourceCompetitionId, vibTeamName)` lookups against **pre-imported** `footballTeams` rows. Sync does **not** upsert teams from `links.related`.
 - Link matches to teams via `(sourceCompetitionId, homeName)` lookups, not stamnummer (opponents may not be in stamnummers import yet).
 - Keep `slugPath` + `stamnummer` on teams discovered via club import for onboarding search.
 
@@ -479,17 +479,19 @@ Future posting job (not in this scope):
 
 ## 7. Mapping to template bindings
 
-Replace `MockMatchDto` with data from `matches` + joined teams:
+Editor preview and server render use `TemplateRenderMatchData` built from `matches` + joined `footballTeams`:
 
 | Binding | Source |
 |---------|--------|
 | `homeClubName` | `footballTeams.name` (home) |
-| `awayClubName` | away team |
-| `homeClubLogo` | signed URL from home `logoStorageId` |
+| `awayClubName` | away team `name` |
+| `homeClubLogo` | signed URL / storage buffer from home `logoStorageId` |
 | `awayClubLogo` | away team logo |
-| `matchDateTime` | `matches.kickoffAt` |
-| `score` | `homeGoals` – `awayGoals` |
-| `matchAddress` | home team `address` formatted |
+| `matchDateTime` | `matches.kickoffAt` (`formatBinding`, `nl-BE`) |
+| `score` | `homeGoals` – `awayGoals`, or `resultText` when status ≠ `Gespeeld` |
+| `matchAddress` | home team `address` formatted (`formatTeamAddress`) |
+
+Sample match selection: `lib/football/select-sample-match.ts`. Query: `football.queries.getTemplateRenderMatchData`.
 
 ---
 

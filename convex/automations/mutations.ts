@@ -1,4 +1,5 @@
 import { ConvexError, v } from "convex/values";
+import { internal } from "../_generated/api";
 import { mutation } from "../_generated/server";
 import {
   ensureOrganizationAutomations,
@@ -167,6 +168,34 @@ export const updateTemplate = mutation({
       updatedAt: Date.now(),
       updatedByUserId: membership.userId,
     });
+
+    return null;
+  },
+});
+
+export const saveTemplateThumbnail = mutation({
+  args: {
+    templateId: v.id("automationTemplates"),
+    newStorageId: v.id("_storage"),
+    previousStorageId: v.optional(v.id("_storage")),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { membership } = await requireCurrentMembership(ctx);
+    const template = await ctx.db.get(args.templateId);
+
+    if (!template || template.organizationId !== membership.organizationId) {
+      throw new ConvexError("Template not found");
+    }
+
+    await ctx.runMutation(
+      internal.automations.internalMutations.replaceTemplateThumbnail,
+      {
+        templateId: args.templateId,
+        newStorageId: args.newStorageId,
+        previousStorageId: args.previousStorageId,
+      },
+    );
 
     return null;
   },

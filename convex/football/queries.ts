@@ -1,9 +1,12 @@
 import { ConvexError, v } from "convex/values";
 
+import { buildTemplateMatch } from "../../lib/football/build-template-match";
+import { selectSampleMatch } from "../../lib/football/select-sample-match";
 import { isCompetitionPathAllowed } from "../lib/voetbalinbelgie/allowlist";
 import { query } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
+import { automationTypeValidator } from "../automations/validators";
 import { requireCurrentMembership } from "../automations/helpers";
 import {
   calendarAccessStatusValidator,
@@ -11,6 +14,7 @@ import {
   footballTeamDetailValidator,
   footballTeamSummaryValidator,
   teamMatchSummaryValidator,
+  templateRenderMatchValidator,
 } from "./validators";
 
 const MAX_RESULTS = 20;
@@ -313,6 +317,95 @@ export const getCalendarAccessStatus = query({
       lastSyncedAt: competition.lastSyncedAt,
       lastSyncError: null,
       messageKey: "calendar_available" as const,
+    };
+  },
+});
+
+export const getTemplateRenderMatchData = query({
+  args: {
+    automationType: automationTypeValidator,
+    now: v.number(),
+  },
+  returns: v.union(templateRenderMatchValidator, v.null()),
+  handler: async (ctx, args) => {
+    const { membership } = await requireCurrentMembership(ctx);
+    const organization = await ctx.db.get(membership.organizationId);
+    if (!organization) {
+      throw new ConvexError("Organisation not found");
+    }
+
+    const teamId = organization.footballTeamId;
+    const lookbackMs = 180 * 24 * 60 * 60 * 1000;
+    const minKickoff = args.now - lookbackMs;
+
+    const homeMatches = await ctx.db
+      .query("matches")
+      .withIndex("by_homeTeamId_and_kickoffAt", (q) =>
+        q.eq("homeTeamId", teamId).gte("kickoffAt", minKickoff),
+      )
+      .collect();
+
+    const awayMatches = await ctx.db
+      .query("matches")
+      .withIndex("by_awayTeamId_and_kickoffAt", (q) =>
+        q.eq("awayTeamId", teamId).gte("kickoffAt", minKickoff),
+      )
+      .collect();
+
+    const matchById = new Map<string, Doc<"matches">>();
+    for (const match of [...homeMatches, ...awayMatches]) {
+      matchById.set(match._id as string, match);
+    }
+
+    const selected = selectSampleMatch(
+      [...matchById.values()],
+      args.automationType,
+      args.now,
+    );
+    if (!selected) {
+      return null;
+    }
+
+    const homeTeam = await ctx.db.get(selected.homeTeamId);
+    const awayTeam = await ctx.db.get(selected.awayTeamId);
+    if (!homeTeam || !awayTeam) {
+      return null;
+    }
+
+    const match = buildTemplateMatch({
+      kickoffAt: selected.kickoffAt,
+      status: selected.status,
+      homeGoals: selected.homeGoals,
+      awayGoals: selected.awayGoals,
+      resultText: selected.resultText,
+      homeTeam: {
+        name: homeTeam.name,
+        logoStorageId: homeTeam.logoStorageId,
+        address: homeTeam.address,
+      },
+      awayTeam: {
+        name: awayTeam.name,
+        logoStorageId: awayTeam.logoStorageId,
+      },
+    });
+
+    const homeLogoUrl = homeTeam.logoStorageId
+      ? (await ctx.storage.getUrl(homeTeam.logoStorageId)) ?? null
+      : null;
+    const awayLogoUrl = awayTeam.logoStorageId
+      ? (await ctx.storage.getUrl(awayTeam.logoStorageId)) ?? null
+      : null;
+
+    return {
+      ...match,
+      homeClub: {
+        ...match.homeClub,
+        logoUrl: homeLogoUrl,
+      },
+      awayClub: {
+        ...match.awayClub,
+        logoUrl: awayLogoUrl,
+      },
     };
   },
 });

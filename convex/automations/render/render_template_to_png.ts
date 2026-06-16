@@ -9,7 +9,7 @@ import {
   type AutomationType,
   type SceneDocument,
 } from "../../../lib/template-scene";
-import type { MockMatchDto } from "../../../lib/template-scene/mock-match";
+import type { TemplateMatchDto } from "../../../lib/template-scene/template-match";
 import {
   createPreparedStageJson,
   hydrateKonvaStage,
@@ -21,7 +21,7 @@ export type RenderTemplateInput = {
   sceneDocument: unknown;
   automationType: AutomationType;
   canvasPreset: "instagram_square" | "instagram_portrait" | "facebook_landscape";
-  match: MockMatchDto;
+  match: TemplateMatchDto;
   loaders: RenderAssetLoader;
 };
 

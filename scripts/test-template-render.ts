@@ -36,6 +36,7 @@ async function main() {
     match: DEFAULT_MOCK_MATCH,
     loaders: {
       loadAsset: async () => null,
+      loadTeamLogo: async () => null,
     },
   });
 

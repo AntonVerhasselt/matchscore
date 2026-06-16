@@ -41,6 +41,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { flushSync } from "react-dom";
 import {
   Arrow as KonvaArrow,
   Circle as KonvaCircle,
@@ -56,6 +57,7 @@ import {
   Transformer,
 } from "react-konva";
 
+import { PreviewMatchProvider, usePreviewMatch } from "@/components/template-editor/preview-match-context";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
@@ -142,6 +144,7 @@ import {
 import { FontPicker } from "@/components/template-editor/font-picker";
 import { ShapesPanel } from "@/components/template-editor/shapes-panel";
 import { useTemplateAutosave } from "@/hooks/use-template-autosave";
+import { useTemplateThumbnailCapture } from "@/hooks/use-template-thumbnail-capture";
 
 const VARIABLE_DRAG_MIME = "application/x-matchscore-template-variable";
 const ASSET_DRAG_MIME = "application/x-matchscore-template-asset";
@@ -229,8 +232,16 @@ export function StaticTemplateEditor({
     api.templateAssets.mutations.deleteTemplateAsset,
   );
   const renderTemplateTest = useAction(api.automations.actions.renderTemplateTest);
-  const templateAssets = useQuery(api.templateAssets.queries.listTemplateAssets);
   const backendAutomationType = toBackendAutomationType(automationType);
+  const templateAssets = useQuery(api.templateAssets.queries.listTemplateAssets);
+  const [previewSampleAt, setPreviewSampleAt] = useState(() => Date.now());
+  const templateRenderMatch = useQuery(
+    api.football.queries.getTemplateRenderMatchData,
+    {
+      automationType: backendAutomationType,
+      now: previewSampleAt,
+    },
+  );
   const initialSceneDocument = useMemo(() => {
     try {
       return normalizeSceneDocument(
@@ -265,8 +276,11 @@ export function StaticTemplateEditor({
   const [renderPreviewOpen, setRenderPreviewOpen] = useState(false);
   const [editingTextValue, setEditingTextValue] = useState("");
   const nodeRefs = useRef(new Map<string, Konva.Node>());
-  const transformerRef = useRef<Konva.Transformer>(null);
+  const editorStageRef = useRef<Konva.Stage>(null);
+  const previewModeRef = useRef(previewMode);
+  const restorePreviewModeRef = useRef<BindingPreviewMode>(previewMode);
   const titleMeasureRef = useRef<HTMLSpanElement>(null);
+  const transformerRef = useRef<Konva.Transformer>(null);
   const stageFrameRef = useRef<HTMLDivElement>(null);
   const textEditorRef = useRef<HTMLTextAreaElement>(null);
   const stageDimensions = sceneDocument
@@ -992,6 +1006,26 @@ export function StaticTemplateEditor({
     ],
   );
 
+  previewModeRef.current = previewMode;
+
+  const prepareStageForCapture = useCallback(async () => {
+    restorePreviewModeRef.current = previewModeRef.current;
+    flushSync(() => {
+      setSelectedNodeId(null);
+      setPreviewMode("preview");
+    });
+    // useEffect clears the transformer asynchronously; clear it before cloning.
+    transformerRef.current?.nodes([]);
+    transformerRef.current?.getLayer()?.batchDraw();
+    editorStageRef.current?.batchDraw();
+  }, []);
+
+  const { captureAfterSave } = useTemplateThumbnailCapture({
+    templateId: template._id,
+    captureStageRef: editorStageRef,
+    prepareStageForCapture,
+  });
+
   const handleSave = useCallback(
     async (options?: { showSuccessToast?: boolean }) => {
       const flushed = flushInlineTextEditingState({
@@ -1023,11 +1057,18 @@ export function StaticTemplateEditor({
           name: templateName,
           sceneDocument: normalizedSceneDocument,
         });
-        setSceneDocument(normalizedSceneDocument);
-        setHistory((currentHistory) =>
-          replaceCurrentHistoryEntry(currentHistory, normalizedSceneDocument),
-        );
-        setIsDirty(false);
+        flushSync(() => {
+          setSceneDocument(normalizedSceneDocument);
+          setHistory((currentHistory) =>
+            replaceCurrentHistoryEntry(currentHistory, normalizedSceneDocument),
+          );
+          setIsDirty(false);
+        });
+        void captureAfterSave(templateName, normalizedSceneDocument).finally(() => {
+          flushSync(() => {
+            setPreviewMode(restorePreviewModeRef.current);
+          });
+        });
         if (options?.showSuccessToast !== false) {
           showSuccessToast(t("editor.saveSuccess"));
         }
@@ -1049,6 +1090,7 @@ export function StaticTemplateEditor({
     template.canvasPreset,
     templateName,
     updateTemplate,
+    captureAfterSave,
     ],
   );
 
@@ -1152,7 +1194,11 @@ export function StaticTemplateEditor({
     );
   }
 
+  const previewMatchForEditor =
+    previewMode === "preview" ? (templateRenderMatch ?? null) : null;
+
   return (
+    <PreviewMatchProvider value={previewMatchForEditor}>
     <>
       <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
         <Button
@@ -1222,11 +1268,15 @@ export function StaticTemplateEditor({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() =>
-              setPreviewMode((current) =>
-                current === "design" ? "preview" : "design",
-              )
-            }
+            onClick={() => {
+              setPreviewMode((current) => {
+                const next = current === "design" ? "preview" : "design";
+                if (next === "preview") {
+                  setPreviewSampleAt(Date.now());
+                }
+                return next;
+              });
+            }}
           >
             {previewMode === "design"
               ? t("editor.showPreviewMode")
@@ -1270,6 +1320,7 @@ export function StaticTemplateEditor({
             onDrop={handleCanvasDrop}
           >
             <Stage
+              ref={editorStageRef}
               width={stageDimensions.width}
               height={stageDimensions.height}
               scaleX={scale}
@@ -1397,6 +1448,7 @@ export function StaticTemplateEditor({
         </AlertDialogContent>
       </AlertDialog>
     </>
+    </PreviewMatchProvider>
   );
 }
 
@@ -2887,6 +2939,7 @@ function SceneNodeRenderer({
     options?: { recordHistory?: boolean },
   ) => void;
 }) {
+  const previewMatch = usePreviewMatch();
   const nodeId = stringAttr(node.attrs, "id");
   const nodeRotation = optionalNumberAttr(node.attrs, "rotation") ?? 0;
   const isBackground = isBackgroundNode(node);
@@ -2909,6 +2962,7 @@ function SceneNodeRenderer({
   if (!isVisible) {
     return null;
   }
+
   const sharedProps = nodeId
     ? {
         id: nodeId,
@@ -3071,7 +3125,12 @@ function SceneNodeRenderer({
   }
 
   if (node.className === "Text") {
-    const text = resolveTextContent(node.attrs, automationType, previewMode);
+    const text = resolveTextContent(
+      node.attrs,
+      automationType,
+      previewMode,
+      previewMatch,
+    );
     const baseFontSize = numberAttr(node.attrs, "fontSize", 48);
     const fontFamily = stringAttr(node.attrs, "fontFamily") ?? "Arial";
     const lineHeight = numberAttr(node.attrs, "lineHeight", 1);
@@ -3146,8 +3205,9 @@ function SceneImage({
   onDragEnd?: (event: Konva.KonvaEventObject<DragEvent>) => void;
   onTransformEnd?: (event: Konva.KonvaEventObject<Event>) => void;
 }) {
+  const previewMatch = usePreviewMatch();
   const assetId = stringAttr(attrs, "assetId");
-  const dynamicSrc = resolveImageSource(attrs, previewMode);
+  const dynamicSrc = resolveImageSource(attrs, previewMode, previewMatch);
   const staticSrc = assetId ? templateAssetsById.get(assetId)?.url ?? null : null;
   const src = dynamicSrc ?? staticSrc;
   const [image] = useImage(src ?? "", "anonymous");
@@ -3241,6 +3301,7 @@ function NodePropertiesPanel({
   onDelete: () => void;
 }) {
   const t = useTranslations("app.automations.editor");
+  const previewMatch = usePreviewMatch();
   const isText = node.className === "Text";
   const isImage = node.className === "Image";
   const isBackgroundImage = isImage && isBackgroundNode(node);
@@ -3436,7 +3497,12 @@ function NodePropertiesPanel({
               </Select>
               <p className="truncate text-[10px] text-muted-foreground">
                 {t("resolvedPreview", {
-                  value: resolveTextContent(node.attrs, automationType, previewMode),
+                  value: resolveTextContent(
+                    node.attrs,
+                    automationType,
+                    previewMode,
+                    previewMatch,
+                  ),
                 })}
               </p>
             </div>

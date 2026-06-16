@@ -142,3 +142,20 @@ export const calendarAccessStatusValidator = v.object({
     v.literal("calendar_sync_error"),
   ),
 });
+
+export const templateRenderClubValidator = v.object({
+  name: v.string(),
+  logoStorageId: v.optional(v.id("_storage")),
+  logoUrl: v.union(v.string(), v.null()),
+});
+
+export const templateRenderMatchValidator = v.object({
+  homeClub: templateRenderClubValidator,
+  awayClub: templateRenderClubValidator,
+  address: v.string(),
+  kickoffAt: v.number(),
+  homeScore: v.optional(v.number()),
+  awayScore: v.optional(v.number()),
+  status: v.optional(v.string()),
+  resultText: v.optional(v.string()),
+});

@@ -37,6 +37,7 @@ export const automationTemplateSummaryValidator = v.object({
   canvasPreset: canvasPresetValidator,
   schemaVersion: v.number(),
   updatedAt: v.number(),
+  thumbnailUrl: v.union(v.string(), v.null()),
 });
 
 export const automationTemplateDetailValidator = v.object({

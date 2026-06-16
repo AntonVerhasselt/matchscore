@@ -64,7 +64,8 @@ lib/template-scene/              # Shared pure TypeScript (client + server)
   shape-presets.ts               # Insertable shape definitions
   line-points.ts                 # Line vertex normalization (2-point lines)
   format-binding.ts              # Server binding text (`nl-BE` dates)
-  mock-match.ts                  # MockMatchDto for render test
+  template-match.ts              # TemplateMatchDto
+  mock-match.ts                  # DEFAULT_MOCK_MATCH fallback
   prepare-render-node.ts         # Text/image layout prep for server
   placeholder-crest.ts           # SVG crest placeholders (editor)
   server-font-registry.ts        # Catalog → HTTPS font URLs
@@ -159,30 +160,32 @@ Users never type template syntax manually. The property panel offers **Inhoud** 
 
 | `bindingKey` | Automation types | Design-mode display | Preview-mode display |
 | --- | --- | --- | --- |
-| `homeClubName` | both | `{{ homeClubName }}` | `KFC Eendracht` |
-| `awayClubName` | both | `{{ awayClubName }}` | `Sporting Zuid` |
-| `homeAwayClubNames` | both | `{{ homeClubName }} - {{ awayClubName }}` | `KFC Eendracht - Sporting Zuid` |
-| `matchAddress` | both | `{{ matchAddress }}` | Sample address |
-| `matchDateTime` | both | `{{ matchDateTime }}` | `za 15 mrt. 2025, 20:00` |
-| `score` | `match_result` only | `{{ score }}` | `2 - 1` |
+| `homeClubName` | both | `{{ homeClubName }}` | Linked match home team name |
+| `awayClubName` | both | `{{ awayClubName }}` | Linked match away team name |
+| `homeAwayClubNames` | both | `{{ homeClubName }} - {{ awayClubName }}` | `Home - Away` from synced match |
+| `matchAddress` | both | `{{ matchAddress }}` | Home team imported address |
+| `matchDateTime` | both | `{{ matchDateTime }}` | `kickoffAt` formatted `nl-BE` |
+| `score` | `match_result` only | `{{ score }}` | Goals or `resultText` if non-standard status |
 
 `score` is rejected for `match_announcement` templates at validation time.
 
 ### Image bindings
 
-| `bindingKey` | Editor placeholder | Server render (today) |
-| --- | --- | --- |
-| `homeClubLogo` | SVG crest data URL | Rasterized PNG crest |
-| `awayClubLogo` | SVG crest data URL | Rasterized PNG crest |
+| `bindingKey` | Design mode | Preview mode | Server render |
+| --- | --- | --- | --- |
+| `homeClubLogo` | SVG crest placeholder | Signed URL from `footballTeams.logoStorageId` | PNG from Convex storage |
+| `awayClubLogo` | SVG crest placeholder | Signed URL from `footballTeams.logoStorageId` | PNG from Convex storage |
 
-Real federation logos will replace crest placeholders when match integration ships.
+Missing logo: empty/transparent box (no crest fallback on server or in preview).
 
 ### Preview modes
 
 The toolbar toggles **Design** vs **Preview**:
 
 - **Design** — token-like placeholders for bound text; generic crests for logos.
-- **Preview** — richer mock fixture strings for bound text.
+- **Preview** — resolves bindings from `football.queries.getTemplateRenderMatchData` via `PreviewMatchProvider`. Sample match rules match the render test (announcement → next future or latest past; result → latest played). Falls back to static mock strings only when no synced match exists.
+
+Toggling to Preview refreshes the sample timestamp so the query picks the current next/latest fixture.
 
 The saved scene always stores `bindingKey`, never resolved URLs or display strings for dynamic content.
 
@@ -327,15 +330,15 @@ Entry point: `convex/automations/actions.ts` → `renderTemplateTest`.
 ```
 normalizeSceneDocument
   → registerSceneFonts (download + FontLibrary.use)
-  → createPreparedStageJson (binding text, text-fit, image layout)
-  → Konva.Node.create + hydrateKonvaStage (load asset buffers, crest PNGs)
+  → createPreparedStageJson (binding text via formatBinding, text-fit, image layout)
+  → Konva.Node.create + hydrateKonvaStage (template assets + team logos from storage)
   → stage.toDataURL → PNG buffer
   → ctx.storage.store
   → replaceTemplateRenderPreview (delete previous preview blob)
   → return signed previewUrl
 ```
 
-Render test uses `DEFAULT_MOCK_MATCH` from `lib/template-scene/mock-match.ts` and `formatBinding()` with `nl-BE` locale for dates.
+`renderTemplateTest` loads a sample match through `getTemplateRenderMatchData` (same as editor Preview). Falls back to `DEFAULT_MOCK_MATCH` when the org has no suitable synced fixture. Uses `formatBinding()` with `nl-BE` locale for dates.
 
 Technology stack in render files:
 
@@ -348,9 +351,23 @@ import "konva/skia-backend";
 
 Internal `renderSpikeTest` action renders a trivial solid-color PNG to verify native module compatibility on Convex.
 
+### List thumbnails (template overview)
+
+Separate from render test. The template list on `/app/automations/preview` and `/app/automations/result` shows a small JPEG from `thumbnailStorageId`.
+
+```
+Editor save succeeds
+  → hidden preview stage capture (~256px JPEG, client-side only)
+  → generateUploadUrl + saveTemplateThumbnail
+  → replaceTemplateThumbnail (delete previous blob)
+  → listTemplates returns fresh thumbnailUrl
+```
+
+Capture runs immediately after each successful save (including autosave). The editor stage is briefly switched to preview with no selection, then cloned at 1:1 scale and clipped to the canvas bounds before export. A content hash skips re-upload when the saved name and scene are unchanged.
+
 ### Production posting (future)
 
-Posting will load the saved template by id (no canvas override), resolve bindings from a real match DTO, render, and hand off to social APIs. Cron wiring and internal unauthenticated query variants are not built yet.
+Posting will load the saved template by id (no canvas override), resolve bindings from the same `TemplateRenderMatchData` pipeline for the triggered fixture, render, and hand off to social APIs. Cron wiring and internal unauthenticated query variants are not built yet.
 
 ---
 
@@ -376,6 +393,8 @@ Browser editor and server render share these implementations:
 | --- | --- |
 | `convex/automations/scenes.test.ts` | Normalization, bindings, shapes, text styles, text fit |
 | `convex/automations/render/render.test.ts` | Font registration, per-node fonts, crest pixel checks |
+| `convex/automationsThumbnail.test.ts` | Thumbnail blob replace/delete |
+| `lib/template-scene/thumbnail-capture.test.ts` | Thumbnail content hash stability |
 
 Local smoke test (requires skia-canvas installed):
 
@@ -392,6 +411,8 @@ CI `pnpm build` catches accidental `canvas` / `skia-canvas` imports in the clien
 - Editor requires desktop viewport (≥ 1024px width).
 - Render test hits `fonts.gstatic.com` on first use of each font family (cold-start latency).
 - Render preview blobs accumulate one per template (`lastRenderPreviewStorageId`); old blobs are replaced, not orphaned.
+- List thumbnails (`thumbnailStorageId`) are separate JPEGs; one per template, replaced after each editor save.
+- List thumbnails stay stale until the next editor session if only match sync data changes (layout unchanged).
 - No overlay guide layer (center crosshair / safe zones).
 - Property panel numeric fields commit on each change (autosave debounces the save, not keystrokes).
 - Pixel-perfect text parity between Chrome and skia-canvas is not guaranteed.

@@ -18,11 +18,12 @@ import {
   prepareTextForRender,
   type PreparedTextRender,
 } from "../../../lib/template-scene/prepare-render-node";
-import type { MockMatchDto } from "../../../lib/template-scene/mock-match";
-import { loadPlaceholderCrestImage } from "./load_placeholder_crest";
+import type { Id } from "../../_generated/dataModel";
+import type { TemplateMatchDto } from "../../../lib/template-scene/template-match";
 
 export type RenderAssetLoader = {
   loadAsset: (assetId: string) => Promise<Buffer | null>;
+  loadTeamLogo: (storageId: Id<"_storage">) => Promise<Buffer | null>;
 };
 
 function stringAttr(attrs: SceneNodeAttrs, key: string): string | undefined {
@@ -33,7 +34,7 @@ function stringAttr(attrs: SceneNodeAttrs, key: string): string | undefined {
 function collectTextRenderByNodeId(
   node: SceneNode,
   automationType: AutomationType,
-  match: MockMatchDto,
+  match: TemplateMatchDto,
   map: Map<string, PreparedTextRender>,
 ): void {
   if (node.className === "Text") {
@@ -51,7 +52,7 @@ function collectTextRenderByNodeId(
 function prepareSceneNodeForRender(
   node: SceneNode,
   automationType: AutomationType,
-  match: MockMatchDto,
+  match: TemplateMatchDto,
 ): SceneNode {
   const children = node.children?.map((child) =>
     prepareSceneNodeForRender(child, automationType, match),
@@ -81,13 +82,23 @@ function prepareSceneNodeForRender(
   return children ? { ...node, children } : node;
 }
 
+function logoStorageIdForBinding(
+  bindingKey: ImageBindingKey,
+  match: TemplateMatchDto,
+): Id<"_storage"> | undefined {
+  return bindingKey === "homeClubLogo"
+    ? match.homeClub.logoStorageId
+    : match.awayClub.logoStorageId;
+}
+
 async function loadSceneImageSource(
   attrs: SceneNodeAttrs,
-  loadAsset: (assetId: string) => Promise<Buffer | null>,
+  loaders: RenderAssetLoader,
+  match: TemplateMatchDto,
 ): Promise<Awaited<ReturnType<typeof loadImage>> | null> {
   const assetId = stringAttr(attrs, "assetId");
   if (assetId) {
-    const buffer = await loadAsset(assetId);
+    const buffer = await loaders.loadAsset(assetId);
     if (!buffer) {
       return null;
     }
@@ -96,41 +107,28 @@ async function loadSceneImageSource(
 
   const bindingKey = getImageBindingKey(attrs.bindingKey);
   if (bindingKey) {
-    return await loadPlaceholderCrestImage(bindingKey);
+    const storageId = logoStorageIdForBinding(bindingKey, match);
+    if (!storageId) {
+      return null;
+    }
+
+    const buffer = await loaders.loadTeamLogo(storageId);
+    if (!buffer) {
+      return null;
+    }
+    return await loadImage(buffer);
   }
 
   return null;
 }
 
-async function replaceImageNodeWithGroup(
+function createImageContainerGroup(
   node: Konva.Image,
   attrs: SceneNodeAttrs,
-  loadAsset: (assetId: string) => Promise<Buffer | null>,
-): Promise<void> {
-  const parent = node.getParent();
-  if (!parent) {
-    return;
-  }
-
-  const bitmap = await loadSceneImageSource(attrs, loadAsset);
-  if (!bitmap) {
-    return;
-  }
-  const naturalWidth = bitmap.width || 1;
-  const naturalHeight = bitmap.height || 1;
-  const boxWidth = node.width();
-  const boxHeight = node.height();
-  const fit = prepareImageLayout(
-    {
-      ...attrs,
-      width: boxWidth,
-      height: boxHeight,
-    },
-    naturalWidth,
-    naturalHeight,
-  );
-
-  const group = new Konva.Group({
+  boxWidth: number,
+  boxHeight: number,
+): Konva.Group {
+  return new Konva.Group({
     x: node.x(),
     y: node.y(),
     width: boxWidth,
@@ -146,6 +144,51 @@ async function replaceImageNodeWithGroup(
     rotation: node.rotation(),
     opacity: node.opacity(),
   });
+}
+
+async function replaceImageNodeWithGroup(
+  node: Konva.Image,
+  attrs: SceneNodeAttrs,
+  loaders: RenderAssetLoader,
+  match: TemplateMatchDto,
+): Promise<void> {
+  const parent = node.getParent();
+  if (!parent) {
+    return;
+  }
+
+  const boxWidth = node.width();
+  const boxHeight = node.height();
+  const bindingKey = getImageBindingKey(attrs.bindingKey);
+  const assetId = stringAttr(attrs, "assetId");
+  const bitmap = await loadSceneImageSource(attrs, loaders, match);
+
+  if (!bitmap) {
+    if (!bindingKey && !assetId) {
+      return;
+    }
+
+    const group = createImageContainerGroup(node, attrs, boxWidth, boxHeight);
+    const index = node.zIndex();
+    node.destroy();
+    parent.add(group);
+    group.zIndex(index);
+    return;
+  }
+
+  const naturalWidth = bitmap.width || 1;
+  const naturalHeight = bitmap.height || 1;
+  const fit = prepareImageLayout(
+    {
+      ...attrs,
+      width: boxWidth,
+      height: boxHeight,
+    },
+    naturalWidth,
+    naturalHeight,
+  );
+
+  const group = createImageContainerGroup(node, attrs, boxWidth, boxHeight);
 
   group.add(
     new Konva.Image({
@@ -169,7 +212,7 @@ export async function hydrateKonvaStage(
   stage: Konva.Stage,
   sceneDocument: SceneDocument,
   automationType: AutomationType,
-  match: MockMatchDto,
+  match: TemplateMatchDto,
   loaders: RenderAssetLoader,
 ): Promise<void> {
   const textRenderById = new Map<string, PreparedTextRender>();
@@ -207,7 +250,7 @@ export async function hydrateKonvaStage(
       continue;
     }
 
-    await replaceImageNodeWithGroup(imageNode, attrs, loaders.loadAsset);
+    await replaceImageNodeWithGroup(imageNode, attrs, loaders, match);
   }
 
   stage.draw();
@@ -216,7 +259,7 @@ export async function hydrateKonvaStage(
 export function createPreparedStageJson(
   sceneDocument: SceneDocument,
   automationType: AutomationType,
-  match: MockMatchDto,
+  match: TemplateMatchDto,
 ): SceneDocument {
   return {
     schemaVersion: 1,

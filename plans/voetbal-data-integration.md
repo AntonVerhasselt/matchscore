@@ -1,6 +1,6 @@
 # VoetbalInBelgië data integration — implementation plan
 
-> **Status:** **In progress** — Phases 0–7 complete; Phases 8–10 open  
+> **Status:** **Complete** — Phases 0–10 done (posting pipeline still deferred)  
 > **Branch:** `voetbal-data`  
 > **Research:** [Documentation/voetbalinbelgie-api-research.md](../Documentation/voetbalinbelgie-api-research.md)  
 > **Live API samples:** [Documentation/voetbalinbelgie-api-samples.md](../Documentation/voetbalinbelgie-api-samples.md)  
@@ -21,9 +21,9 @@
 | **5** | Competition sync + cron | ✅ Done |
 | **6** | Organisation linking | ✅ Done |
 | **7** | UI integration | ✅ Done |
-| **8** | Template render bridge | ⬜ **Not started** |
-| **9** | Testing & observability | 🟡 **Partial** — sync + calendar tests done; structured logging / prod observability open |
-| **10** | Documentation | 🟡 **Partial** — season runbook + this plan done; org/automation docs not updated |
+| **8** | Template render bridge | ✅ Done |
+| **9** | Testing & observability | ✅ Done — 106 unit tests; structured sync logs in Convex |
+| **10** | Documentation | ✅ Done |
 
 **Legend:** ✅ Done · 🟡 Partial · ⬜ Not started
 
@@ -36,7 +36,7 @@ Matchscore integrates Belgian amateur football data in **two separate pipelines*
 1. **Club import (static)** — Public HTML from voetbalinbelgie.be → `footballTeams` + logos. Run at season start and after parser fixes. **Implemented.**
 2. **Competition sync (dynamic)** — Authenticated JSON API → `competitions`, `competitionStandings`, `matches` only. Never touches teams or logos. **Implemented.**
 
-Every organisation must link to a `footballTeamId` at creation; org name = team display name. Landing search, onboarding, calendar, and settings team change are wired. Forced sync runs on org create and team change; a 15-minute cron keeps linked competitions fresh. Template render bridge (real match data in automations) is next.
+Every organisation must link to a `footballTeamId` at creation; org name = team display name. Landing search, onboarding, calendar, settings team change, and template preview/render test all use real synced match data when available. Forced sync runs on org create and team change; a 15-minute cron keeps linked competitions fresh.
 
 ---
 
@@ -59,6 +59,12 @@ Every organisation must link to a `footballTeamId` at creation; org name = team 
 | **API cache TTL** | VoetbalInBelgië Handleiding §4; `Europe/Brussels`; helper in `syncSchedule.ts`. |
 | **Period rankings** | Not stored. |
 | **Timezone for TTL** | `Europe/Brussels` |
+| **Template sample match (announcement)** | Next future fixture; if none, most recent past |
+| **Template sample match (result)** | Most recent played match (with scores) |
+| **No synced match for render/preview** | Fall back to `DEFAULT_MOCK_MATCH` |
+| **Score binding** | Numeric `homeGoals - awayGoals`; use `resultText` when status ≠ `Gespeeld` |
+| **`matchAddress` format** | Home team address: `"street, postalCode city"` |
+| **Missing opponent logo** | Empty/transparent box (server + editor preview) |
 
 ---
 
@@ -134,12 +140,24 @@ components/
 │   ├── CalendarEventBar.tsx
 │   ├── CalendarSkeleton.tsx
 │   └── MatchList.tsx
+├── template-editor/
+│   └── preview-match-context.tsx
 └── settings/
     └── LinkedTeamSettings.tsx
 
-lib/calendar/
-├── calendar-events.ts
-└── month-grid.ts
+lib/
+├── calendar/
+│   ├── calendar-events.ts
+│   └── month-grid.ts
+├── football/
+│   ├── build-template-match.ts
+│   ├── format-team-address.ts
+│   ├── select-sample-match.ts
+│   ├── selected-team-storage.ts
+│   └── template-render-match.ts
+├── template-scene/
+│   ├── template-match.ts
+│   └── mock-match.ts              # DEFAULT_MOCK_MATCH fallback
 
 scripts/
 ├── import-football-clubs.ts
@@ -293,15 +311,39 @@ Distinct `competitionPath` values from orgs' linked teams → `syncCompetition({
 
 ---
 
-## Phase 8 — Template render integration ⬜ NOT STARTED
+## Phase 8 — Template render integration ✅
 
-- [ ] Build `MatchDto` from `matches` + joined `footballTeams` (logos from import)
-- [ ] `matchAddress` from home team's imported address
-- [ ] Replace `MockMatchDto` in automation render path
+- [x] `TemplateMatchDto` / `TemplateRenderMatchData` from `matches` + joined `footballTeams`
+- [x] `matchAddress` from home team's imported address (`lib/football/format-team-address.ts`)
+- [x] `getTemplateRenderMatchData` query — sample match per automation type
+- [x] Server **Render test** uses real data (`renderTemplateTest` → `buildTemplateMatch`)
+- [x] Editor **Preview mode** uses same query via `PreviewMatchProvider` + `resolveTextContent` / `resolveImageSource`
+- [x] Club logos loaded from Convex `_storage` at render time; missing logo → empty box
+
+### Sample match selection
+
+| `automationType` | Rule |
+|------------------|------|
+| `match_announcement` | Next `kickoffAt >= now`; else most recent past |
+| `match_result` | Most recent played match (`homeGoals` + `awayGoals` defined) |
+
+Fallback when no match: `DEFAULT_MOCK_MATCH` (non-allowlisted orgs, pre-sync, empty calendar).
+
+### Key files
+
+| File | Role |
+|------|------|
+| `lib/football/select-sample-match.ts` | Pure match picker |
+| `lib/football/build-template-match.ts` | DB rows → `TemplateMatchDto` |
+| `convex/football/queries.ts` → `getTemplateRenderMatchData` | Auth-scoped sample for org team |
+| `convex/automations/actions.ts` → `renderTemplateTest` | Server PNG with real bindings |
+| `components/template-editor/preview-match-context.tsx` | Client preview context |
+| `lib/template-scene/index.ts` | `resolveTextContent` / `resolveImageSource` with live data |
+| `convex/automations/render/hydrate_scene.ts` | Logo buffers via `loadTeamLogo` |
 
 ---
 
-## Phase 9 — Testing & observability 🟡 PARTIAL
+## Phase 9 — Testing & observability ✅
 
 ### Automated (done)
 
@@ -316,39 +358,42 @@ Distinct `competitionPath` values from orgs' linked teams → `syncCompetition({
 | Org team change effects | `convex/organizationsUpdateFootballTeam.test.ts` |
 | Calendar event building | `lib/calendar/calendar-events.test.ts` |
 | Allowlist pre-sync | `pnpm test:football-pre-sync` |
+| Template match builder / picker / address | `lib/football/*.test.ts`, `lib/template-scene/format-binding.test.ts` |
+| Server render with real logo buffers | `convex/automations/render/render.test.ts` |
 
-**Current count:** 94 tests, all passing (`pnpm test`).
+**Current count:** 106 tests, all passing (`pnpm test`).
 
-### Automated (todo)
+### Observability
 
-| Test | Purpose |
-|------|---------|
-| End-to-end render with real match data | After Phase 8 |
-| Structured logging / alerting in production | Ops follow-up |
+Structured JSON `console.log` events in Convex logs:
+
+- `football_competition_sync` / `football_competition_sync_error`
+- `football_linked_competitions_sync`
+
+External alerting deferred; Convex dashboard logs sufficient for now.
 
 ---
 
-## Phase 10 — Documentation 🟡 PARTIAL
+## Phase 10 — Documentation ✅
 
 | Doc | Status |
 |-----|--------|
 | [football-season-import.md](../Documentation/football-season-import.md) | ✅ Season import runbook |
-| [voetbalinbelgie-api-research.md](../Documentation/voetbalinbelgie-api-research.md) | 🟡 Updated links; sync section describes planned behaviour |
-| [organisations.md](../Documentation/organisations.md) | ⬜ Update for mandatory `footballTeamId` + team change |
-| [automations-and-templates.md](../Documentation/automations-and-templates.md) | ⬜ Real match data / render bridge |
+| [voetbalinbelgie-api-research.md](../Documentation/voetbalinbelgie-api-research.md) | ✅ Sync behaviour aligned with implementation |
+| [organisations.md](../Documentation/organisations.md) | ✅ Mandatory `footballTeamId`, team search onboarding, settings team change |
+| [automations-and-templates.md](../Documentation/automations-and-templates.md) | ✅ Real match data in preview + render test |
+| [template-editor.md](../Documentation/template-editor.md) | ✅ Preview mode + server render pipeline |
 | This plan | ✅ Kept current |
 
 ---
 
-## Remaining work — recommended order
+## Remaining work — post-integration
 
-| Step | Deliverable | Depends on |
-|------|-------------|------------|
-| **1** | Template render bridge (`MatchDto` from DB) | Phase 5 ✅ |
-| **2** | Update org/automation docs | Step 1 |
-| **3** | Structured logging / prod observability for sync | Optional |
-
-**Rough estimate for remaining work:** ~2–3 dev days.
+| Area | Notes |
+|------|-------|
+| **Posting pipeline** | Cron, template pick, Meta/social APIs — out of scope for this plan |
+| **External sync alerting** | Optional PostHog/Sentry on `football_competition_sync_error` |
+| **New template bindings** | e.g. `matchStatus`, competition title — product decision |
 
 ---
 
@@ -367,11 +412,19 @@ Distinct `competitionPath` values from orgs' linked teams → `syncCompetition({
 - [x] Cron every 15 min with HTTP gating
 - [x] Calendar page shows matches or allowlist/sync status messages
 - [x] Settings allows changing linked team
+- [x] Template editor preview mode uses real match data
+- [x] Render test uses real match data (fallback to mock when none)
+- [x] Org/automation documentation updated
 
-### Still required for full integration ⬜
+### Deferred (outside football data integration) ⬜
 
-- [ ] Template automations render with real match data (Phase 8)
-- [ ] Org/automation documentation updated (Phase 10)
+- [ ] Scheduled posting pipeline (cron + social OAuth)
+- [ ] External observability alerting
+
+### Former gaps — now done ✅
+
+- [x] Template automations render with real match data (Phase 8)
+- [x] Org/automation documentation updated (Phase 10)
 
 ---
 
@@ -427,7 +480,7 @@ Use this to verify the full integration on local dev.
 3. **Import football data** (skip if already imported and stable):
 
    ```bash
-   pnpm test                                    # 94 tests, all should pass
+   pnpm test                                    # 106 tests, all should pass
    pnpm import:football-clubs:full              # or incremental if recently run
    npx convex run football/internalQueries:countFootballTeams '{}'
    pnpm test:football-pre-sync                  # must pass
@@ -593,14 +646,17 @@ After import + sync:
 3. **`competitions`** — one row per synced allowlisted path
 4. **`matches`** — populated for synced competitions
 
-### I. Automations (Phase 8 gap)
+### I. Automations — preview & render test
 
-| Area | Route | Expected **today** |
-|------|-------|-------------------|
-| Automations list | `/app/automations` | Works; toggles affect calendar blue bars |
-| Template preview / render | automations UI | Still uses **mock match data** until Phase 8 |
+| Area | Route / control | Expected |
+|------|-----------------|----------|
+| Editor preview mode | Toolbar “Preview” toggle | Real club names, date, address, logos from synced matches |
+| Render test | Toolbar “Render test” | Server PNG with same sample match rules |
+| Announcement sample | `match_announcement` | Next future match, else latest past |
+| Result sample | `match_result` | Latest played match with score |
+| No synced matches | Either surface | Falls back to `DEFAULT_MOCK_MATCH` |
 
-Do **not** expect real match scores/names in rendered template previews yet.
+Verify: open template editor for an allowlisted team with synced calendar → toggle Preview → bindings show your fixtures, not “KFC Eendracht”.
 
 ---
 

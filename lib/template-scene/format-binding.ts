@@ -1,5 +1,5 @@
 import type { AutomationType, TextBindingKey } from "./index";
-import type { MockMatchDto } from "./mock-match";
+import type { TemplateMatchDto } from "./template-match";
 
 const TEXT_BINDING_KEYS_BY_AUTOMATION_TYPE: Record<
   AutomationType,
@@ -38,7 +38,17 @@ export function formatMatchDateTime(
   }).format(new Date(kickoffAt));
 }
 
-export function formatScore(match: MockMatchDto): string {
+const STANDARD_PLAYED_STATUS = "Gespeeld";
+
+export function formatScore(match: TemplateMatchDto): string {
+  if (
+    match.status &&
+    match.status !== STANDARD_PLAYED_STATUS &&
+    match.resultText?.trim()
+  ) {
+    return match.resultText.trim();
+  }
+
   const home = match.homeScore ?? 0;
   const away = match.awayScore ?? 0;
   return `${home} - ${away}`;
@@ -46,7 +56,7 @@ export function formatScore(match: MockMatchDto): string {
 
 export function formatBinding(
   key: TextBindingKey,
-  match: MockMatchDto,
+  match: TemplateMatchDto,
   locale: "nl-BE",
 ): string {
   switch (key) {
