@@ -149,7 +149,7 @@ export function FootballCalendar({
                     className={cn(
                       "inline-flex size-6 items-center justify-center text-xs font-medium sm:text-sm",
                       isToday &&
-                        "rounded-md bg-destructive text-destructive-foreground",
+                        "bg-primary text-primary-foreground",
                     )}
                   >
                     {dayNumber}
