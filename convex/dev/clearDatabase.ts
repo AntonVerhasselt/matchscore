@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { components } from "../_generated/api";
 import { internalMutation, type MutationCtx } from "../_generated/server";
 
+/** Wiped on dev reset — user/app testing data only. */
 const appTables = [
   "matches",
   "competitionStandings",
@@ -12,10 +13,12 @@ const appTables = [
   "organizationMembers",
   "organizations",
   "competitions",
-  "footballTeams",
   "userSettings",
   "pendingEmailLocales",
 ] as const;
+
+/** Preserved on dev reset — one-time VoetbalInBelgië club import (see pnpm import:football-clubs). */
+const preservedAppTables = ["footballTeams"] as const;
 
 const authModels = [
   "session",
@@ -64,13 +67,15 @@ async function deleteAllAuthModel(ctx: MutationCtx, model: (typeof authModels)[n
 }
 
 /**
- * Dev-only: wipe app data and all Better Auth users/sessions.
- * Run: npx convex run dev/clearDatabase:clearAll
+ * Dev-only: wipe app testing data and all Better Auth users/sessions.
+ * Preserves `footballTeams` (and linked logo storage) from the one-time club import.
+ * Run: pnpm db:clear-dev
  */
 export const clearAll = internalMutation({
   args: {},
   returns: v.object({
     appTables: v.record(v.string(), v.number()),
+    preservedAppTables: v.array(v.string()),
     authModels: v.record(v.string(), v.number()),
   }),
   handler: async (ctx) => {
@@ -96,6 +101,10 @@ export const clearAll = internalMutation({
       authCounts[model] = await deleteAllAuthModel(ctx, model);
     }
 
-    return { appTables: appCounts, authModels: authCounts };
+    return {
+      appTables: appCounts,
+      preservedAppTables: [...preservedAppTables],
+      authModels: authCounts,
+    };
   },
 });

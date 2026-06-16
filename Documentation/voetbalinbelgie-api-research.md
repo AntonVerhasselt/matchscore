@@ -2,7 +2,8 @@
 
 > **Branch:** `voetbal-data`  
 > **Live samples:** [voetbalinbelgie-api-samples.md](./voetbalinbelgie-api-samples.md) (generated via `pnpm test:voetbalinbelgie-api`)  
-> **Implementation plan:** [../plans/voetbal-data-integration.md](../plans/voetbal-data-integration.md)
+> **Implementation plan:** [../plans/voetbal-data-integration.md](../plans/voetbal-data-integration.md)  
+> **Season import runbook:** [football-season-import.md](./football-season-import.md)
 
 ---
 

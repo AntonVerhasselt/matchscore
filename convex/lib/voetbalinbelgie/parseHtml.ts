@@ -9,6 +9,77 @@ import type {
 const CURRENT_SEASON_COMPETITION_PATH =
   /href="(\/competities\/\d{4}-\d{4}[^"#]+)"/;
 
+type CompetitionPanel = {
+  compDomId: string;
+  tabLabel?: string;
+};
+
+function getCompetitionPanels(html: string): CompetitionPanel[] {
+  const tabs = [...html.matchAll(/href="#comp-(\d+)"[^>]*>([^<]+)<\/a>/g)];
+  if (tabs.length > 0) {
+    return tabs.map((tab) => ({
+      compDomId: tab[1],
+      tabLabel: tab[2].trim(),
+    }));
+  }
+
+  const panelIds = [
+    ...new Set([...html.matchAll(/id="comp-(\d+)"/g)].map((match) => match[1])),
+  ];
+
+  return panelIds.map((compDomId) => ({ compDomId }));
+}
+
+function parseTeamNameFromClubCell(
+  clubCellHtml: string,
+  slug: string,
+  fallbackName: string,
+): string {
+  if (!clubCellHtml.includes(slug)) {
+    return fallbackName;
+  }
+
+  return (
+    clubCellHtml.match(/>&nbsp;([^<]+)<\/a>/)?.[1]?.trim() ??
+    clubCellHtml.match(/alt="Clublogo voetbalvereniging ([^"]+)"/)?.[1]?.trim() ??
+    fallbackName
+  );
+}
+
+function parseTeamFromCompetitionPanel(
+  html: string,
+  panel: CompetitionPanel,
+  slug: string,
+  fallbackName: string,
+  stamnummer?: string,
+): ParsedClubTeam {
+  const start = html.indexOf(`id="comp-${panel.compDomId}"`);
+  const nextIndices = [...html.matchAll(/id="comp-\d+"/g)]
+    .map((match) => match.index ?? -1)
+    .filter((index) => index > start + 5);
+  const end =
+    nextIndices.length > 0 ? Math.min(...nextIndices) : start + 25_000;
+  const block = html.slice(start, end);
+  const rawCompetitionPath = block.match(CURRENT_SEASON_COMPETITION_PATH)?.[1];
+  const competitionPath = rawCompetitionPath
+    ? normalizeCompetitionPath(rawCompetitionPath)
+    : undefined;
+
+  const rows = [...block.matchAll(/<td class="club">([\s\S]*?)<\/td>/g)];
+  const ownRow = rows.find((row) => row[1].includes(slug));
+  const teamName = ownRow
+    ? parseTeamNameFromClubCell(ownRow[1], slug, fallbackName)
+    : fallbackName;
+
+  return {
+    tabLabel: panel.tabLabel,
+    sourceCompetitionId: Number(panel.compDomId),
+    competitionPath,
+    teamName,
+    stamnummer,
+  };
+}
+
 function parseJsonLdGraph(html: string): Array<Record<string, unknown>> | null {
   const jsonLdMatch = html.match(
     /<script type="application\/ld\+json">([\s\S]*?)<\/script>/,
@@ -139,8 +210,8 @@ export function parseClubTeamsFromHtml(
     return [];
   }
 
-  const tabs = [...html.matchAll(/href="#comp-(\d+)"[^>]*>([^<]+)<\/a>/g)];
-  if (tabs.length === 0) {
+  const panels = getCompetitionPanels(html);
+  if (panels.length === 0) {
     return [
       {
         teamName: sportsClub.name,
@@ -149,39 +220,13 @@ export function parseClubTeamsFromHtml(
     ];
   }
 
-  return tabs.map((tab) => {
-    const compDomId = tab[1];
-    const start = html.indexOf(`id="comp-${compDomId}"`);
-    const nextIndices = [...html.matchAll(/id="comp-\d+"/g)]
-      .map((match) => match.index ?? -1)
-      .filter((index) => index > start + 5);
-    const end =
-      nextIndices.length > 0 ? Math.min(...nextIndices) : start + 25_000;
-    const block = html.slice(start, end);
-    const rawCompetitionPath = block.match(CURRENT_SEASON_COMPETITION_PATH)?.[1];
-    const competitionPath = rawCompetitionPath
-      ? normalizeCompetitionPath(rawCompetitionPath)
-      : undefined;
-
-    const rows = [...block.matchAll(/<td class="club">([\s\S]*?)<\/td>/g)];
-    const ownRow = rows.find((row) => row[1].includes(slug));
-    const teamName =
-      ownRow?.[1]
-        ?.match(/>&nbsp;([^<]+)<\/a>/)
-        ?.[1]
-        ?.trim() ??
-      ownRow?.[1]
-        ?.match(/alt="Clublogo voetbalvereniging ([^"]+)"/)
-        ?.[1]
-        ?.trim() ??
-      sportsClub.name;
-
-    return {
-      tabLabel: tab[2].trim(),
-      sourceCompetitionId: Number(compDomId),
-      competitionPath,
-      teamName,
-      stamnummer: sportsClub.branchCode,
-    };
-  });
+  return panels.map((panel) =>
+    parseTeamFromCompetitionPanel(
+      html,
+      panel,
+      slug,
+      sportsClub.name,
+      sportsClub.branchCode,
+    ),
+  );
 }

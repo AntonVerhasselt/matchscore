@@ -1,5 +1,5 @@
 /**
- * Import-only logo helpers. Full Convex storage download is implemented in Phase 4.
+ * Import-only logo URL helpers and action-side download helper.
  */
 
 const DEFAULT_PUBLIC_BASE = "https://www.voetbalinbelgie.be";

@@ -26,6 +26,7 @@
       "title": "Actief op <highlight>social media</highlight> — zonder extra werk",
       "subtitle": "Matchscore plaatst automatisch wedstrijdaankondigingen en -resultaten op Facebook en Instagram, met jullie eigen clubtemplates. Meer zichtbaarheid voor je team en sponsors, zonder gedoe.",
       "searchPlaceholder": "Zoek je club",
+      "teamRequired": "Selecteer je club uit de lijst om verder te gaan.",
       "cta": "Probeer het uit",
       "hint": "Vind je club en stel geautomatiseerde posts in binnen enkele minuten.",
       "scrollLabel": "Scroll"
@@ -592,6 +593,9 @@
   "onboarding": {
     "title": "Stel je club in",
     "description": "Zoek je team om te starten.",
+    "confirmDescription": "Bevestig je club om Matchscore af te ronden.",
+    "yourClub": "Jouw club",
+    "changeTeam": "Kies een andere club",
     "teamSearch": "Team",
     "teamSearchPlaceholder": "bv. Aartselaar",
     "selectedTeam": "Geselecteerd: {name}",
@@ -600,5 +604,12 @@
     "submit": "Doorgaan",
     "pleaseWait": "Even geduld...",
     "createFailed": "Je club kon niet worden aangemaakt. Probeer het opnieuw."
+  },
+  "footballSearch": {
+    "placeholder": "Zoek je club",
+    "resultsLabel": "Clubzoekresultaten",
+    "searching": "Clubs zoeken…",
+    "noResults": "Geen clubs gevonden. Probeer een andere naam.",
+    "clearSelection": "Geselecteerde club wissen"
   }
 }

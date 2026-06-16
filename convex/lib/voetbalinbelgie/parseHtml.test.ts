@@ -50,6 +50,20 @@ const jsonLdOnlySnippet = `
 }</script>
 `;
 
+const brasschaatSnippet = `
+<script type="application/ld+json">{
+  "@graph": [{
+    "@type": "SportsClub",
+    "name": "KFC Brasschaat",
+    "branchCode": "228"
+  }]
+}</script>
+<div id="comp-389">
+  <a href="/competities/2025-2026/antwerpen/mannen/2a/">2a</a>
+  <td class="club"><img src="/images/brasschaat-kfc.png" alt="Clublogo voetbalvereniging KFC Brasschaat">&nbsp;<a href="#">KFC Brasschaat</a></td>
+</div>
+`;
+
 describe("parseHtml", () => {
   test("parseStamnummersHtml extracts stamnummer entries", () => {
     const entries = parseStamnummersHtml(stamnummersSnippet);
@@ -88,6 +102,18 @@ describe("parseHtml", () => {
       {
         teamName: "Inactive FC",
         stamnummer: "9999",
+      },
+    ]);
+  });
+
+  test("parseClubTeamsFromHtml parses embedded panels without tab links", () => {
+    const teams = parseClubTeamsFromHtml(brasschaatSnippet, "brasschaat-kfc");
+    expect(teams).toEqual([
+      {
+        sourceCompetitionId: 389,
+        competitionPath: "/competities/2025-2026/antwerpen/mannen/2a/",
+        teamName: "KFC Brasschaat",
+        stamnummer: "228",
       },
     ]);
   });

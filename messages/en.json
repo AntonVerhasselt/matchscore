@@ -26,6 +26,7 @@
       "title": "Stay active on <highlight>social media</highlight> — without the extra work",
       "subtitle": "Matchscore automatically posts match announcements and results to Facebook and Instagram, using your own club templates. More visibility for your team and sponsors, zero hassle.",
       "searchPlaceholder": "Search your club",
+      "teamRequired": "Select your club from the list to continue.",
       "cta": "Try it out",
       "hint": "Find your club and set up automated posts in minutes.",
       "scrollLabel": "Scroll"
@@ -592,6 +593,9 @@
   "onboarding": {
     "title": "Set up your club",
     "description": "Search for your team to get started.",
+    "confirmDescription": "Confirm your club to finish setting up Matchscore.",
+    "yourClub": "Your club",
+    "changeTeam": "Choose a different club",
     "teamSearch": "Team",
     "teamSearchPlaceholder": "e.g. Aartselaar",
     "selectedTeam": "Selected: {name}",
@@ -600,5 +604,12 @@
     "submit": "Continue",
     "pleaseWait": "Please wait...",
     "createFailed": "Could not create your club. Please try again."
+  },
+  "footballSearch": {
+    "placeholder": "Search your club",
+    "resultsLabel": "Club search results",
+    "searching": "Searching clubs…",
+    "noResults": "No clubs found. Try a different name.",
+    "clearSelection": "Clear selected club"
   }
 }

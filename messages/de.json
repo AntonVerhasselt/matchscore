@@ -26,6 +26,7 @@
       "title": "Aktiv auf <highlight>Social Media</highlight> — ohne extra Aufwand",
       "subtitle": "Matchscore veröffentlicht automatisch Spielankündigungen und -ergebnisse auf Facebook und Instagram, mit euren eigenen Vereinsvorlagen. Mehr Sichtbarkeit für euer Team und Sponsoren, ohne Stress.",
       "searchPlaceholder": "Suche deinen Verein",
+      "teamRequired": "Wähle deinen Verein aus der Liste, um fortzufahren.",
       "cta": "Ausprobieren",
       "hint": "Finde deinen Verein und richte automatisierte Posts in wenigen Minuten ein.",
       "scrollLabel": "Scrollen"
@@ -592,6 +593,9 @@
   "onboarding": {
     "title": "Richte deinen Club ein",
     "description": "Suche dein Team, um zu starten.",
+    "confirmDescription": "Bestätige deinen Club, um Matchscore einzurichten.",
+    "yourClub": "Dein Club",
+    "changeTeam": "Anderen Club wählen",
     "teamSearch": "Team",
     "teamSearchPlaceholder": "z. B. Aartselaar",
     "selectedTeam": "Ausgewählt: {name}",
@@ -600,5 +604,12 @@
     "submit": "Weiter",
     "pleaseWait": "Bitte warten...",
     "createFailed": "Dein Club konnte nicht erstellt werden. Bitte versuche es erneut."
+  },
+  "footballSearch": {
+    "placeholder": "Suche deinen Verein",
+    "resultsLabel": "Vereinssuchergebnisse",
+    "searching": "Vereine werden gesucht…",
+    "noResults": "Keine Vereine gefunden. Versuche einen anderen Namen.",
+    "clearSelection": "Ausgewählten Verein löschen"
   }
 }

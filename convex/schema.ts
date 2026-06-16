@@ -51,7 +51,9 @@ export default defineSchema({
       "stamnummer",
       "sourceCompetitionId",
     ])
-    .index("by_name", ["name"]),
+    .index("by_stamnummer_and_name", ["stamnummer", "name"])
+    .index("by_name", ["name"])
+    .index("by_logoSourceUrl", ["logoSourceUrl"]),
 
   competitions: defineTable({
     sourceCompetitionId: v.number(),

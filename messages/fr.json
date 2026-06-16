@@ -26,6 +26,7 @@
       "title": "Restez actifs sur les <highlight>réseaux sociaux</highlight> — sans travail supplémentaire",
       "subtitle": "Matchscore publie automatiquement les annonces et résultats de matchs sur Facebook et Instagram, avec vos propres modèles de club. Plus de visibilité pour votre équipe et vos sponsors, sans tracas.",
       "searchPlaceholder": "Recherchez votre club",
+      "teamRequired": "Sélectionnez votre club dans la liste pour continuer.",
       "cta": "Essayez",
       "hint": "Trouvez votre club et configurez des publications automatisées en quelques minutes.",
       "scrollLabel": "Défiler"
@@ -592,6 +593,9 @@
   "onboarding": {
     "title": "Configurez votre club",
     "description": "Recherchez votre équipe pour commencer.",
+    "confirmDescription": "Confirmez votre club pour terminer la configuration de Matchscore.",
+    "yourClub": "Votre club",
+    "changeTeam": "Choisir un autre club",
     "teamSearch": "Équipe",
     "teamSearchPlaceholder": "ex. Aartselaar",
     "selectedTeam": "Sélectionné : {name}",
@@ -600,5 +604,12 @@
     "submit": "Continuer",
     "pleaseWait": "Veuillez patienter...",
     "createFailed": "Impossible de créer votre club. Veuillez réessayer."
+  },
+  "footballSearch": {
+    "placeholder": "Recherchez votre club",
+    "resultsLabel": "Résultats de recherche de clubs",
+    "searching": "Recherche de clubs…",
+    "noResults": "Aucun club trouvé. Essayez un autre nom.",
+    "clearSelection": "Effacer le club sélectionné"
   }
 }

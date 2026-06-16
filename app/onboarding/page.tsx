@@ -1,6 +1,11 @@
 "use client";
 
 import StatusAlert from "@/components/StatusAlert";
+import { FootballTeamAvatar } from "@/components/football/FootballTeamAvatar";
+import {
+  FootballTeamSearch,
+  type FootballTeamSearchResult,
+} from "@/components/football/FootballTeamSearch";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -9,35 +14,109 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { completeOnboarding } from "@/lib/onboarding/complete-onboarding-server";
+import {
+  clearSelectedFootballTeamId,
+  readSelectedFootballTeamId,
+  storeSelectedFootballTeamId,
+} from "@/lib/football/selected-team-storage";
 import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { unstable_rethrow } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { Loader2 } from "lucide-react";
+import { FormEvent, useEffect, useState } from "react";
 
 export default function OnboardingPage() {
   const t = useTranslations("onboarding");
-  const [searchQuery, setSearchQuery] = useState("");
+  const tHero = useTranslations("landing.hero");
+  const [storedTeamId, setStoredTeamId] = useState<Id<"footballTeams"> | null>(
+    null,
+  );
+  const [hasLoadedStoredTeam, setHasLoadedStoredTeam] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState<Id<"footballTeams"> | null>(
     null,
   );
+  const [selectedTeam, setSelectedTeam] =
+    useState<FootballTeamSearchResult | null>(null);
+  const [isChangingTeam, setIsChangingTeam] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const trimmedQuery = searchQuery.trim();
-  const searchResults = useQuery(
-    api.football.queries.searchFootballTeams,
-    trimmedQuery.length >= 2 ? { query: trimmedQuery } : "skip",
+  useEffect(() => {
+    const teamId = readSelectedFootballTeamId();
+    setStoredTeamId(teamId);
+    if (teamId) {
+      setSelectedTeamId(teamId);
+      setIsChangingTeam(false);
+    } else {
+      setIsChangingTeam(true);
+    }
+    setHasLoadedStoredTeam(true);
+  }, []);
+
+  const storedTeam = useQuery(
+    api.football.queries.getFootballTeamForSelection,
+    hasLoadedStoredTeam && storedTeamId && !isChangingTeam
+      ? { footballTeamId: storedTeamId }
+      : "skip",
   );
 
-  const selectedTeam =
-    selectedTeamId && searchResults
-      ? searchResults.find((team) => team._id === selectedTeamId)
-      : null;
+  const isResolvingStoredTeam =
+    hasLoadedStoredTeam &&
+    storedTeamId !== null &&
+    !isChangingTeam &&
+    storedTeam === undefined;
+
+  const storedTeamMissing =
+    hasLoadedStoredTeam &&
+    storedTeamId !== null &&
+    !isChangingTeam &&
+    storedTeam === null;
+
+  useEffect(() => {
+    if (storedTeamMissing) {
+      clearSelectedFootballTeamId();
+      setStoredTeamId(null);
+      setSelectedTeamId(null);
+      setSelectedTeam(null);
+      setIsChangingTeam(true);
+    }
+  }, [storedTeamMissing]);
+
+  useEffect(() => {
+    if (storedTeam && !isChangingTeam) {
+      setSelectedTeam(storedTeam);
+      setSelectedTeamId(storedTeam._id);
+    }
+  }, [isChangingTeam, storedTeam]);
+
+  const showConfirmation =
+    !isChangingTeam &&
+    !isResolvingStoredTeam &&
+    selectedTeamId !== null &&
+    selectedTeam !== null;
+
+  const handleTeamChange = (
+    teamId: Id<"footballTeams"> | null,
+    team: FootballTeamSearchResult | null,
+  ) => {
+    setSelectedTeamId(teamId);
+    setSelectedTeam(team);
+    if (teamId && team) {
+      storeSelectedFootballTeamId(teamId);
+      setIsChangingTeam(false);
+      setError(null);
+    }
+  };
+
+  const handleChangeTeam = () => {
+    setIsChangingTeam(true);
+    setSelectedTeamId(null);
+    setSelectedTeam(null);
+    clearSelectedFootballTeamId();
+  };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -51,9 +130,13 @@ export default function OnboardingPage() {
     setLoading(true);
 
     try {
+      clearSelectedFootballTeamId();
       await completeOnboarding(selectedTeamId);
     } catch (err) {
       unstable_rethrow(err);
+      if (selectedTeamId) {
+        storeSelectedFootballTeamId(selectedTeamId);
+      }
       const message =
         err instanceof Error
           ? err.message
@@ -70,8 +153,12 @@ export default function OnboardingPage() {
     <main className="flex flex-1 flex-col items-center justify-center p-6 sm:p-10">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-3xl">{t("title")}</CardTitle>
-          <CardDescription>{t("description")}</CardDescription>
+          <CardTitle className="font-heading text-3xl uppercase tracking-tight">
+            {t("title")}
+          </CardTitle>
+          <CardDescription>
+            {showConfirmation ? t("confirmDescription") : t("description")}
+          </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
@@ -81,59 +168,53 @@ export default function OnboardingPage() {
             onSubmit={(event) => void handleSubmit(event)}
             className="space-y-4"
           >
-            <div className="space-y-2">
-              <Label htmlFor="teamSearch">{t("teamSearch")}</Label>
-              <Input
-                id="teamSearch"
-                value={searchQuery}
-                onChange={(event) => {
-                  setSearchQuery(event.target.value);
-                  setSelectedTeamId(null);
-                }}
-                placeholder={t("teamSearchPlaceholder")}
-                autoComplete="off"
+            {isResolvingStoredTeam ? (
+              <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" aria-hidden />
+                {t("pleaseWait")}
+              </div>
+            ) : showConfirmation && selectedTeam ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-4 border bg-muted/30 p-4">
+                  <FootballTeamAvatar
+                    name={selectedTeam.name}
+                    logoUrl={selectedTeam.logoUrl}
+                    size="lg"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                      {t("yourClub")}
+                    </p>
+                    <p className="truncate font-heading text-lg font-bold uppercase tracking-tight">
+                      {selectedTeam.name}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="h-auto px-0 text-sm font-medium text-muted-foreground hover:text-foreground"
+                  onClick={handleChangeTeam}
+                  disabled={loading}
+                >
+                  {t("changeTeam")}
+                </Button>
+              </div>
+            ) : (
+              <FootballTeamSearch
+                variant="default"
+                value={selectedTeamId}
+                selectedTeam={selectedTeam}
+                onChange={handleTeamChange}
+                placeholder={tHero("searchPlaceholder")}
+                disabled={loading}
+                inputId="teamSearch"
               />
-              {trimmedQuery.length >= 2 && searchResults && (
-                <ul className="rounded-md border bg-background text-sm">
-                  {searchResults.length === 0 ? (
-                    <li className="px-3 py-2 text-muted-foreground">
-                      {t("noTeamsFound")}
-                    </li>
-                  ) : (
-                    searchResults.map((team) => (
-                      <li key={team._id}>
-                        <button
-                          type="button"
-                          className={`w-full px-3 py-2 text-left hover:bg-muted ${
-                            selectedTeamId === team._id ? "bg-muted" : ""
-                          }`}
-                          onClick={() => {
-                            setSelectedTeamId(team._id);
-                            setSearchQuery(team.name);
-                          }}
-                        >
-                          <span className="font-medium">{team.name}</span>
-                          {team.competitionPath && (
-                            <span className="mt-0.5 block text-xs text-muted-foreground">
-                              {team.competitionPath}
-                            </span>
-                          )}
-                        </button>
-                      </li>
-                    ))
-                  )}
-                </ul>
-              )}
-              {selectedTeam && (
-                <p className="text-sm text-muted-foreground">
-                  {t("selectedTeam", { name: selectedTeam.name })}
-                </p>
-              )}
-            </div>
+            )}
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full font-heading uppercase tracking-wide"
               disabled={loading || !selectedTeamId}
             >
               {loading ? t("pleaseWait") : t("submit")}
