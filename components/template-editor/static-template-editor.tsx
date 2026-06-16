@@ -278,7 +278,6 @@ export function StaticTemplateEditor({
   const nodeRefs = useRef(new Map<string, Konva.Node>());
   const editorStageRef = useRef<Konva.Stage>(null);
   const previewModeRef = useRef(previewMode);
-  const restorePreviewModeRef = useRef<BindingPreviewMode>(previewMode);
   const titleMeasureRef = useRef<HTMLSpanElement>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
   const stageFrameRef = useRef<HTMLDivElement>(null);
@@ -1011,7 +1010,11 @@ export function StaticTemplateEditor({
   }, [previewMode]);
 
   const prepareStageForCapture = useCallback(async () => {
-    restorePreviewModeRef.current = previewModeRef.current;
+    const snapshot = {
+      previewMode: previewModeRef.current,
+      selectedNodeId,
+    };
+
     flushSync(() => {
       setSelectedNodeId(null);
       setPreviewMode("preview");
@@ -1020,7 +1023,14 @@ export function StaticTemplateEditor({
     transformerRef.current?.nodes([]);
     transformerRef.current?.getLayer()?.batchDraw();
     editorStageRef.current?.batchDraw();
-  }, []);
+
+    return () => {
+      flushSync(() => {
+        setSelectedNodeId(snapshot.selectedNodeId);
+        setPreviewMode(snapshot.previewMode);
+      });
+    };
+  }, [selectedNodeId]);
 
   const { captureAfterSave } = useTemplateThumbnailCapture({
     templateId: template._id,
@@ -1066,11 +1076,7 @@ export function StaticTemplateEditor({
           );
           setIsDirty(false);
         });
-        void captureAfterSave(templateName, normalizedSceneDocument).finally(() => {
-          flushSync(() => {
-            setPreviewMode(restorePreviewModeRef.current);
-          });
-        });
+        void captureAfterSave(templateName, normalizedSceneDocument);
         if (options?.showSuccessToast !== false) {
           showSuccessToast(t("editor.saveSuccess"));
         }

@@ -113,7 +113,10 @@ export async function waitForStageImages(
         stage.draw();
         return;
       }
-    } else if (loadedCount === konvaImageCount) {
+    } else if (
+      loadedCount === konvaImageCount &&
+      loadedCount >= minImageCount
+    ) {
       await new Promise<void>((resolve) => {
         requestAnimationFrame(() => {
           requestAnimationFrame(() => resolve());
@@ -164,18 +167,19 @@ export function captureStageThumbnail(stage: Konva.Stage): string {
   clipStageLayers(exportStage, stageWidth, stageHeight);
   exportStage.draw();
 
-  const dataUrl = exportStage.toDataURL({
-    x: 0,
-    y: 0,
-    width: stageWidth,
-    height: stageHeight,
-    pixelRatio,
-    mimeType: "image/jpeg",
-    quality: THUMBNAIL_JPEG_QUALITY,
-  });
-
-  exportStage.destroy();
-  return dataUrl;
+  try {
+    return exportStage.toDataURL({
+      x: 0,
+      y: 0,
+      width: stageWidth,
+      height: stageHeight,
+      pixelRatio,
+      mimeType: "image/jpeg",
+      quality: THUMBNAIL_JPEG_QUALITY,
+    });
+  } finally {
+    exportStage.destroy();
+  }
 }
 
 export async function uploadTemplateThumbnailBlob({

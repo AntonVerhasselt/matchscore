@@ -5,7 +5,6 @@ import { useCallback, useRef } from "react";
 
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import type { AutomationTypeBackend, CanvasPreset } from "@/lib/automations/types";
 import {
   captureStageThumbnail,
   countRenderableSceneImages,
@@ -22,7 +21,7 @@ type UseTemplateThumbnailCaptureOptions = {
   enabled?: boolean;
   templateId: Id<"automationTemplates">;
   captureStageRef: React.RefObject<Konva.Stage | null>;
-  prepareStageForCapture?: () => Promise<void>;
+  prepareStageForCapture?: () => Promise<(() => void) | void>;
 };
 
 /**
@@ -61,6 +60,7 @@ export function useTemplateThumbnailCapture({
       }
 
       isCapturingRef.current = true;
+      let restoreCaptureState: (() => void) | undefined;
 
       try {
         const contentHash = await hashTemplateThumbnailContent(
@@ -72,7 +72,7 @@ export function useTemplateThumbnailCapture({
           return;
         }
 
-        await prepareStageForCapture?.();
+        restoreCaptureState = await prepareStageForCapture?.();
 
         // Let React commit preview/selection changes before cloning the stage.
         await new Promise<void>((resolve) => {
@@ -106,6 +106,7 @@ export function useTemplateThumbnailCapture({
       } catch (error) {
         console.error("Template thumbnail capture failed:", error);
       } finally {
+        restoreCaptureState?.();
         isCapturingRef.current = false;
       }
     },

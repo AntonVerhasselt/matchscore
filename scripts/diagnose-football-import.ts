@@ -5,16 +5,15 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { normalizeCompetitionPath } from "../convex/lib/voetbalinbelgie/allowlist";
 import {
   parseClubTeamsFromHtml,
   parseSportsClubJsonLd,
 } from "../convex/lib/voetbalinbelgie/parseHtml";
-import { parseCompetitionJson } from "../convex/lib/voetbalinbelgie/parseCompetition";
 import { collectRequiredTeamNames } from "../convex/lib/voetbalinbelgie/teamNames";
-
-const PUBLIC_BASE = "https://www.voetbalinbelgie.be";
-const API_BASE = "https://api.voetbalinbelgie.be";
+import {
+  fetchClubPageHtml,
+  fetchCompetitionJson,
+} from "../convex/voetbalinbelgie/fetch";
 
 const PATHS = [
   "/competities/2025-2026/antwerpen/mannen/2a/",
@@ -43,10 +42,7 @@ async function main() {
   const apiKey = loadApiKey();
 
   for (const path of PATHS) {
-    const response = await fetch(`${API_BASE}${normalizeCompetitionPath(path)}`, {
-      headers: { "X-Api-Key": apiKey },
-    });
-    const dto = parseCompetitionJson(await response.json());
+    const dto = await fetchCompetitionJson(path, apiKey);
 
     console.log(`\n=== ${path} (id ${dto.meta.id}) ===`);
 
@@ -67,9 +63,7 @@ async function main() {
         "/clubs/",
       );
       const publicPath = slugPath.startsWith("/") ? slugPath : `/${slugPath}`;
-      const html = await fetch(`${PUBLIC_BASE}${publicPath}`).then((r) =>
-        r.text(),
-      );
+      const html = await fetchClubPageHtml(publicPath);
       const sportsClub = parseSportsClubJsonLd(html);
       const parsedTeams = parseClubTeamsFromHtml(html, slug);
       const forCompetition = parsedTeams.filter(

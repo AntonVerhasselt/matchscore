@@ -1,6 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { components } from "../_generated/api";
 import { internalMutation, type MutationCtx } from "../_generated/server";
+import { isDevelopmentDeployment } from "./deploymentGuard";
 
 /** Wiped on dev reset — user/app testing data only. */
 const appTables = [
@@ -79,13 +80,7 @@ export const clearAll = internalMutation({
     authModels: v.record(v.string(), v.number()),
   }),
   handler: async (ctx) => {
-    const deployment = process.env.CONVEX_DEPLOYMENT ?? "";
-    const cloudUrl = process.env.CONVEX_CLOUD_URL ?? "";
-    const isDevDeployment =
-      deployment.startsWith("dev:") ||
-      deployment.includes(":dev") ||
-      cloudUrl.includes("fine-wolf-59");
-    if (!isDevDeployment) {
+    if (!isDevelopmentDeployment()) {
       throw new ConvexError(
         "clearAll is blocked outside development deployments",
       );

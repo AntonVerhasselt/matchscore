@@ -39,8 +39,9 @@ function parseTeamNameFromClubCell(
     return fallbackName;
   }
 
+  const anchorMatches = [...clubCellHtml.matchAll(/<a[^>]*>([^<]+)<\/a>/g)];
   return (
-    clubCellHtml.match(/>&nbsp;([^<]+)<\/a>/)?.[1]?.trim() ??
+    anchorMatches.at(-1)?.[1]?.trim() ??
     clubCellHtml.match(/alt="Clublogo voetbalvereniging ([^"]+)"/)?.[1]?.trim() ??
     fallbackName
   );
@@ -88,10 +89,14 @@ function parseJsonLdGraph(html: string): Array<Record<string, unknown>> | null {
     return null;
   }
 
-  const jsonLd = JSON.parse(jsonLdMatch[1]) as {
-    "@graph"?: Array<Record<string, unknown>>;
-  };
-  return jsonLd["@graph"] ?? null;
+  try {
+    const jsonLd = JSON.parse(jsonLdMatch[1]) as {
+      "@graph"?: Array<Record<string, unknown>>;
+    };
+    return jsonLd["@graph"] ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function parsePostalAddress(

@@ -112,6 +112,14 @@ export function FootballTeamSearch({
 
   const showFloatingPanel = showDropdown || showNoResults;
 
+  const effectiveHighlightedIndex =
+    showDropdown && searchResults?.length
+      ? Math.min(
+          highlightedIndex < 0 ? 0 : highlightedIndex,
+          searchResults.length - 1,
+        )
+      : -1;
+
   const updateDropdownPosition = useCallback(() => {
     const element = containerRef.current;
     if (!element) {
@@ -128,7 +136,6 @@ export function FootballTeamSearch({
 
   useLayoutEffect(() => {
     if (!showFloatingPanel) {
-      setDropdownPosition(null);
       return;
     }
 
@@ -167,10 +174,10 @@ export function FootballTeamSearch({
     (team: FootballTeamSearchResult) => {
       if (onSelect) {
         onSelect(team);
-        return;
+      } else {
+        onChange(team._id, team);
+        setQuery(team.name);
       }
-      onChange(team._id, team);
-      setQuery(team.name);
       closeDropdown();
     },
     [closeDropdown, onChange, onSelect],
@@ -208,9 +215,9 @@ export function FootballTeamSearch({
       return;
     }
 
-    if (event.key === "Enter" && highlightedIndex >= 0) {
+    if (event.key === "Enter" && effectiveHighlightedIndex >= 0) {
       event.preventDefault();
-      const team = searchResults[highlightedIndex];
+      const team = searchResults[effectiveHighlightedIndex];
       if (team) {
         selectTeam(team);
       }
@@ -222,14 +229,6 @@ export function FootballTeamSearch({
       closeDropdown();
     }
   };
-
-  useEffect(() => {
-    if (!showDropdown) {
-      setHighlightedIndex(-1);
-      return;
-    }
-    setHighlightedIndex(searchResults?.length ? 0 : -1);
-  }, [searchResults, showDropdown, trimmedDebouncedQuery]);
 
   const floatingPanel =
     dropdownPosition && showFloatingPanel ? (
@@ -267,10 +266,10 @@ export function FootballTeamSearch({
                     id={`${listboxId}-option-${index}`}
                     type="button"
                     role="option"
-                    aria-selected={highlightedIndex === index}
+                    aria-selected={effectiveHighlightedIndex === index}
                     className={cn(
                       "flex h-[3.25rem] w-full items-center gap-3 px-4 text-left transition-colors",
-                      highlightedIndex === index
+                      effectiveHighlightedIndex === index
                         ? "bg-muted"
                         : "hover:bg-muted/80",
                     )}
@@ -379,14 +378,15 @@ export function FootballTeamSearch({
           aria-controls={showDropdown ? listboxId : undefined}
           aria-autocomplete="list"
           aria-activedescendant={
-            highlightedIndex >= 0
-              ? `${listboxId}-option-${highlightedIndex}`
+            effectiveHighlightedIndex >= 0
+              ? `${listboxId}-option-${effectiveHighlightedIndex}`
               : undefined
           }
           enterKeyHint="search"
           onChange={(event) => {
             setQuery(event.target.value);
             onChange(null, null);
+            setHighlightedIndex(-1);
             setIsOpen(true);
           }}
           onFocus={() => {

@@ -26,6 +26,7 @@ import type * as automations_scenes from "../automations/scenes.js";
 import type * as automations_validators from "../automations/validators.js";
 import type * as crons from "../crons.js";
 import type * as dev_clearDatabase from "../dev/clearDatabase.js";
+import type * as dev_deploymentGuard from "../dev/deploymentGuard.js";
 import type * as dev_seedFootballTeam from "../dev/seedFootballTeam.js";
 import type * as emails_actions from "../emails/actions.js";
 import type * as football_actions from "../football/actions.js";
@@ -90,6 +91,7 @@ declare const fullApi: ApiFromModules<{
   "automations/validators": typeof automations_validators;
   crons: typeof crons;
   "dev/clearDatabase": typeof dev_clearDatabase;
+  "dev/deploymentGuard": typeof dev_deploymentGuard;
   "dev/seedFootballTeam": typeof dev_seedFootballTeam;
   "emails/actions": typeof emails_actions;
   "football/actions": typeof football_actions;

@@ -3,6 +3,8 @@ import type { ActionCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { normalizeLogoSourceUrl } from "../voetbalinbelgie/logos";
 
+const MAX_LOGO_BYTES = 5 * 1024 * 1024;
+
 export async function downloadLogoToStorage(
   ctx: ActionCtx,
   sourceUrl: string,
@@ -31,8 +33,27 @@ export async function downloadLogoToStorage(
     );
   }
 
-  const contentType = response.headers.get("content-type") ?? "image/png";
+  const contentLength = response.headers.get("content-length");
+  if (contentLength && Number(contentLength) > MAX_LOGO_BYTES) {
+    throw new Error(
+      `Logo exceeds max size (${contentLength} bytes) for ${logoSourceUrl}`,
+    );
+  }
+
+  const contentType = response.headers.get("content-type");
+  if (!contentType || !contentType.startsWith("image/")) {
+    throw new Error(
+      `Unexpected logo content-type (${contentType ?? "missing"}) for ${logoSourceUrl}`,
+    );
+  }
+
   const buffer = await response.arrayBuffer();
+  if (buffer.byteLength > MAX_LOGO_BYTES) {
+    throw new Error(
+      `Logo exceeds max size (${buffer.byteLength} bytes) for ${logoSourceUrl}`,
+    );
+  }
+
   return await ctx.storage.store(
     new Blob([buffer], { type: contentType }),
   );

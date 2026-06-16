@@ -87,22 +87,29 @@ async function replaceStandingsForCompetition(
     vibLogoFile?: string;
   }>,
 ): Promise<number> {
+  const resolvedRows = await Promise.all(
+    rows.map(async (row) => {
+      const teamId = await requireFootballTeamId(
+        ctx,
+        sourceCompetitionId,
+        row.vibTeamName,
+      );
+      return { row, teamId };
+    }),
+  );
+
   const existingRows = await ctx.db
     .query("competitionStandings")
-    .filter((q) => q.eq(q.field("competitionId"), competitionId))
+    .withIndex("by_competitionId_and_teamId", (q) =>
+      q.eq("competitionId", competitionId),
+    )
     .collect();
 
   for (const row of existingRows) {
     await ctx.db.delete(row._id);
   }
 
-  for (const row of rows) {
-    const teamId = await requireFootballTeamId(
-      ctx,
-      sourceCompetitionId,
-      row.vibTeamName,
-    );
-
+  for (const { row, teamId } of resolvedRows) {
     await ctx.db.insert("competitionStandings", {
       competitionId,
       teamId,
@@ -281,13 +288,6 @@ export const replaceCompetitionSnapshot = internalMutation({
     }
     assertCompetitionSourceMatch(competition, args.sourceCompetitionId);
 
-    const standingCount = await replaceStandingsForCompetition(
-      ctx,
-      args.competitionId,
-      args.sourceCompetitionId,
-      args.standings,
-    );
-
     for (const match of args.matches) {
       await upsertMatchForCompetition(
         ctx,
@@ -296,6 +296,13 @@ export const replaceCompetitionSnapshot = internalMutation({
         match,
       );
     }
+
+    const standingCount = await replaceStandingsForCompetition(
+      ctx,
+      args.competitionId,
+      args.sourceCompetitionId,
+      args.standings,
+    );
 
     return {
       standingCount,

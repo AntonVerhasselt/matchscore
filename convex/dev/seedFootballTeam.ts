@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { internalMutation } from "../_generated/server";
+import { isDevelopmentDeployment } from "./deploymentGuard";
 
 const SEED_TEAM = {
   name: "KSV Aartselaar",
@@ -23,16 +24,6 @@ const SEED_TEAM = {
   province: "Antwerpen",
   importSource: "club_page" as const,
 };
-
-function isDevelopmentDeployment(): boolean {
-  const deployment = process.env.CONVEX_DEPLOYMENT ?? "";
-  const cloudUrl = process.env.CONVEX_CLOUD_URL ?? "";
-  return (
-    deployment.startsWith("dev:") ||
-    deployment.includes(":dev") ||
-    cloudUrl.includes("fine-wolf-59")
-  );
-}
 
 /**
  * Dev-only: seed KSV Aartselaar for onboarding tests.

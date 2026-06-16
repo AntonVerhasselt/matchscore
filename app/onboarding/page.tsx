@@ -31,14 +31,15 @@ import { FormEvent, useEffect, useState } from "react";
 export default function OnboardingPage() {
   const t = useTranslations("onboarding");
   const tHero = useTranslations("landing.hero");
+  const initialSelectedFootballTeamId = readSelectedFootballTeamId();
   const [storedTeamId] = useState<Id<"footballTeams"> | null>(
-    () => readSelectedFootballTeamId(),
+    () => initialSelectedFootballTeamId,
   );
   const [isChangingTeam, setIsChangingTeam] = useState(
-    () => readSelectedFootballTeamId() === null,
+    () => initialSelectedFootballTeamId === null,
   );
   const [selectedTeamId, setSelectedTeamId] = useState<Id<"footballTeams"> | null>(
-    () => readSelectedFootballTeamId(),
+    () => initialSelectedFootballTeamId,
   );
   const [selectedTeam, setSelectedTeam] =
     useState<FootballTeamSearchResult | null>(null);

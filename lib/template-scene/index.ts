@@ -354,7 +354,7 @@ export function resolveImageSource(
       bindingKey === "homeClubLogo"
         ? previewMatch.homeClub.logoUrl
         : previewMatch.awayClub.logoUrl;
-    return logoUrl ?? null;
+    return logoUrl ?? createPlaceholderCrestDataUrl(bindingKey, previewMode);
   }
 
   return createPlaceholderCrestDataUrl(bindingKey, previewMode);

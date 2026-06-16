@@ -226,7 +226,9 @@ export const getCompetitionStandings = query({
 
     const rows = await ctx.db
       .query("competitionStandings")
-      .filter((q) => q.eq(q.field("competitionId"), competition._id))
+      .withIndex("by_competitionId_and_teamId", (q) =>
+        q.eq("competitionId", competition._id),
+      )
       .collect();
 
     rows.sort((a, b) => a.position - b.position);

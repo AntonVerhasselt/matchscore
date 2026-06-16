@@ -201,7 +201,7 @@ Common cause: club page panels without tab links (parser handles via `id="comp-{
 
 ### Duplicate search results for the same club
 
-Run `pnpm repair:football-team-names`. Men’s team keeps the base name; women’s gets ` Dames`; reserve men’s gets ` B`.
+Run `pnpm repair:football-team-names`. Men’s team keeps the base name; women’s gets `Dames`; reserve men’s gets `B`.
 
 ### `VOETBALINBELGIE_API_KEY is not configured`
 
