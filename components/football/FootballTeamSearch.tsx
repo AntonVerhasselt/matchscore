@@ -49,6 +49,7 @@ type FootballTeamSearchProps = {
   label?: string;
   placeholder?: string;
   disabled?: boolean;
+  autoFocus?: boolean;
 };
 
 export function FootballTeamSearch({
@@ -61,6 +62,7 @@ export function FootballTeamSearch({
   label,
   placeholder,
   disabled = false,
+  autoFocus = false,
 }: FootballTeamSearchProps) {
   const t = useTranslations("footballSearch");
   const generatedId = useId();
@@ -369,6 +371,7 @@ export function FootballTeamSearch({
           type="search"
           value={query}
           disabled={disabled}
+          autoFocus={autoFocus}
           placeholder={placeholder ?? t("placeholder")}
           autoComplete="off"
           role="combobox"

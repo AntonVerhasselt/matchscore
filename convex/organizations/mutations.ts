@@ -101,16 +101,6 @@ export const createOrganization = mutation({
       throw new ConvexError("Team not found");
     }
 
-    const existingOrgForTeam = await ctx.db
-      .query("organizations")
-      .withIndex("by_footballTeamId", (q) =>
-        q.eq("footballTeamId", args.footballTeamId),
-      )
-      .unique();
-    if (existingOrgForTeam) {
-      throw new ConvexError("This team is already linked to an organisation");
-    }
-
     const existingMembership = await getMembershipForUser(ctx, user._id);
     if (existingMembership) {
       throw new ConvexError("You already belong to an organisation");
@@ -170,16 +160,6 @@ export const updateOrganizationFootballTeam = mutation({
     const team = await ctx.db.get(args.footballTeamId);
     if (!team) {
       throw new ConvexError("Team not found");
-    }
-
-    const existingOrgForTeam = await ctx.db
-      .query("organizations")
-      .withIndex("by_footballTeamId", (q) =>
-        q.eq("footballTeamId", args.footballTeamId),
-      )
-      .unique();
-    if (existingOrgForTeam && existingOrgForTeam._id !== organization._id) {
-      throw new ConvexError("This team is already linked to an organisation");
     }
 
     await ctx.db.patch(organization._id, {

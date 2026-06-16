@@ -51,8 +51,11 @@ export function LinkedTeamSettings() {
     linkedTeam === undefined ||
     teamSummary === undefined;
 
+  const hasTeamChange =
+    selectedTeamId !== null && selectedTeamId !== footballTeamId;
+
   const handleSave = async () => {
-    if (!selectedTeamId) {
+    if (!hasTeamChange) {
       return;
     }
 
@@ -91,12 +94,13 @@ export function LinkedTeamSettings() {
               placeholder={tHero("searchPlaceholder")}
               disabled={isSaving}
               inputId="settingsTeamSearch"
+              autoFocus
             />
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
                 onClick={() => void handleSave()}
-                disabled={isSaving || !selectedTeamId}
+                disabled={isSaving || !hasTeamChange}
               >
                 {isSaving ? t("saving") : t("save")}
               </Button>
@@ -133,7 +137,15 @@ export function LinkedTeamSettings() {
                 ) : null}
               </div>
             </div>
-            <Button type="button" variant="outline" onClick={() => setIsChanging(true)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setIsChanging(true);
+                setSelectedTeamId(null);
+                setSelectedTeam(null);
+              }}
+            >
               {t("changeTeam")}
             </Button>
           </div>
