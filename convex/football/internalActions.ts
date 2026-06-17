@@ -45,6 +45,7 @@ async function collectMissingCompetitionTeams(ctx: ActionCtx): Promise<
     competitionId: number;
     missing: string[];
     slugPaths: string[];
+    fetchFailed?: boolean;
   }>
 > {
   const apiKey = process.env.VOETBALINBELGIE_API_KEY;
@@ -59,35 +60,52 @@ async function collectMissingCompetitionTeams(ctx: ActionCtx): Promise<
       continue;
     }
 
-    const dto = await fetchCompetitionJson(path, apiKey);
-    const missing: string[] = [];
-    const slugPaths = new Set<string>();
+    try {
+      const dto = await fetchCompetitionJson(path, apiKey);
+      const missing: string[] = [];
+      const slugPaths = new Set<string>();
 
-    for (const name of collectRequiredTeamNames(dto)) {
-      const found: boolean = await ctx.runQuery(
-        internal.football.internalQueries.isTeamImportedForCompetition,
-        {
-          sourceCompetitionId: dto.meta.id,
-          vibTeamName: name,
-        },
+      for (const name of collectRequiredTeamNames(dto)) {
+        const found: boolean = await ctx.runQuery(
+          internal.football.internalQueries.isTeamImportedForCompetition,
+          {
+            sourceCompetitionId: dto.meta.id,
+            vibTeamName: name,
+          },
+        );
+        if (found) {
+          continue;
+        }
+
+        missing.push(name);
+        const related = dto.relatedTeams.find((team) => team.name === name);
+        if (related?.href) {
+          slugPaths.add(slugPathFromApiHref(related.href));
+        }
+      }
+
+      results.push({
+        path,
+        competitionId: dto.meta.id,
+        missing,
+        slugPaths: [...slugPaths],
+      });
+    } catch (error) {
+      console.log(
+        JSON.stringify({
+          event: "football_competition_fetch_failed",
+          path,
+          error: error instanceof Error ? error.message : "Unknown error",
+        }),
       );
-      if (found) {
-        continue;
-      }
-
-      missing.push(name);
-      const related = dto.relatedTeams.find((team) => team.name === name);
-      if (related?.href) {
-        slugPaths.add(slugPathFromApiHref(related.href));
-      }
+      results.push({
+        path,
+        competitionId: 0,
+        missing: [],
+        slugPaths: [],
+        fetchFailed: true,
+      });
     }
-
-    results.push({
-      path,
-      competitionId: dto.meta.id,
-      missing,
-      slugPaths: [...slugPaths],
-    });
   }
 
   return results;
@@ -246,7 +264,7 @@ export const repairMissingCompetitionTeams = internalAction({
       results.push({
         path: group.path,
         competitionId: group.competitionId,
-        ok: stillMissing.length === 0,
+        ok: !group.fetchFailed && stillMissing.length === 0,
         missing: stillMissing,
       });
     }
@@ -273,11 +291,13 @@ export const validateAllowlistedCompetitionTeams = internalAction({
   handler: async (ctx) => {
     const missingGroups = await collectMissingCompetitionTeams(ctx);
     return {
-      ok: missingGroups.every((group) => group.missing.length === 0),
+      ok: missingGroups.every(
+        (group) => !group.fetchFailed && group.missing.length === 0,
+      ),
       results: missingGroups.map((group) => ({
         path: group.path,
         competitionId: group.competitionId,
-        ok: group.missing.length === 0,
+        ok: !group.fetchFailed && group.missing.length === 0,
         missing: group.missing,
       })),
     };

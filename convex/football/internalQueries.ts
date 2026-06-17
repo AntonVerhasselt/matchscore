@@ -58,6 +58,7 @@ export const getCompetitionSyncState = internalQuery({
     v.object({
       competitionId: v.id("competitions"),
       lastSyncedAt: v.optional(v.number()),
+      lastSyncError: v.optional(v.string()),
     }),
     v.null(),
   ),
@@ -75,6 +76,7 @@ export const getCompetitionSyncState = internalQuery({
     return {
       competitionId: competition._id,
       lastSyncedAt: competition.lastSyncedAt,
+      lastSyncError: competition.lastSyncError,
     };
   },
 });

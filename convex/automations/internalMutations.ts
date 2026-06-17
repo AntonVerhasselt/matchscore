@@ -48,8 +48,7 @@ export const replaceTemplateThumbnail = internalMutation({
       return null;
     }
 
-    const previousStorageId =
-      args.previousStorageId ?? template.thumbnailStorageId;
+    const previousStorageId = template.thumbnailStorageId;
 
     if (previousStorageId && previousStorageId !== args.newStorageId) {
       await ctx.storage.delete(previousStorageId);

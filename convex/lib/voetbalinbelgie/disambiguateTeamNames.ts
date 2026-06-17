@@ -28,7 +28,7 @@ export function isReserveMaleTeam(team: TeamNameDisambiguationInput): boolean {
   if (team.tabLabel && /mannen\s+b/i.test(team.tabLabel)) {
     return true;
   }
-  if (team.competitionPath && /\/mannen\/[^/]*b(?:\/|$)/i.test(team.competitionPath)) {
+  if (team.competitionPath && /\/mannen\/b(?:\/|$)/i.test(team.competitionPath)) {
     return true;
   }
   if (/\sB$/i.test(team.teamName.trim())) {
@@ -109,8 +109,20 @@ export function applyDisplayNameDisambiguation<T extends TeamNameDisambiguationI
     const baseName = team.teamName;
 
     if (!duplicateBases.has(baseName)) {
-      usedDisplayNames.add(baseName);
-      return { ...team, displayName: baseName, vibTeamName };
+      if (!usedDisplayNames.has(baseName)) {
+        usedDisplayNames.add(baseName);
+        return { ...team, displayName: baseName, vibTeamName };
+      }
+
+      let displayName = `${baseName}${suffixForDuplicateTeam(team)}`;
+      let counter = 2;
+      while (usedDisplayNames.has(displayName)) {
+        displayName = `${baseName}${suffixForDuplicateTeam(team)} ${counter}`;
+        counter += 1;
+      }
+
+      usedDisplayNames.add(displayName);
+      return { ...team, displayName, vibTeamName };
     }
 
     const index = occurrenceIndex.get(baseName) ?? 0;

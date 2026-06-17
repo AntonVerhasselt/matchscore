@@ -18,6 +18,9 @@ export function countRenderableSceneImages(sceneDocument: SceneDocument): number
   let count = 0;
 
   function walk(node: SceneNode) {
+    if (node.attrs.visible === false) {
+      return;
+    }
     if (node.className === "Image") {
       count += 1;
     }
@@ -33,6 +36,9 @@ export function countThumbnailCaptureImages(sceneDocument: SceneDocument): numbe
   let count = 0;
 
   function walk(node: SceneNode) {
+    if (node.attrs.visible === false) {
+      return;
+    }
     if (node.className === "Image") {
       const bindingKey = node.attrs.bindingKey;
       if (bindingKey !== "homeClubLogo" && bindingKey !== "awayClubLogo") {

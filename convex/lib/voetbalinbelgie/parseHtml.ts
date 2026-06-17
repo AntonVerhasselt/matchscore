@@ -82,21 +82,24 @@ function parseTeamFromCompetitionPanel(
 }
 
 function parseJsonLdGraph(html: string): Array<Record<string, unknown>> | null {
-  const jsonLdMatch = html.match(
-    /<script type="application\/ld\+json">([\s\S]*?)<\/script>/,
-  );
-  if (!jsonLdMatch) {
-    return null;
+  const scriptRegex =
+    /<script[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+
+  let match: RegExpExecArray | null;
+  while ((match = scriptRegex.exec(html)) !== null) {
+    try {
+      const jsonLd = JSON.parse(match[1]) as {
+        "@graph"?: Array<Record<string, unknown>>;
+      };
+      if (jsonLd["@graph"]) {
+        return jsonLd["@graph"];
+      }
+    } catch {
+      continue;
+    }
   }
 
-  try {
-    const jsonLd = JSON.parse(jsonLdMatch[1]) as {
-      "@graph"?: Array<Record<string, unknown>>;
-    };
-    return jsonLd["@graph"] ?? null;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 function parsePostalAddress(

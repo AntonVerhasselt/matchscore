@@ -117,4 +117,31 @@ describe("parseHtml", () => {
       },
     ]);
   });
+
+  test("parseSportsClubJsonLd skips malformed JSON-LD blocks", () => {
+    const html = `
+<script type="application/ld+json">{ invalid json</script>
+<script type="application/ld+json">{
+  "@graph": [{
+    "@type": "SportsClub",
+    "name": "Fallback FC",
+    "branchCode": "1234"
+  }]
+}</script>
+`;
+
+    const club = parseSportsClubJsonLd(html);
+    expect(club).toEqual({
+      name: "Fallback FC",
+      branchCode: "1234",
+    });
+
+    const teams = parseClubTeamsFromHtml(html, "fallback-fc");
+    expect(teams).toEqual([
+      {
+        teamName: "Fallback FC",
+        stamnummer: "1234",
+      },
+    ]);
+  });
 });

@@ -43,7 +43,7 @@ export const getCurrentMembership = query({
         name: v.string(),
         slug: v.string(),
         logoImageUrl: v.union(v.string(), v.null()),
-        footballTeamId: v.id("footballTeams"),
+        footballTeamId: v.optional(v.id("footballTeams")),
         createdAt: v.number(),
       }),
       members: v.array(memberSummaryValidator),

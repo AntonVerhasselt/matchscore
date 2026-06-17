@@ -41,9 +41,9 @@ describe("mergeCompetitionMatches", () => {
   test("keeps program row when results row has no final score", () => {
     const unfinishedResult: CompetitionMatchRow = {
       status: "Gespeeld",
-      date: "2026-05-10T15:00:00+02:00",
-      home: "KFC Putte",
-      away: "Puurs",
+      date: "2026-04-26T15:00:00+02:00",
+      home: "KSV Aartselaar",
+      away: "KFC Putte",
     };
 
     const merged = mergeCompetitionMatches(
@@ -52,9 +52,8 @@ describe("mergeCompetitionMatches", () => {
       [scheduledProgram],
     );
 
-    expect(merged).toHaveLength(2);
-    const programRow = merged.find((row) => row.home === "KSV Aartselaar");
-    expect(programRow?.status).toBe("Gepland");
+    expect(merged).toHaveLength(1);
+    expect(merged[0]?.status).toBe("Gepland");
   });
 
   test("isFinalCompetitionMatch requires both goal counts", () => {

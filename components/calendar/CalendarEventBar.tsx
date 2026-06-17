@@ -62,8 +62,8 @@ export function CalendarEventBar({
       className={cn(
         "flex min-h-6 items-center gap-1 overflow-hidden rounded-sm px-1.5 py-0.5 text-[11px] leading-tight",
         isMatch
-          ? "bg-[oklch(0.94_0.04_150)] text-[oklch(0.145_0_0_0)] shadow-[inset_3px_0_0_oklch(0.35_0.08_155)]"
-          : "bg-blue-100 text-[oklch(0.145_0_0_0)] shadow-[inset_3px_0_0_oklch(0.45_0.12_250)] dark:bg-blue-100 dark:text-[oklch(0.145_0_0_0)]",
+          ? "bg-[oklch(0.94_0.04_150)] text-[oklch(0.145_0_0)] shadow-[inset_3px_0_0_oklch(0.35_0.08_155)]"
+          : "bg-blue-100 text-[oklch(0.145_0_0)] shadow-[inset_3px_0_0_oklch(0.45_0.12_250)] dark:bg-blue-100 dark:text-[oklch(0.145_0_0)]",
         className,
       )}
       title={tooltip}

@@ -6,14 +6,39 @@ const PUBLIC_BASE = "https://www.voetbalinbelgie.be";
 const API_BASE = "https://api.voetbalinbelgie.be";
 const FETCH_TIMEOUT_MS = 30_000;
 
+function composeAbortSignals(signals: AbortSignal[]): AbortSignal {
+  if (typeof AbortSignal.any === "function") {
+    return AbortSignal.any(signals);
+  }
+
+  const controller = new AbortController();
+  for (const signal of signals) {
+    if (signal.aborted) {
+      controller.abort(signal.reason);
+      break;
+    }
+    signal.addEventListener(
+      "abort",
+      () => {
+        controller.abort(signal.reason);
+      },
+      { once: true },
+    );
+  }
+  return controller.signal;
+}
+
 async function fetchText(url: string, init?: RequestInit): Promise<string> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  const signal = init?.signal
+    ? composeAbortSignals([controller.signal, init.signal])
+    : controller.signal;
 
   try {
     const response = await fetch(url, {
       ...init,
-      signal: init?.signal ?? controller.signal,
+      signal,
     });
     if (!response.ok) {
       throw new Error(`Fetch failed (${response.status}) for ${url}`);
@@ -50,5 +75,16 @@ export async function fetchCompetitionJson(
     },
   });
 
-  return parseCompetitionJson(JSON.parse(jsonText) as unknown);
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch (error) {
+    throw new Error(
+      `Failed to parse competition JSON for ${normalizedPath}: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`,
+    );
+  }
+
+  return parseCompetitionJson(parsed);
 }

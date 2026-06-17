@@ -4,6 +4,7 @@ import Konva from "konva";
 import { loadImage } from "skia-canvas";
 
 import {
+  createPlaceholderCrestDataUrl,
   getImageBindingKey,
   isFilledShapeClassName,
   prepareFilledShapeAttrsForRender,
@@ -108,15 +109,14 @@ async function loadSceneImageSource(
   const bindingKey = getImageBindingKey(attrs.bindingKey);
   if (bindingKey) {
     const storageId = logoStorageIdForBinding(bindingKey, match);
-    if (!storageId) {
-      return null;
+    if (storageId) {
+      const buffer = await loaders.loadTeamLogo(storageId);
+      if (buffer) {
+        return await loadImage(buffer);
+      }
     }
 
-    const buffer = await loaders.loadTeamLogo(storageId);
-    if (!buffer) {
-      return null;
-    }
-    return await loadImage(buffer);
+    return await loadImage(createPlaceholderCrestDataUrl(bindingKey, "preview"));
   }
 
   return null;

@@ -72,11 +72,11 @@ export default function OnboardingPage() {
 
   const activeTeamId = isChoosingTeam
     ? selectedTeamId
-    : (storedTeam?._id ?? selectedTeamId);
+    : (selectedTeamId ?? storedTeam?._id ?? null);
 
   const activeTeam = isChoosingTeam
     ? selectedTeam
-    : (storedTeam ?? selectedTeam);
+    : (selectedTeam ?? storedTeam ?? null);
 
   const showConfirmation =
     !isChoosingTeam &&

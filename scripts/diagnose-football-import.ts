@@ -21,10 +21,15 @@ const PATHS = [
 ] as const;
 
 function loadApiKey(): string {
+  const fromEnv = process.env.VOETBALINBELGIE_API_KEY?.trim();
+  if (fromEnv) {
+    return fromEnv;
+  }
+
   const content = readFileSync(resolve(process.cwd(), ".env.local"), "utf8");
-  const match = content.match(/^VOETBALINBELGIE_API_KEY=(.+)$/m);
+  const match = content.match(/^VOETBALINBELGIE_API_KEY=(["']?)(.+?)\1\s*$/m);
   if (!match) throw new Error("VOETBALINBELGIE_API_KEY not found");
-  return match[1].trim();
+  return match[2].trim();
 }
 
 function slugFromHref(href: string): string {

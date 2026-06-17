@@ -355,7 +355,7 @@ Internal `renderSpikeTest` action renders a trivial solid-color PNG to verify na
 
 Separate from render test. The template list on `/app/automations/preview` and `/app/automations/result` shows a small JPEG from `thumbnailStorageId`.
 
-```
+```text
 Editor save succeeds
   → hidden preview stage capture (~256px JPEG, client-side only)
   → generateUploadUrl + saveTemplateThumbnail

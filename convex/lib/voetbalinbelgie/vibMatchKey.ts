@@ -4,5 +4,5 @@ export function buildVibMatchKey(
   home: string,
   away: string,
 ): string {
-  return `${sourceCompetitionId}:${date}:${home}:${away}`;
+  return JSON.stringify([sourceCompetitionId, date, home, away]);
 }

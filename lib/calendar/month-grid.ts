@@ -82,12 +82,15 @@ export function buildMonthGrid(year: number, month: number): MonthGridCell[] {
   const weekdayToken = weekdayFormatter.format(firstWeekday);
   const startOffset = weekdayMap[weekdayToken] ?? 0;
 
-  const gridStart = new Date(
-    firstOfMonth.getTime() - startOffset * 24 * 60 * 60 * 1000,
-  );
+  const utcNoon = (year: number, month: number, day: number) =>
+    new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
 
   return Array.from({ length: 42 }, (_, index) => {
-    const date = new Date(gridStart.getTime() + index * 24 * 60 * 60 * 1000);
+    const date = utcNoon(
+      firstParts.year,
+      firstParts.month,
+      1 - startOffset + index,
+    );
     const parts = getBrusselsDateParts(date);
     const dayKey = `${parts.year}-${String(parts.month).padStart(2, "0")}-${String(parts.day).padStart(2, "0")}`;
 

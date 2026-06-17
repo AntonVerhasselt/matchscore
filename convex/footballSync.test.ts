@@ -217,6 +217,7 @@ describe("syncCompetition", () => {
       { path: PATH_2A },
     );
     expect(syncState?.lastSyncedAt).toBeUndefined();
+    expect(syncState?.lastSyncError).toMatch(/Missing imported teams/);
   });
 
   test("syncLinkedCompetitions syncs paths linked through organizations", async () => {
