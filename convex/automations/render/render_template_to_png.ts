@@ -24,8 +24,6 @@ export type RenderTemplateInput = {
   canvasPreset: "instagram_square" | "instagram_portrait" | "facebook_landscape";
   match: TemplateMatchDto;
   loaders: RenderAssetLoader;
-  /** Included in Convex logs to distinguish render test vs thumbnail jobs. */
-  purpose?: string;
 };
 
 function exportStageToPngBuffer(stage: Konva.Stage): Buffer {
@@ -87,7 +85,6 @@ async function buildRenderedStage(
     input.automationType,
     input.match,
     input.loaders,
-    { purpose: input.purpose },
   );
 
   return stage;

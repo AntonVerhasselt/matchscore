@@ -64,7 +64,6 @@ export const renderTemplateTest = action({
           automationType: template.automationType,
           canvasPreset: template.canvasPreset,
           sceneDocument,
-          purpose: "render-test",
         },
         match,
       );
@@ -114,20 +113,8 @@ export const generateTemplateThumbnail = internalAction({
     );
 
     if (!template || template.updatedAt !== args.expectedUpdatedAt) {
-      console.log("[template-thumbnail] Skipping stale thumbnail job", {
-        templateId: args.templateId,
-        expectedUpdatedAt: args.expectedUpdatedAt,
-        currentUpdatedAt: template?.updatedAt ?? null,
-      });
       return null;
     }
-
-    console.log("[template-thumbnail] Starting thumbnail generation", {
-      templateId: args.templateId,
-      expectedUpdatedAt: args.expectedUpdatedAt,
-      organizationId: template.organizationId,
-      hasExistingThumbnail: Boolean(template.thumbnailStorageId),
-    });
 
     let sceneDocument;
     try {
@@ -136,11 +123,7 @@ export const generateTemplateThumbnail = internalAction({
         template.canvasPreset,
         template.automationType,
       );
-    } catch (error) {
-      console.error("Template thumbnail generation skipped: invalid scene", {
-        templateId: args.templateId,
-        error: error instanceof Error ? error.message : error,
-      });
+    } catch {
       return null;
     }
 
@@ -159,15 +142,10 @@ export const generateTemplateThumbnail = internalAction({
           automationType: template.automationType,
           canvasPreset: template.canvasPreset,
           sceneDocument,
-          purpose: "list-thumbnail",
         },
         match,
       );
-    } catch (error) {
-      console.error("Template thumbnail generation failed", {
-        templateId: args.templateId,
-        error: error instanceof Error ? error.message : error,
-      });
+    } catch {
       return null;
     }
 
@@ -184,17 +162,8 @@ export const generateTemplateThumbnail = internalAction({
           previousStorageId: template.thumbnailStorageId,
         },
       );
-      console.log("[template-thumbnail] Thumbnail stored", {
-        templateId: args.templateId,
-        storageId,
-        byteLength: jpegBuffer.byteLength,
-      });
-    } catch (error) {
+    } catch {
       await ctx.storage.delete(storageId);
-      console.error("Template thumbnail storage update failed", {
-        templateId: args.templateId,
-        error: error instanceof Error ? error.message : error,
-      });
     }
 
     return null;

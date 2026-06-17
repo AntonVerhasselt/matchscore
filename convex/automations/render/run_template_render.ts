@@ -24,13 +24,11 @@ type TemplateRenderSource = {
   automationType: RenderTemplateInput["automationType"];
   canvasPreset: RenderTemplateInput["canvasPreset"];
   sceneDocument: unknown;
-  purpose?: string;
 };
 
 async function loadRenderAssetLoaders(
   ctx: ActionCtx,
   organizationId: Id<"organizations">,
-  purpose?: string,
 ): Promise<RenderTemplateInput["loaders"]> {
   const assets = await ctx.runQuery(
     internal.templateAssets.internalQueries.listAssetStorageByOrganization,
@@ -40,33 +38,15 @@ async function loadRenderAssetLoaders(
     assets.map((asset) => [asset._id, asset.storageId]),
   );
 
-  console.log("[template-render] Loaded template assets for organization", {
-    purpose,
-    organizationId,
-    assetCount: assets.length,
-    assetIds: assets.map((asset) => asset._id),
-  });
-
   return {
     loadAsset: async (assetId) => {
       const storageId = storageIdByAssetId.get(assetId as Id<"templateAssets">);
       if (!storageId) {
-        console.warn("[template-render] Template asset id not found for org", {
-          purpose,
-          organizationId,
-          assetId,
-        });
         return null;
       }
 
       const blob = await ctx.storage.get(storageId);
       if (!blob) {
-        console.warn("[template-render] Storage blob missing for template asset", {
-          purpose,
-          organizationId,
-          assetId,
-          storageId,
-        });
         return null;
       }
 
@@ -110,11 +90,7 @@ export async function renderTemplateSceneToPngBuffer(
     source.canvasPreset,
     source.automationType,
   );
-  const loaders = await loadRenderAssetLoaders(
-    ctx,
-    source.organizationId,
-    source.purpose,
-  );
+  const loaders = await loadRenderAssetLoaders(ctx, source.organizationId);
 
   return await renderTemplateToPng({
     sceneDocument,
@@ -122,7 +98,6 @@ export async function renderTemplateSceneToPngBuffer(
     canvasPreset: source.canvasPreset,
     match,
     loaders,
-    purpose: source.purpose,
   });
 }
 
@@ -136,11 +111,7 @@ export async function renderTemplateSceneToThumbnailBuffer(
     source.canvasPreset,
     source.automationType,
   );
-  const loaders = await loadRenderAssetLoaders(
-    ctx,
-    source.organizationId,
-    source.purpose,
-  );
+  const loaders = await loadRenderAssetLoaders(ctx, source.organizationId);
 
   return await renderTemplateToJpegThumbnail(
     {
@@ -149,7 +120,6 @@ export async function renderTemplateSceneToThumbnailBuffer(
       canvasPreset: source.canvasPreset,
       match,
       loaders,
-      purpose: source.purpose,
     },
     {
       maxEdgePx: TEMPLATE_THUMBNAIL_MAX_EDGE_PX,

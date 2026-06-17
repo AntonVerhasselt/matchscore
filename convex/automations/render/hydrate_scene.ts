@@ -14,7 +14,6 @@ import {
   type SceneNode,
   type SceneNodeAttrs,
 } from "../../../lib/template-scene";
-import { collectSceneAssetIds } from "../../../lib/template-scene";
 import {
   prepareImageLayout,
   prepareTextForRender,
@@ -140,26 +139,13 @@ async function loadSceneImageSource(
   attrs: SceneNodeAttrs,
   loaders: RenderAssetLoader,
   match: TemplateMatchDto,
-  logContext?: { nodeId?: string; purpose?: string },
 ): Promise<Awaited<ReturnType<typeof loadImage>> | null> {
-  const nodeId = logContext?.nodeId ?? stringAttr(attrs, "id");
   const assetId = stringAttr(attrs, "assetId");
   if (assetId) {
     const buffer = await loaders.loadAsset(assetId);
     if (!buffer) {
-      console.warn("[template-render] Asset image failed to load", {
-        purpose: logContext?.purpose,
-        nodeId,
-        assetId,
-      });
       return null;
     }
-    console.log("[template-render] Asset image loaded", {
-      purpose: logContext?.purpose,
-      nodeId,
-      assetId,
-      byteLength: buffer.byteLength,
-    });
     return await loadImage(buffer);
   }
 
@@ -169,21 +155,8 @@ async function loadSceneImageSource(
     if (storageId) {
       const buffer = await loaders.loadTeamLogo(storageId);
       if (buffer) {
-        console.log("[template-render] Team logo loaded", {
-          purpose: logContext?.purpose,
-          nodeId,
-          bindingKey,
-          storageId,
-          byteLength: buffer.byteLength,
-        });
         return await loadImage(buffer);
       }
-      console.warn("[template-render] Team logo missing from storage", {
-        purpose: logContext?.purpose,
-        nodeId,
-        bindingKey,
-        storageId,
-      });
     }
 
     return await loadImage(createPlaceholderCrestDataUrl(bindingKey, "preview"));
@@ -221,7 +194,6 @@ async function replaceImageNodeWithGroup(
   attrs: SceneNodeAttrs,
   loaders: RenderAssetLoader,
   match: TemplateMatchDto,
-  logContext?: { purpose?: string },
 ): Promise<void> {
   const parent = node.getParent();
   if (!parent) {
@@ -232,10 +204,7 @@ async function replaceImageNodeWithGroup(
   const boxHeight = node.height();
   const bindingKey = getImageBindingKey(attrs.bindingKey);
   const assetId = stringAttr(attrs, "assetId");
-  const bitmap = await loadSceneImageSource(attrs, loaders, match, {
-    purpose: logContext?.purpose,
-    nodeId: stringAttr(attrs, "id"),
-  });
+  const bitmap = await loadSceneImageSource(attrs, loaders, match);
 
   if (!bitmap) {
     if (!bindingKey && !assetId) {
@@ -288,16 +257,8 @@ export async function hydrateKonvaStage(
   automationType: AutomationType,
   match: TemplateMatchDto,
   loaders: RenderAssetLoader,
-  options?: { purpose?: string },
 ): Promise<void> {
   const sceneImageAttrsByNodeId = collectImageAttrsByNodeId(sceneDocument);
-  const referencedAssetIds = collectSceneAssetIds(sceneDocument);
-
-  console.log("[template-render] Hydrating image nodes", {
-    purpose: options?.purpose,
-    referencedAssetIds,
-    imageNodeCount: stage.find("Image").length,
-  });
 
   const textRenderById = new Map<string, PreparedTextRender>();
   collectTextRenderByNodeId(
@@ -325,13 +286,7 @@ export async function hydrateKonvaStage(
       continue;
     }
 
-    await replaceImageNodeWithGroup(
-      imageNode,
-      attrs,
-      loaders,
-      match,
-      options,
-    );
+    await replaceImageNodeWithGroup(imageNode, attrs, loaders, match);
   }
 
   stage.draw();
