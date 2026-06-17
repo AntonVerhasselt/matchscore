@@ -32,8 +32,10 @@ convex/
 ├── automations/
 │   ├── queries.ts             # listAutomations, listTemplates, getTemplate
 │   ├── mutations.ts           # Automation toggles, template CRUD
-│   ├── actions.ts             # "use node" — renderTemplateTest
-│   ├── internalMutations.ts   # Render preview blob cleanup
+│   ├── actions.ts             # "use node" — renderTemplateTest, generateTemplateThumbnail
+│   ├── internalQueries.ts     # Template row for scheduled thumbnail render
+│   ├── internalMutations.ts   # Render preview + thumbnail blob cleanup
+│   ├── thumbnailConstants.ts  # Debounce delay and JPEG export settings
 │   ├── helpers.ts             # Membership, ensureOrganizationAutomations
 │   ├── scenes.ts              # Starter scene documents
 │   ├── cleanup.ts             # deleteOrganizationAutomationData (future org delete)
@@ -41,6 +43,7 @@ convex/
 │
 ├── templateAssets/
 │   ├── queries.ts             # listTemplateAssets, asset reference checks
+│   ├── internalQueries.ts     # Org-scoped asset storage ids for server render
 │   └── mutations.ts           # Upload URL, save, delete assets
 │
 └── lib/                       # Pure TypeScript helpers (no Convex exports)

@@ -5,6 +5,9 @@ import {
   normalizeCompetitionPath,
 } from "../lib/voetbalinbelgie/allowlist";
 import { internalQuery } from "../_generated/server";
+import { automationTypeValidator } from "../automations/validators";
+import { fetchTemplateRenderMatchForTeam } from "./templateRenderMatchHelpers";
+import { templateMatchDtoValidator } from "./validators";
 import { resolveFootballTeamId } from "./helpers";
 
 export const getLogoStorageIdBySourceUrl = internalQuery({
@@ -150,5 +153,26 @@ export const isClubPageImportComplete = internalQuery({
     }
 
     return teams.every((team) => team.sourceCompetitionId !== undefined);
+  },
+});
+
+export const getTemplateRenderMatchForOrganization = internalQuery({
+  args: {
+    organizationId: v.id("organizations"),
+    automationType: automationTypeValidator,
+    now: v.number(),
+  },
+  returns: v.union(templateMatchDtoValidator, v.null()),
+  handler: async (ctx, args) => {
+    const organization = await ctx.db.get(args.organizationId);
+    if (!organization) {
+      return null;
+    }
+
+    return await fetchTemplateRenderMatchForTeam(ctx, {
+      footballTeamId: organization.footballTeamId,
+      automationType: args.automationType,
+      now: args.now,
+    });
   },
 });

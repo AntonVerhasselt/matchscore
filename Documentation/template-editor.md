@@ -338,6 +338,8 @@ normalizeSceneDocument
   → return signed previewUrl
 ```
 
+List thumbnails use the same render pipeline via `generateTemplateThumbnail` (internal action), exporting JPEG at 256px max edge into `thumbnailStorageId` with the same replace-and-delete storage pattern.
+
 `renderTemplateTest` loads a sample match through `getTemplateRenderMatchData` (same as editor Preview). Falls back to `DEFAULT_MOCK_MATCH` when the org has no suitable synced fixture. Uses `formatBinding()` with `nl-BE` locale for dates.
 
 Technology stack in render files:
@@ -395,7 +397,7 @@ CI `pnpm build` catches accidental `canvas` / `skia-canvas` imports in the clien
 - Editor requires desktop viewport (≥ 1024px width).
 - Render test hits `fonts.gstatic.com` on first use of each font family (cold-start latency).
 - Render preview blobs accumulate one per template (`lastRenderPreviewStorageId`); old blobs are replaced, not orphaned.
-- Template list shows a placeholder thumbnail box (no generated preview image yet).
+- List thumbnails are generated server-side into `thumbnailStorageId` (one JPEG per template, replaced in place).
 - No overlay guide layer (center crosshair / safe zones).
 - Property panel numeric fields commit on each change (autosave debounces the save, not keystrokes).
 - Pixel-perfect text parity between Chrome and skia-canvas is not guaranteed.
