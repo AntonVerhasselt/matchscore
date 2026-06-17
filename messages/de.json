@@ -344,6 +344,8 @@
           "description": "Erstelle deine erste Vorlage, um automatisch zu posten."
         },
         "edit": "Bearbeiten",
+        "duplicate": "Duplizieren",
+        "duplicateFailed": "Vorlage konnte nicht dupliziert werden. Bitte versuche es erneut.",
         "delete": "Löschen",
         "deleting": "Wird gelöscht...",
         "cancel": "Abbrechen",

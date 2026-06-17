@@ -344,6 +344,8 @@
           "description": "Maak je eerste template om te beginnen met automatisch posten."
         },
         "edit": "Bewerken",
+        "duplicate": "Dupliceren",
+        "duplicateFailed": "Template dupliceren mislukt. Probeer het opnieuw.",
         "delete": "Verwijderen",
         "deleting": "Verwijderen...",
         "cancel": "Annuleren",

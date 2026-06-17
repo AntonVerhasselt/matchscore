@@ -1,7 +1,8 @@
 "use client";
 
-import { Pencil, Trash2 } from "lucide-react";
+import { Copy, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -31,9 +32,29 @@ export function TemplateListItem({
   const t = useTranslations("app.automations.templates");
   const format = useFormatter();
   const now = useNow();
+  const router = useRouter();
   const deleteTemplate = useMutation(api.automations.mutations.deleteTemplate);
+  const duplicateTemplate = useMutation(
+    api.automations.mutations.duplicateTemplate,
+  );
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
+
+  const handleDuplicate = async () => {
+    setIsDuplicating(true);
+
+    try {
+      const duplicateId = await duplicateTemplate({
+        templateId: template._id,
+      });
+      router.push(automationEditorPath(automationType, duplicateId));
+    } catch {
+      showErrorToast(t("duplicateFailed"));
+    } finally {
+      setIsDuplicating(false);
+    }
+  };
 
   const handleDeleteConfirm = async () => {
     setIsDeleting(true);
@@ -79,6 +100,15 @@ export function TemplateListItem({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            disabled={isDuplicating}
+            onClick={() => void handleDuplicate()}
+            aria-label={t("duplicate")}
+          >
+            <Copy aria-hidden />
+          </Button>
           <Button variant="ghost" size="icon-sm" asChild>
             <Link
               href={automationEditorPath(automationType, template._id)}

@@ -203,6 +203,46 @@ export const updateTemplate = mutation({
   },
 });
 
+export const duplicateTemplate = mutation({
+  args: {
+    templateId: v.id("automationTemplates"),
+  },
+  returns: v.id("automationTemplates"),
+  handler: async (ctx, args) => {
+    const { user, membership } = await requireCurrentMembership(ctx);
+    await ensureOrganizationAutomations(ctx, membership.organizationId, user._id);
+
+    const template = await ctx.db.get(args.templateId);
+
+    if (!template || template.organizationId !== membership.organizationId) {
+      throw new ConvexError("Template not found");
+    }
+
+    await assertTemplateAssetReferencesBelongToOrganization(
+      ctx,
+      template.sceneDocument,
+      membership.organizationId,
+    );
+
+    const now = Date.now();
+    const duplicateId = await ctx.db.insert("automationTemplates", {
+      organizationId: membership.organizationId,
+      automationType: template.automationType,
+      name: `${template.name.trim()} copy`,
+      sceneDocument: template.sceneDocument,
+      canvasPreset: template.canvasPreset,
+      schemaVersion: template.schemaVersion,
+      createdByUserId: user._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await scheduleTemplateThumbnailGeneration(ctx, duplicateId, now, 0);
+
+    return duplicateId;
+  },
+});
+
 export const deleteTemplate = mutation({
   args: {
     templateId: v.id("automationTemplates"),

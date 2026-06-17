@@ -344,6 +344,8 @@
           "description": "Créez votre premier modèle pour commencer à publier automatiquement."
         },
         "edit": "Modifier",
+        "duplicate": "Dupliquer",
+        "duplicateFailed": "Impossible de dupliquer le modèle. Veuillez réessayer.",
         "delete": "Supprimer",
         "deleting": "Suppression...",
         "cancel": "Annuler",

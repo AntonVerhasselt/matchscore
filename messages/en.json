@@ -344,6 +344,8 @@
           "description": "Create your first template to start posting automatically."
         },
         "edit": "Edit",
+        "duplicate": "Duplicate",
+        "duplicateFailed": "Couldn't duplicate template. Please try again.",
         "delete": "Delete",
         "deleting": "Deleting...",
         "cancel": "Cancel",
