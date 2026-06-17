@@ -1,9 +1,11 @@
+import { formatBinding } from "./format-binding";
 import {
   isValidKonvaFontStyle,
   isValidTextDecoration,
 } from "./text-style";
 import { normalizeLinePoints } from "./line-points";
 import { createPlaceholderCrestDataUrl } from "./placeholder-crest";
+import type { TemplateRenderMatchData } from "../football/template-render-match";
 
 type CanvasPreset =
   | "instagram_square"
@@ -100,6 +102,7 @@ export {
 
 export { DEFAULT_MOCK_MATCH, DEFAULT_MOCK_MATCH_KICKOFF_AT } from "./mock-match";
 export type { MockMatchDto } from "./mock-match";
+export type { TemplateMatchDto, TemplateMatchClub } from "./template-match";
 
 export {
   formatBinding,
@@ -319,10 +322,15 @@ export function resolveTextContent(
   attrs: SceneNodeAttrs,
   automationType: AutomationType,
   previewMode: BindingPreviewMode,
+  previewMatch?: TemplateRenderMatchData | null,
 ): string {
   const bindingKey = getTextBindingKey(attrs.bindingKey, automationType);
   if (!bindingKey) {
     return displayText(stringAttr(attrs, "text") ?? "", attrs);
+  }
+
+  if (previewMode === "preview" && previewMatch) {
+    return displayText(formatBinding(bindingKey, previewMatch, "nl-BE"), attrs);
   }
 
   const resolved = previewMode === "preview"
@@ -334,10 +342,19 @@ export function resolveTextContent(
 export function resolveImageSource(
   attrs: SceneNodeAttrs,
   previewMode: BindingPreviewMode,
+  previewMatch?: TemplateRenderMatchData | null,
 ): string | null {
   const bindingKey = getImageBindingKey(attrs.bindingKey);
   if (!bindingKey) {
     return null;
+  }
+
+  if (previewMode === "preview" && previewMatch) {
+    const logoUrl =
+      bindingKey === "homeClubLogo"
+        ? previewMatch.homeClub.logoUrl
+        : previewMatch.awayClub.logoUrl;
+    return logoUrl ?? createPlaceholderCrestDataUrl(bindingKey, previewMode);
   }
 
   return createPlaceholderCrestDataUrl(bindingKey, previewMode);

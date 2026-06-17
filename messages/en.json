@@ -26,6 +26,7 @@
       "title": "Stay active on <highlight>social media</highlight> — without the extra work",
       "subtitle": "Matchscore automatically posts match announcements and results to Facebook and Instagram, using your own club templates. More visibility for your team and sponsors, zero hassle.",
       "searchPlaceholder": "Search your club",
+      "teamRequired": "Select your club from the list to continue.",
       "cta": "Try it out",
       "hint": "Find your club and set up automated posts in minutes.",
       "scrollLabel": "Scroll"
@@ -255,7 +256,27 @@
     },
     "calendar": {
       "title": "Calendar",
-      "description": "Your calendar will appear here."
+      "description": "Your matches and scheduled automation posts.",
+      "previousMonth": "Previous month",
+      "nextMonth": "Next month",
+      "today": "Today",
+      "nextGame": "Next game",
+      "moreEvents": "+{count} more",
+      "noMatches": "No matches in your calendar yet.",
+      "matchListTitle": "Upcoming matches",
+      "homeVs": "vs {opponent}",
+      "awayAt": "@ {opponent}",
+      "statusUpcoming": "Upcoming",
+      "statusPlayed": "Played",
+      "automationAnnouncement": "Preview post",
+      "automationResult": "Score post",
+      "automationHint": "Blue bars on the calendar show when automations are scheduled to post.",
+      "access": {
+        "notAllowlisted": "We don't have API access to your competition calendar yet. You can still use Matchscore — we're working on expanding coverage.",
+        "noCompetition": "We couldn't find an active competition for your linked team.",
+        "syncError": "We couldn't refresh your calendar: {error}",
+        "unknownError": "Unknown error"
+      }
     },
     "socials": {
       "title": "Connected socials",
@@ -537,6 +558,18 @@
     "languageDescription": "Choose the language for the interface.",
     "localeChangeSuccess": "Language updated.",
     "localeChangeFailed": "Couldn't change language. Please try again.",
+    "linkedTeam": {
+      "title": "Linked club team",
+      "description": "This team drives your calendar, standings, and automated posts.",
+      "loading": "Loading linked team...",
+      "changeTeam": "Change team",
+      "save": "Save team",
+      "saving": "Saving...",
+      "cancel": "Cancel",
+      "changeSuccess": "Linked team updated.",
+      "changeFailed": "Couldn't update linked team. Please try again.",
+      "unavailable": "Linked team details are unavailable."
+    },
     "members": {
       "title": "Club members",
       "description": "Invite colleagues and manage who has access to your club.",
@@ -591,11 +624,24 @@
   },
   "onboarding": {
     "title": "Set up your club",
-    "description": "Choose a name for your club to get started.",
-    "clubName": "Club name",
-    "clubNamePlaceholder": "e.g. FC Example",
+    "description": "Search for your team to get started.",
+    "confirmDescription": "Confirm your club to finish setting up Matchscore.",
+    "yourClub": "Your club",
+    "changeTeam": "Choose a different club",
+    "teamSearch": "Team",
+    "teamSearchPlaceholder": "e.g. Aartselaar",
+    "selectedTeam": "Selected: {name}",
+    "noTeamsFound": "No teams found.",
+    "teamRequired": "Select a team to continue.",
     "submit": "Continue",
     "pleaseWait": "Please wait...",
     "createFailed": "Could not create your club. Please try again."
+  },
+  "footballSearch": {
+    "placeholder": "Search your club",
+    "resultsLabel": "Club search results",
+    "searching": "Searching clubs…",
+    "noResults": "No clubs found. Try a different name.",
+    "clearSelection": "Clear selected club"
   }
 }

@@ -4,8 +4,14 @@
 import { beforeAll, describe, expect, test } from "vitest";
 
 import { createStarterSceneDocument } from "../scenes";
+import type { Id } from "../../_generated/dataModel";
 import { DEFAULT_MOCK_MATCH } from "../../../lib/template-scene/mock-match";
 import { getFontUrlsForFamilies } from "../../../lib/template-scene/server-font-registry";
+
+const emptyLoaders = {
+  loadAsset: async () => null,
+  loadTeamLogo: async () => null,
+};
 
 describe("server template render fonts", () => {
   test("manifest provides https urls for Pacifico", () => {
@@ -96,24 +102,31 @@ describe("server template render pipeline", () => {
       automationType: "match_result",
       canvasPreset: "instagram_square",
       match: DEFAULT_MOCK_MATCH,
-      loaders: {
-        loadAsset: async () => null,
-      },
+      loaders: emptyLoaders,
     });
 
     expect(png.byteLength).toBeGreaterThan(1000);
     expect(png.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
   });
 
-  test("renderTemplateToPng renders logo binding placeholders with crest artwork", async () => {
+  test("renderTemplateToPng loads club logos from storage ids", async () => {
     const { renderTemplateToPng } = await import("./render_template_to_png");
     const { resetRegisteredSceneFontsForTests } =
       await import("./register_scene_fonts");
-    const { resetPlaceholderCrestImageCacheForTests } =
-      await import("./load_placeholder_crest");
 
     resetRegisteredSceneFontsForTests();
-    resetPlaceholderCrestImageCacheForTests();
+
+    const homeLogoId = "home-storage" as Id<"_storage">;
+    const awayLogoId = "away-storage" as Id<"_storage">;
+
+    async function solidPng(rgb: [number, number, number]) {
+      const { Canvas } = await import("skia-canvas");
+      const canvas = new Canvas(100, 100);
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+      ctx.fillRect(0, 0, 100, 100);
+      return await canvas.toBuffer("png");
+    }
 
     const scene = createStarterSceneDocument("instagram_square");
     const layer = scene.stage.children?.[0];
@@ -146,13 +159,26 @@ describe("server template render pipeline", () => {
       sceneDocument: scene,
       automationType: "match_result",
       canvasPreset: "instagram_square",
-      match: DEFAULT_MOCK_MATCH,
+      match: {
+        ...DEFAULT_MOCK_MATCH,
+        homeClub: { name: "Home", logoStorageId: homeLogoId },
+        awayClub: { name: "Away", logoStorageId: awayLogoId },
+      },
       loaders: {
         loadAsset: async () => null,
+        loadTeamLogo: async (storageId) => {
+          if (storageId === homeLogoId) {
+            return solidPng([0, 0, 255]);
+          }
+          if (storageId === awayLogoId) {
+            return solidPng([255, 0, 0]);
+          }
+          return null;
+        },
       },
     });
 
-    expect(png.byteLength).toBeGreaterThan(35000);
+    expect(png.byteLength).toBeGreaterThan(10000);
 
     const { Canvas, loadImage } = await import("skia-canvas");
     const rendered = await loadImage(png);
@@ -196,9 +222,7 @@ describe("server template render pipeline", () => {
       automationType: "match_result",
       canvasPreset: "instagram_square",
       match: DEFAULT_MOCK_MATCH,
-      loaders: {
-        loadAsset: async () => null,
-      },
+      loaders: emptyLoaders,
     });
 
     expect(png.byteLength).toBeGreaterThan(1000);

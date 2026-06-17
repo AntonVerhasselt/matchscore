@@ -7,6 +7,14 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+import { normalizeCompetitionPath } from "../convex/lib/voetbalinbelgie/allowlist";
+import {
+  parseClubTeamsFromHtml,
+  parseSportsClubJsonLd,
+  parseStamnummersHtml,
+} from "../convex/lib/voetbalinbelgie/parseHtml";
+import { parseCompetitionJson } from "../convex/lib/voetbalinbelgie/parseCompetition";
+
 const PUBLIC_BASE = "https://www.voetbalinbelgie.be";
 const API_BASE = "https://api.voetbalinbelgie.be";
 
@@ -46,81 +54,6 @@ function loadApiKey(): string {
 function truncate(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text;
   return `${text.slice(0, maxChars)}\n\n… [truncated ${text.length - maxChars} chars] …`;
-}
-
-function parseStamnummers(html: string) {
-  const entries: Array<{ stamnummer: string; path: string; name: string }> =
-    [];
-  const re =
-    /<dt class="col-sm-4">Stamnummer (\d+)<\/dt>\s*<dd class="col-sm-8"><a href="(\/clubs\/[^"]+)">[\s\S]*?<\/a>&nbsp;<a href="\2">([^<]+)<\/a><\/dd>/g;
-  let match: RegExpExecArray | null;
-  while ((match = re.exec(html)) !== null) {
-    entries.push({
-      stamnummer: match[1],
-      path: match[2],
-      name: match[3],
-    });
-  }
-  return entries;
-}
-
-function parseClubTeams(html: string, slug: string) {
-  const jsonLdMatch = html.match(
-    /<script type="application\/ld\+json">([\s\S]*?)<\/script>/,
-  );
-  if (!jsonLdMatch) return [];
-
-  const jsonLd = JSON.parse(jsonLdMatch[1]) as {
-    "@graph": Array<Record<string, unknown>>;
-  };
-  const base = jsonLd["@graph"].find(
-    (node) => node["@type"] === "SportsClub",
-  ) as Record<string, unknown> | undefined;
-
-  const tabs = [...html.matchAll(/href="#comp-(\d+)"[^>]*>([^<]+)<\/a>/g)];
-  return tabs.map((tab) => {
-    const compDomId = tab[1];
-    const start = html.indexOf(`id="comp-${compDomId}"`);
-    const nextIndices = [...html.matchAll(/id="comp-\d+"/g)]
-      .map((m) => m.index ?? -1)
-      .filter((index) => index > start + 5);
-    const end =
-      nextIndices.length > 0 ? Math.min(...nextIndices) : start + 25_000;
-    const block = html.slice(start, end);
-    const competitionPath = block.match(
-      /href="(\/competities\/2025-2026[^"#]+)"/,
-    )?.[1];
-    const rows = [...block.matchAll(/<td class="club">([\s\S]*?)<\/td>/g)];
-    const ownRow = rows.find((row) => row[1].includes(slug));
-    const teamName =
-      ownRow?.[1]
-        ?.match(/>&nbsp;([^<]+)<\/a>/)
-        ?.[1]
-        ?.trim() ??
-      ownRow?.[1]
-        ?.match(/alt="Clublogo voetbalvereniging ([^"]+)"/)
-        ?.[1]
-        ?.trim();
-
-    return {
-      tabLabel: tab[2].trim(),
-      sourceCompetitionId: Number(compDomId),
-      competitionPath,
-      teamName,
-      stamnummer: base?.branchCode,
-    };
-  });
-}
-
-function extractSportsClubJsonLd(html: string): unknown {
-  const jsonLdMatch = html.match(
-    /<script type="application\/ld\+json">([\s\S]*?)<\/script>/,
-  );
-  if (!jsonLdMatch) return null;
-  const jsonLd = JSON.parse(jsonLdMatch[1]) as {
-    "@graph": Array<Record<string, unknown>>;
-  };
-  return jsonLd["@graph"].find((node) => node["@type"] === "SportsClub") ?? null;
 }
 
 function formatSampleSection(sample: ApiSample): string {
@@ -180,7 +113,7 @@ async function main() {
   const stamnummersUrl = `${PUBLIC_BASE}/stamnummers/`;
   const stamnummersResponse = await fetch(stamnummersUrl);
   const stamnummersHtml = await stamnummersResponse.text();
-  const stamnummersEntries = parseStamnummers(stamnummersHtml);
+  const stamnummersEntries = parseStamnummersHtml(stamnummersHtml);
 
   samples.push({
     id: "1 — Stamnummers (club index)",
@@ -196,7 +129,7 @@ async function main() {
     notes: [
       `Parsed ${stamnummersEntries.length} clubs from full HTML.`,
       `First parsed entry: ${JSON.stringify(stamnummersEntries[0])}`,
-      `Aartselaar entry: ${JSON.stringify(stamnummersEntries.find((entry) => entry.path.includes("aartselaar")))}`,
+      `Aartselaar entry: ${JSON.stringify(stamnummersEntries.find((entry) => entry.slugPath.includes("aartselaar")))}`,
       "Each `<dt>Stamnummer</dt><dd>` pair links to `/clubs/{letter}/{slug}/`.",
     ],
   });
@@ -206,8 +139,8 @@ async function main() {
     const response = await fetch(url);
     const html = await response.text();
     const slug = clubPath.split("/").filter(Boolean).pop() ?? "";
-    const teams = parseClubTeams(html, slug);
-    const sportsClub = extractSportsClubJsonLd(html);
+    const teams = parseClubTeamsFromHtml(html, slug);
+    const sportsClub = parseSportsClubJsonLd(html);
 
     samples.push({
       id: `${index + 2} — Club detail (${slug})`,
@@ -229,27 +162,24 @@ async function main() {
   }
 
   for (const [index, competitionPath] of SAMPLE_COMPETITION_PATHS.entries()) {
-    const url = `${API_BASE}${competitionPath}`;
+    const normalizedPath = normalizeCompetitionPath(competitionPath);
+    const url = `${API_BASE}${normalizedPath}`;
     const response = await fetch(url, {
       headers: { "X-Api-Key": apiKey },
     });
     const jsonText = await response.text();
     let parsedNotes: string[] = [];
     if (response.ok) {
-      const parsed = JSON.parse(jsonText) as {
-        competition: Record<string, unknown>;
-      };
-      const competition = parsed.competition;
+      const dto = parseCompetitionJson(JSON.parse(jsonText) as unknown);
       parsedNotes = [
-        `meta.id (source competition id): ${(competition.meta as { id: number }).id}`,
-        `meta.title: ${(competition.meta as { title: string }).title}`,
-        `leaguetable rows: ${(competition.leaguetable as unknown[]).length}`,
-        `results rows: ${(competition.results as unknown[]).length}`,
-        `program rows: ${(competition.program as unknown[]).length}`,
-        `period1 rows: ${(competition.period1 as unknown[]).length} (skip storing)`,
-        `First leaguetable row: ${JSON.stringify((competition.leaguetable as unknown[])[0])}`,
-        `First results row: ${JSON.stringify((competition.results as unknown[])[0])}`,
-        `First related club: ${JSON.stringify((competition.links as { related: unknown[] }).related[0])}`,
+        `meta.id (source competition id): ${dto.meta.id}`,
+        `meta.title: ${dto.meta.title}`,
+        `leaguetable rows: ${dto.leaguetable.length}`,
+        `results rows: ${dto.results.length}`,
+        `program rows: ${dto.program.length}`,
+        `First leaguetable row: ${JSON.stringify(dto.leaguetable[0])}`,
+        `First results row: ${JSON.stringify(dto.results[0])}`,
+        `First related club: ${JSON.stringify(dto.relatedTeams[0])}`,
       ];
     }
 

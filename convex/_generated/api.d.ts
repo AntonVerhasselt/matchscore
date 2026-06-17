@@ -24,11 +24,34 @@ import type * as automations_render_register_scene_fonts from "../automations/re
 import type * as automations_render_render_template_to_png from "../automations/render/render_template_to_png.js";
 import type * as automations_scenes from "../automations/scenes.js";
 import type * as automations_validators from "../automations/validators.js";
+import type * as crons from "../crons.js";
 import type * as dev_clearDatabase from "../dev/clearDatabase.js";
+import type * as dev_deploymentGuard from "../dev/deploymentGuard.js";
+import type * as dev_seedFootballTeam from "../dev/seedFootballTeam.js";
 import type * as emails_actions from "../emails/actions.js";
+import type * as football_actions from "../football/actions.js";
+import type * as football_helpers from "../football/helpers.js";
+import type * as football_importClubPage from "../football/importClubPage.js";
+import type * as football_internalActions from "../football/internalActions.js";
+import type * as football_internalMutations from "../football/internalMutations.js";
+import type * as football_internalQueries from "../football/internalQueries.js";
+import type * as football_logoImport from "../football/logoImport.js";
+import type * as football_queries from "../football/queries.js";
+import type * as football_runSyncCompetition from "../football/runSyncCompetition.js";
+import type * as football_syncActions from "../football/syncActions.js";
+import type * as football_validators from "../football/validators.js";
 import type * as http from "../http.js";
 import type * as lib_email from "../lib/email.js";
 import type * as lib_slugify from "../lib/slugify.js";
+import type * as lib_voetbalinbelgie_allowlist from "../lib/voetbalinbelgie/allowlist.js";
+import type * as lib_voetbalinbelgie_disambiguateTeamNames from "../lib/voetbalinbelgie/disambiguateTeamNames.js";
+import type * as lib_voetbalinbelgie_matchMerge from "../lib/voetbalinbelgie/matchMerge.js";
+import type * as lib_voetbalinbelgie_parseCompetition from "../lib/voetbalinbelgie/parseCompetition.js";
+import type * as lib_voetbalinbelgie_parseHtml from "../lib/voetbalinbelgie/parseHtml.js";
+import type * as lib_voetbalinbelgie_syncSchedule from "../lib/voetbalinbelgie/syncSchedule.js";
+import type * as lib_voetbalinbelgie_teamNames from "../lib/voetbalinbelgie/teamNames.js";
+import type * as lib_voetbalinbelgie_types from "../lib/voetbalinbelgie/types.js";
+import type * as lib_voetbalinbelgie_vibMatchKey from "../lib/voetbalinbelgie/vibMatchKey.js";
 import type * as locales from "../locales.js";
 import type * as organizations_helpers from "../organizations/helpers.js";
 import type * as organizations_mutations from "../organizations/mutations.js";
@@ -40,6 +63,8 @@ import type * as templateAssets_queries from "../templateAssets/queries.js";
 import type * as templateAssets_validators from "../templateAssets/validators.js";
 import type * as users_emailLocales from "../users/emailLocales.js";
 import type * as users_settings from "../users/settings.js";
+import type * as voetbalinbelgie_fetch from "../voetbalinbelgie/fetch.js";
+import type * as voetbalinbelgie_logos from "../voetbalinbelgie/logos.js";
 
 import type {
   ApiFromModules,
@@ -64,11 +89,34 @@ declare const fullApi: ApiFromModules<{
   "automations/render/render_template_to_png": typeof automations_render_render_template_to_png;
   "automations/scenes": typeof automations_scenes;
   "automations/validators": typeof automations_validators;
+  crons: typeof crons;
   "dev/clearDatabase": typeof dev_clearDatabase;
+  "dev/deploymentGuard": typeof dev_deploymentGuard;
+  "dev/seedFootballTeam": typeof dev_seedFootballTeam;
   "emails/actions": typeof emails_actions;
+  "football/actions": typeof football_actions;
+  "football/helpers": typeof football_helpers;
+  "football/importClubPage": typeof football_importClubPage;
+  "football/internalActions": typeof football_internalActions;
+  "football/internalMutations": typeof football_internalMutations;
+  "football/internalQueries": typeof football_internalQueries;
+  "football/logoImport": typeof football_logoImport;
+  "football/queries": typeof football_queries;
+  "football/runSyncCompetition": typeof football_runSyncCompetition;
+  "football/syncActions": typeof football_syncActions;
+  "football/validators": typeof football_validators;
   http: typeof http;
   "lib/email": typeof lib_email;
   "lib/slugify": typeof lib_slugify;
+  "lib/voetbalinbelgie/allowlist": typeof lib_voetbalinbelgie_allowlist;
+  "lib/voetbalinbelgie/disambiguateTeamNames": typeof lib_voetbalinbelgie_disambiguateTeamNames;
+  "lib/voetbalinbelgie/matchMerge": typeof lib_voetbalinbelgie_matchMerge;
+  "lib/voetbalinbelgie/parseCompetition": typeof lib_voetbalinbelgie_parseCompetition;
+  "lib/voetbalinbelgie/parseHtml": typeof lib_voetbalinbelgie_parseHtml;
+  "lib/voetbalinbelgie/syncSchedule": typeof lib_voetbalinbelgie_syncSchedule;
+  "lib/voetbalinbelgie/teamNames": typeof lib_voetbalinbelgie_teamNames;
+  "lib/voetbalinbelgie/types": typeof lib_voetbalinbelgie_types;
+  "lib/voetbalinbelgie/vibMatchKey": typeof lib_voetbalinbelgie_vibMatchKey;
   locales: typeof locales;
   "organizations/helpers": typeof organizations_helpers;
   "organizations/mutations": typeof organizations_mutations;
@@ -80,6 +128,8 @@ declare const fullApi: ApiFromModules<{
   "templateAssets/validators": typeof templateAssets_validators;
   "users/emailLocales": typeof users_emailLocales;
   "users/settings": typeof users_settings;
+  "voetbalinbelgie/fetch": typeof voetbalinbelgie_fetch;
+  "voetbalinbelgie/logos": typeof voetbalinbelgie_logos;
 }>;
 
 /**

@@ -13,7 +13,7 @@ import {
   formatBinding,
   isTextBindingAllowedForAutomationType,
 } from "./format-binding";
-import type { MockMatchDto } from "./mock-match";
+import type { TemplateMatchDto } from "./template-match";
 import { ellipsizeText, measureTextForFit } from "./text-measure";
 
 export const BACKGROUND_NODE_ID = "background";
@@ -46,7 +46,7 @@ export function isBackgroundNodeAttrs(attrs: SceneNodeAttrs): boolean {
 export function resolveBoundOrFixedText(
   attrs: SceneNodeAttrs,
   automationType: AutomationType,
-  match: MockMatchDto,
+  match: TemplateMatchDto,
 ): string {
   const bindingKey = getTextBindingKey(attrs.bindingKey, automationType);
   if (bindingKey && isTextBindingAllowedForAutomationType(bindingKey, automationType)) {
@@ -59,7 +59,7 @@ export function resolveBoundOrFixedText(
 export function prepareTextForRender(
   attrs: SceneNodeAttrs,
   automationType: AutomationType,
-  match: MockMatchDto,
+  match: TemplateMatchDto,
 ): PreparedTextRender {
   const rawText = resolveBoundOrFixedText(attrs, automationType, match);
   const baseFontSize = numberAttr(attrs, "fontSize", 48);
@@ -119,7 +119,7 @@ export function prepareImageLayout(
 export function applyPreparedTextToSceneNodeAttrs(
   attrs: SceneNodeAttrs,
   automationType: AutomationType,
-  match: MockMatchDto,
+  match: TemplateMatchDto,
 ): SceneNodeAttrs {
   const prepared = prepareTextForRender(attrs, automationType, match);
   return {

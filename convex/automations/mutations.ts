@@ -188,9 +188,6 @@ export const deleteTemplate = mutation({
     if (template.lastRenderPreviewStorageId) {
       await ctx.storage.delete(template.lastRenderPreviewStorageId);
     }
-    if (template.thumbnailStorageId) {
-      await ctx.storage.delete(template.thumbnailStorageId);
-    }
 
     await ctx.db.delete(template._id);
     return null;

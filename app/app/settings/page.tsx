@@ -2,6 +2,7 @@
 
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { AppPageHeader } from "@/components/app-page";
+import { LinkedTeamSettings } from "@/components/settings/LinkedTeamSettings";
 import { OrganizationMembers } from "@/components/settings/OrganizationMembers";
 import {
   Card,
@@ -20,6 +21,8 @@ export default function SettingsPage() {
       <AppPageHeader title={t("title")} />
 
       <div className="space-y-6">
+        <LinkedTeamSettings />
+
         <OrganizationMembers />
 
         <Card>

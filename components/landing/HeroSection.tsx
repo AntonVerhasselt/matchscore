@@ -51,8 +51,8 @@ export async function HeroSection() {
           {t("hero.subtitle")}
         </p>
 
-        <div className="mt-8 w-full max-w-2xl sm:mt-12">
-          <HeroClubSearch variant="hero" />
+        <div className="mt-8 w-full sm:mt-12">
+          <HeroClubSearch />
         </div>
 
         <p className="mt-4 max-w-md px-1 text-xs font-medium text-sidebar-foreground/65 sm:mt-5 sm:max-w-lg sm:px-0 sm:text-sm">

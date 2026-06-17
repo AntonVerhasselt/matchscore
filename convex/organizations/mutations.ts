@@ -3,6 +3,7 @@ import { ConvexError, v } from "convex/values";
 import { internal } from "../_generated/api";
 import { mutation } from "../_generated/server";
 import { authComponent } from "../auth/instance";
+import { isCompetitionPathAllowed } from "../lib/voetbalinbelgie/allowlist";
 import { normalizeEmail } from "../lib/email";
 import { ensureOrganizationAutomations } from "../automations/helpers";
 import { getUserDisplayName } from "../../lib/user-display";
@@ -89,15 +90,15 @@ async function findMemberByEmail(ctx: MutationCtx, email: string) {
 
 export const createOrganization = mutation({
   args: {
-    name: v.string(),
+    footballTeamId: v.id("footballTeams"),
   },
   returns: v.id("organizations"),
   handler: async (ctx, args) => {
     const user = await authComponent.getAuthUser(ctx);
-    const trimmedName = args.name.trim();
 
-    if (!trimmedName) {
-      throw new ConvexError("Organisation name is required");
+    const team = await ctx.db.get(args.footballTeamId);
+    if (!team) {
+      throw new ConvexError("Team not found");
     }
 
     const existingMembership = await getMembershipForUser(ctx, user._id);
@@ -105,10 +106,11 @@ export const createOrganization = mutation({
       throw new ConvexError("You already belong to an organisation");
     }
 
-    const slug = await generateUniqueSlug(ctx, trimmedName);
+    const slug = await generateUniqueSlug(ctx, team.name);
     const organizationId = await ctx.db.insert("organizations", {
-      name: trimmedName,
+      name: team.name,
       slug,
+      footballTeamId: args.footballTeamId,
       createdByUserId: user._id,
       createdAt: Date.now(),
     });
@@ -122,7 +124,61 @@ export const createOrganization = mutation({
 
     await ensureOrganizationAutomations(ctx, organizationId, user._id);
 
+    if (team.competitionPath && isCompetitionPathAllowed(team.competitionPath)) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.football.syncActions.syncCompetition,
+        {
+          path: team.competitionPath,
+          force: true,
+        },
+      );
+    }
+
     return organizationId;
+  },
+});
+
+export const updateOrganizationFootballTeam = mutation({
+  args: {
+    footballTeamId: v.id("footballTeams"),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const user = await authComponent.getAuthUser(ctx);
+    const membership = await requireMembership(ctx, user._id);
+
+    const organization = await ctx.db.get(membership.organizationId);
+    if (!organization) {
+      throw new ConvexError("Organisation not found");
+    }
+
+    if (organization.footballTeamId === args.footballTeamId) {
+      return null;
+    }
+
+    const team = await ctx.db.get(args.footballTeamId);
+    if (!team) {
+      throw new ConvexError("Team not found");
+    }
+
+    await ctx.db.patch(organization._id, {
+      footballTeamId: args.footballTeamId,
+      name: team.name,
+    });
+
+    if (team.competitionPath && isCompetitionPathAllowed(team.competitionPath)) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.football.syncActions.syncCompetition,
+        {
+          path: team.competitionPath,
+          force: true,
+        },
+      );
+    }
+
+    return null;
   },
 });
 

@@ -1,11 +1,6 @@
-export type MockMatchDto = {
-  homeClub: { name: string };
-  awayClub: { name: string };
-  address: string;
-  kickoffAt: number;
-  homeScore?: number;
-  awayScore?: number;
-};
+import type { TemplateMatchDto } from "./template-match";
+
+export type MockMatchDto = TemplateMatchDto;
 
 /** Fixed kickoff: Saturday 15 March 2025, 20:00 Brussels (for stable nl-BE tests). */
 export const DEFAULT_MOCK_MATCH_KICKOFF_AT = Date.parse(
@@ -19,4 +14,5 @@ export const DEFAULT_MOCK_MATCH: MockMatchDto = {
   kickoffAt: DEFAULT_MOCK_MATCH_KICKOFF_AT,
   homeScore: 2,
   awayScore: 1,
+  status: "Gespeeld",
 };

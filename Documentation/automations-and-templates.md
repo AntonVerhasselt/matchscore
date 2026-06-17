@@ -6,7 +6,7 @@ Matchscore helps Belgian amateur football clubs automate social media posts. Eac
 2. Toggle **automations** on or off per post type and per social channel.
 3. *(Future)* Connect social accounts so Matchscore picks a template, fills match variables, renders a PNG, and publishes it.
 
-The template editor and automation settings are fully implemented for MVP. Scheduled posting, real match data, and social OAuth are **not** implemented yet.
+The template editor and automation settings are fully implemented for MVP. **Real match data** powers the editor preview mode and server render test. Scheduled posting and social OAuth are **not** implemented yet.
 
 ---
 
@@ -37,7 +37,7 @@ Templates are **normalized Konva scene JSON** stored inline on each `automationT
 - Edited in the browser with **react-konva** (client-only, dynamically imported).
 - Rendered server-side with **Konva + skia-canvas** in Convex `"use node"` actions.
 
-Static club uploads (backgrounds, sponsor logos) live in Convex Storage and are referenced by `assetId` on `Image` nodes. Dynamic match content (club names, score, logos) is stored as `bindingKey` attrs and resolved at render time.
+Static club uploads (backgrounds, sponsor logos) live in Convex Storage and are referenced by `assetId` on `Image` nodes. Dynamic match content (club names, score, logos, address, date) is stored as `bindingKey` attrs and resolved at preview/render time from synced `matches` + `footballTeams` data.
 
 See [template-editor.md](./template-editor.md) for scene format, editor internals, and the render pipeline.
 
@@ -79,7 +79,6 @@ One row per organization per automation type. Rows are created when an organizat
 | `sceneDocument` | Parsed Konva scene JSON (`schemaVersion: 1`). |
 | `schemaVersion` | Format version (currently `1`). |
 | `lastRenderPreviewStorageId` | Latest render-test PNG in `_storage`; previous blob is deleted on each test. |
-| `thumbnailStorageId` | Optional; reserved for future thumbnails. |
 
 Canvas dimensions are derived from `canvasPreset` in code, not stored separately:
 
@@ -89,7 +88,7 @@ Canvas dimensions are derived from `canvasPreset` in code, not stored separately
 | `instagram_portrait` | 1080 × 1350 | Instagram portrait |
 | `facebook_landscape` | 1200 × 630 | Facebook landscape / link-style visual |
 
-Templates are hard-deleted. Deleting a template also removes associated render-preview and thumbnail blobs from `_storage`.
+Templates are hard-deleted. Deleting a template also removes the associated render-preview blob from `_storage`.
 
 ### `templateAssets`
 
@@ -101,7 +100,7 @@ Static images uploaded by the club (PNG, JPEG, WebP only; max 8 MB).
 | `fileName`, `mimeType`, `byteSize` | File metadata. |
 | `pixelWidth`, `pixelHeight` | Intrinsic dimensions for editor insertion. |
 
-Club logos for home/away teams are **not** stored here. They are dynamic bindings resolved from match data at render time.
+Club logos for home/away teams are **not** stored in `templateAssets`. They are dynamic bindings resolved from imported team logos (`footballTeams.logoStorageId` → signed URL / render buffer).
 
 **Delete policy:** `deleteTemplateAsset` returns `{ status: "inUse" }` if any template in the organization still references the asset via `attrs.assetId`.
 
@@ -123,9 +122,9 @@ Functions follow the feature-folder layout described in [convex-structure.md](./
 | `mutations.setAutomationPostingChannelEnabled` | mutation | Toggle one posting channel |
 | `mutations.createTemplate` | mutation | Insert template with starter scene |
 | `mutations.updateTemplate` | mutation | Validate + normalize scene, update name |
-| `mutations.deleteTemplate` | mutation | Hard delete + cleanup storage blobs |
-| `actions.renderTemplateTest` | action (`"use node"`) | Render current or saved scene to PNG; returns signed preview URL |
-| `internalMutations.replaceTemplateRenderPreview` | internal | Stores new preview blob, deletes previous |
+| `mutations.deleteTemplate` | mutation | Hard delete + cleanup render preview blob |
+| `actions.renderTemplateTest` | action (`"use node"`) | Render current or saved scene to PNG with real match sample; returns signed preview URL |
+| `internalMutations.replaceTemplateRenderPreview` | internal | Stores new render-test preview blob, deletes previous |
 
 All public functions authenticate via Better Auth, resolve organization membership server-side, and scope reads/writes to `membership.organizationId`. Never accept a client-supplied organization id for authorization.
 
@@ -144,6 +143,14 @@ Scene validation runs through `normalizeSceneDocument` in `lib/template-scene/` 
 ### Organization cleanup
 
 `convex/automations/cleanup.ts` exports `deleteOrganizationAutomationData()` to remove automation rows, templates, assets, and storage blobs for an organization. It is ready to call from a future `deleteOrganization` mutation but is **not wired yet**.
+
+### `convex/football/` (template bindings)
+
+| Function | Type | Purpose |
+| --- | --- | --- |
+| `queries.getTemplateRenderMatchData` | query | Sample match for org's linked team (announcement vs result rules) |
+
+Called by the template editor (preview mode) and `renderTemplateTest`. Passes `now` from the client/action so the query stays cache-friendly.
 
 ---
 
@@ -192,25 +199,36 @@ No template count check runs on enable. When globally disabled, channel switches
 
 ### Edit and save
 
-1. Editor loads `getTemplate` and hydrates images from signed URLs / binding placeholders.
-2. Changes are tracked as dirty state; **autosave** runs after 2.5 s idle (`hooks/use-template-autosave.ts`).
-3. Manual save (toolbar button or Cmd/Ctrl+S) also calls `updateTemplate`.
-4. `beforeunload` warns if there are unsaved changes.
+1. Editor loads `getTemplate` and hydrates static images from signed URLs.
+2. **Preview mode** (toolbar toggle) resolves dynamic bindings from `getTemplateRenderMatchData` — real club names, address, date, logos when synced matches exist; falls back to design placeholders when toggled off or when no match data.
+3. Changes are tracked as dirty state; **autosave** runs after 2.5 s idle (`hooks/use-template-autosave.ts`).
+4. Manual save (toolbar button or Cmd/Ctrl+S) also calls `updateTemplate`.
+5. `beforeunload` warns if there are unsaved changes.
 
 ### Delete a template
 
 1. User deletes from the template list dialog.
-2. Row and associated preview/thumbnail blobs are removed.
+2. Row and associated render-preview blob are removed.
 3. Automation `isGloballyEnabled` is unchanged.
 
 ### Render test
 
 1. User clicks **Render test** in the editor toolbar.
 2. `renderTemplateTest` receives the **current canvas** (`sceneDocument` override) plus `templateId`.
-3. Server normalizes, registers fonts, hydrates bindings with mock match data, exports PNG.
-4. PNG is stored in `_storage`; a dialog shows the signed URL.
+3. Server loads sample match via `getTemplateRenderMatchData` (same rules as preview mode).
+4. Server normalizes, registers fonts, hydrates bindings with real match data (or `DEFAULT_MOCK_MATCH` fallback), exports PNG.
+5. PNG is stored in `_storage`; a dialog shows the signed URL.
 
 Production posting will render the **saved** template row only (no live canvas override).
+
+### Sample match rules
+
+| Automation type | Sample used for preview + render test |
+| --- | --- |
+| `match_announcement` | Next future fixture; if none, most recent past match |
+| `match_result` | Most recent played match (both scores known) |
+
+`matchAddress` always comes from the **home** team's imported club address. Score uses numeric goals unless status is not `Gespeeld`, then `resultText` (e.g. forfeit notation).
 
 ---
 
@@ -239,7 +257,9 @@ All queries and mutations derive the organization from the authenticated user's 
 Automated coverage lives in:
 
 - `convex/automations/scenes.test.ts` — scene normalization, bindings, shapes, text fit
-- `convex/automations/render/render.test.ts` — server render, fonts, crest placeholders
+- `convex/automations/render/render.test.ts` — server render, fonts, real logo buffers
+- `lib/football/*.test.ts` — sample match selection, address formatting, DTO builder
+- `lib/template-scene/format-binding.test.ts` — score formatting (incl. forfeit `resultText`)
 
 Useful scripts:
 
@@ -255,12 +275,10 @@ pnpm test:template-render   # Local skia-canvas smoke test
 | Area | Notes |
 | --- | --- |
 | `starting_eleven` automation | Third automation type |
-| Match / calendar tables | Real fixture data for bindings |
 | Posting pipeline | Cron, random template pick, Meta/social APIs |
 | Social OAuth | Connect Facebook/Instagram accounts |
 | Subscription gating | Block posting only; editing stays allowed |
 | Email nudge | Remind clubs with active automations but no templates |
-| Template thumbnails | `thumbnailStorageId` field exists but unused |
 | Template duplication | Nice-to-have |
 | Watermark layer | Starter plan feature |
 | Club-uploaded custom fonts | Only curated Google Fonts catalog today |

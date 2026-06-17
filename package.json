@@ -10,8 +10,14 @@
     "test": "vitest run",
     "test:template-render": "tsx scripts/test-template-render.ts",
     "test:voetbalinbelgie-api": "tsx scripts/test-voetbalinbelgie-api.ts",
+    "test:football-pre-sync": "tsx scripts/test-football-pre-sync.ts",
+    "import:football-clubs": "tsx scripts/import-football-clubs.ts",
+    "import:football-clubs:full": "tsx scripts/import-football-clubs.ts --full",
+    "repair:football-teams": "npx convex run football/internalActions:repairMissingCompetitionTeams",
+    "repair:football-team-names": "npx convex run football/internalMutations:repairDuplicateTeamDisplayNames",
     "sync-template-fonts": "tsx scripts/sync-template-fonts.ts",
-    "db:clear-dev": "npx convex run dev/clearDatabase:clearAll '{}'"
+    "db:clear-dev": "npx convex run dev/clearDatabase:clearAll '{}'",
+    "seed:football-team": "tsx scripts/seed-football-team.ts"
   },
   "dependencies": {
     "@convex-dev/better-auth": "^0.12.2",

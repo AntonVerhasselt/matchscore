@@ -54,13 +54,22 @@ export const renderTemplateTest = action({
       { sceneDocument },
     );
 
+    const matchData = await ctx.runQuery(
+      api.football.queries.getTemplateRenderMatchData,
+      {
+        automationType: template.automationType,
+        now: Date.now(),
+      },
+    );
+    const match = matchData ?? DEFAULT_MOCK_MATCH;
+
     let pngBuffer: Buffer;
     try {
       pngBuffer = await renderTemplateToPng({
         sceneDocument,
         automationType: template.automationType,
         canvasPreset: template.canvasPreset,
-        match: DEFAULT_MOCK_MATCH,
+        match,
         loaders: {
           loadAsset: async (assetId) => {
             const storageId = storageIdByAssetId.get(
@@ -70,6 +79,14 @@ export const renderTemplateTest = action({
               return null;
             }
 
+            const blob = await ctx.storage.get(storageId);
+            if (!blob) {
+              return null;
+            }
+
+            return Buffer.from(await blob.arrayBuffer());
+          },
+          loadTeamLogo: async (storageId) => {
             const blob = await ctx.storage.get(storageId);
             if (!blob) {
               return null;

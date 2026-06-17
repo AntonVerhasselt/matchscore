@@ -41,13 +41,13 @@ npx convex env set SITE_URL http://localhost:3000
 
 ### Reset dev database
 
-To wipe all users, organisations, and auth data from your **dev** deployment:
+To wipe users, organisations, and auth data from your **dev** deployment (keeps imported `footballTeams`):
 
 ```bash
 pnpm run db:clear-dev
 ```
 
-This runs `internal.dev.clearDatabase.clearAll` — safe for local testing, not for production.
+This runs `dev/clearDatabase:clearAll` — clears app testing data and auth, but **preserves the VoetbalInBelgië club import**. Safe for local testing, not for production.
 
 ### Sign-in with email OTP
 
@@ -56,6 +56,13 @@ Sign-in is passwordless. Enter your email on `/sign-in`, receive a 6-digit code,
 ### Organisations
 
 Each user belongs to one club (organisation). New users create their club on onboarding. Existing members can invite colleagues from **Settings → Club members**. See [Documentation/organisations.md](Documentation/organisations.md).
+
+### Football data (VoetbalInBelgië)
+
+Club/team records for onboarding search are imported from VoetbalInBelgië. At the **start of each season**, run the full import runbook:
+
+- **[Documentation/football-season-import.md](Documentation/football-season-import.md)** — checklist, commands, validation
+- Quick command (dev): `pnpm import:football-clubs:full`
 
 By default, Resend runs in **test mode** — emails are only delivered to [Resend test addresses](https://resend.com/docs/dashboard/emails/send-test-emails) (e.g. `delivered@resend.dev`).
 
@@ -124,3 +131,6 @@ See [`.env.example`](.env.example) for a copy-paste template.
 | `RESEND_API_KEY` | For real emails | Resend API key |
 | `RESEND_TEST_MODE` | No | Set to `false` to send to real addresses (default: test mode) |
 | `AUTH_FROM_EMAIL` | No | Sender address for transactional email |
+| `VOETBALINBELGIE_API_KEY` | For football sync/import | VoetbalInBelgië competition API key — required for import validation and sync |
+
+See [Documentation/football-season-import.md](Documentation/football-season-import.md) for the seasonal club import runbook.
