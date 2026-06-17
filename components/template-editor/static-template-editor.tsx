@@ -41,7 +41,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { flushSync } from "react-dom";
 import {
   Arrow as KonvaArrow,
   Circle as KonvaCircle,
@@ -144,7 +143,6 @@ import {
 import { FontPicker } from "@/components/template-editor/font-picker";
 import { ShapesPanel } from "@/components/template-editor/shapes-panel";
 import { useTemplateAutosave } from "@/hooks/use-template-autosave";
-import { useTemplateThumbnailCapture } from "@/hooks/use-template-thumbnail-capture";
 
 const VARIABLE_DRAG_MIME = "application/x-matchscore-template-variable";
 const ASSET_DRAG_MIME = "application/x-matchscore-template-asset";
@@ -276,8 +274,6 @@ export function StaticTemplateEditor({
   const [renderPreviewOpen, setRenderPreviewOpen] = useState(false);
   const [editingTextValue, setEditingTextValue] = useState("");
   const nodeRefs = useRef(new Map<string, Konva.Node>());
-  const editorStageRef = useRef<Konva.Stage>(null);
-  const previewModeRef = useRef(previewMode);
   const titleMeasureRef = useRef<HTMLSpanElement>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
   const stageFrameRef = useRef<HTMLDivElement>(null);
@@ -1005,39 +1001,6 @@ export function StaticTemplateEditor({
     ],
   );
 
-  useEffect(() => {
-    previewModeRef.current = previewMode;
-  }, [previewMode]);
-
-  const prepareStageForCapture = useCallback(async () => {
-    const snapshot = {
-      previewMode: previewModeRef.current,
-      selectedNodeId,
-    };
-
-    flushSync(() => {
-      setSelectedNodeId(null);
-      setPreviewMode("preview");
-    });
-    // useEffect clears the transformer asynchronously; clear it before cloning.
-    transformerRef.current?.nodes([]);
-    transformerRef.current?.getLayer()?.batchDraw();
-    editorStageRef.current?.batchDraw();
-
-    return () => {
-      flushSync(() => {
-        setSelectedNodeId(snapshot.selectedNodeId);
-        setPreviewMode(snapshot.previewMode);
-      });
-    };
-  }, [selectedNodeId]);
-
-  const { captureAfterSave } = useTemplateThumbnailCapture({
-    templateId: template._id,
-    captureStageRef: editorStageRef,
-    prepareStageForCapture,
-  });
-
   const handleSave = useCallback(
     async (options?: { showSuccessToast?: boolean }) => {
       const flushed = flushInlineTextEditingState({
@@ -1069,14 +1032,11 @@ export function StaticTemplateEditor({
           name: templateName,
           sceneDocument: normalizedSceneDocument,
         });
-        flushSync(() => {
-          setSceneDocument(normalizedSceneDocument);
-          setHistory((currentHistory) =>
-            replaceCurrentHistoryEntry(currentHistory, normalizedSceneDocument),
-          );
-          setIsDirty(false);
-        });
-        void captureAfterSave(templateName, normalizedSceneDocument);
+        setSceneDocument(normalizedSceneDocument);
+        setHistory((currentHistory) =>
+          replaceCurrentHistoryEntry(currentHistory, normalizedSceneDocument),
+        );
+        setIsDirty(false);
         if (options?.showSuccessToast !== false) {
           showSuccessToast(t("editor.saveSuccess"));
         }
@@ -1098,7 +1058,6 @@ export function StaticTemplateEditor({
     template.canvasPreset,
     templateName,
     updateTemplate,
-    captureAfterSave,
     ],
   );
 
@@ -1328,7 +1287,6 @@ export function StaticTemplateEditor({
             onDrop={handleCanvasDrop}
           >
             <Stage
-              ref={editorStageRef}
               width={stageDimensions.width}
               height={stageDimensions.height}
               scaleX={scale}

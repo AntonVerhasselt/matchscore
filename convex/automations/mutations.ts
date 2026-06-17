@@ -1,5 +1,4 @@
 import { ConvexError, v } from "convex/values";
-import { internal } from "../_generated/api";
 import { mutation } from "../_generated/server";
 import {
   ensureOrganizationAutomations,
@@ -173,33 +172,6 @@ export const updateTemplate = mutation({
   },
 });
 
-export const saveTemplateThumbnail = mutation({
-  args: {
-    templateId: v.id("automationTemplates"),
-    newStorageId: v.id("_storage"),
-  },
-  returns: v.null(),
-  handler: async (ctx, args) => {
-    const { membership } = await requireCurrentMembership(ctx);
-    const template = await ctx.db.get(args.templateId);
-
-    if (!template || template.organizationId !== membership.organizationId) {
-      throw new ConvexError("Template not found");
-    }
-
-    await ctx.runMutation(
-      internal.automations.internalMutations.replaceTemplateThumbnail,
-      {
-        templateId: args.templateId,
-        newStorageId: args.newStorageId,
-        previousStorageId: template.thumbnailStorageId ?? undefined,
-      },
-    );
-
-    return null;
-  },
-});
-
 export const deleteTemplate = mutation({
   args: {
     templateId: v.id("automationTemplates"),
@@ -215,9 +187,6 @@ export const deleteTemplate = mutation({
 
     if (template.lastRenderPreviewStorageId) {
       await ctx.storage.delete(template.lastRenderPreviewStorageId);
-    }
-    if (template.thumbnailStorageId) {
-      await ctx.storage.delete(template.thumbnailStorageId);
     }
 
     await ctx.db.delete(template._id);

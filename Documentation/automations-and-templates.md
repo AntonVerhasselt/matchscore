@@ -79,7 +79,6 @@ One row per organization per automation type. Rows are created when an organizat
 | `sceneDocument` | Parsed Konva scene JSON (`schemaVersion: 1`). |
 | `schemaVersion` | Format version (currently `1`). |
 | `lastRenderPreviewStorageId` | Latest render-test PNG in `_storage`; previous blob is deleted on each test. |
-| `thumbnailStorageId` | One small JPEG list thumbnail in `_storage`; replaced in place after each editor save. |
 
 Canvas dimensions are derived from `canvasPreset` in code, not stored separately:
 
@@ -89,7 +88,7 @@ Canvas dimensions are derived from `canvasPreset` in code, not stored separately
 | `instagram_portrait` | 1080 × 1350 | Instagram portrait |
 | `facebook_landscape` | 1200 × 630 | Facebook landscape / link-style visual |
 
-Templates are hard-deleted. Deleting a template also removes associated render-preview and thumbnail blobs from `_storage`.
+Templates are hard-deleted. Deleting a template also removes the associated render-preview blob from `_storage`.
 
 ### `templateAssets`
 
@@ -116,18 +115,16 @@ Functions follow the feature-folder layout described in [convex-structure.md](./
 | Function | Type | Purpose |
 | --- | --- | --- |
 | `queries.listAutomations` | query | Both automation rows + template counts + effective channel status |
-| `queries.listTemplates` | query | Templates for current org with `thumbnailUrl`, optional filter by `automationType` |
+| `queries.listTemplates` | query | Templates for current org, optional filter by `automationType` |
 | `queries.getTemplate` | query | Single template including `sceneDocument` |
 | `mutations.ensureCurrentOrganizationAutomations` | mutation | Idempotent backfill for orgs created before automations shipped |
 | `mutations.setAutomationGlobalEnabled` | mutation | Toggle `isGloballyEnabled` |
 | `mutations.setAutomationPostingChannelEnabled` | mutation | Toggle one posting channel |
 | `mutations.createTemplate` | mutation | Insert template with starter scene |
 | `mutations.updateTemplate` | mutation | Validate + normalize scene, update name |
-| `mutations.saveTemplateThumbnail` | mutation | Attach uploaded list thumbnail blob; replaces previous |
-| `mutations.deleteTemplate` | mutation | Hard delete + cleanup storage blobs |
+| `mutations.deleteTemplate` | mutation | Hard delete + cleanup render preview blob |
 | `actions.renderTemplateTest` | action (`"use node"`) | Render current or saved scene to PNG with real match sample; returns signed preview URL |
 | `internalMutations.replaceTemplateRenderPreview` | internal | Stores new render-test preview blob, deletes previous |
-| `internalMutations.replaceTemplateThumbnail` | internal | Stores new list thumbnail blob, deletes previous |
 
 All public functions authenticate via Better Auth, resolve organization membership server-side, and scope reads/writes to `membership.organizationId`. Never accept a client-supplied organization id for authorization.
 
@@ -211,7 +208,7 @@ No template count check runs on enable. When globally disabled, channel switches
 ### Delete a template
 
 1. User deletes from the template list dialog.
-2. Row and associated preview/thumbnail blobs are removed.
+2. Row and associated render-preview blob are removed.
 3. Automation `isGloballyEnabled` is unchanged.
 
 ### Render test

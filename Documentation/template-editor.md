@@ -351,20 +351,6 @@ import "konva/skia-backend";
 
 Internal `renderSpikeTest` action renders a trivial solid-color PNG to verify native module compatibility on Convex.
 
-### List thumbnails (template overview)
-
-Separate from render test. The template list on `/app/automations/preview` and `/app/automations/result` shows a small JPEG from `thumbnailStorageId`.
-
-```text
-Editor save succeeds
-  → hidden preview stage capture (~256px JPEG, client-side only)
-  → generateUploadUrl + saveTemplateThumbnail
-  → replaceTemplateThumbnail (delete previous blob)
-  → listTemplates returns fresh thumbnailUrl
-```
-
-Capture runs immediately after each successful save (including autosave). The editor stage is briefly switched to preview with no selection, then cloned at 1:1 scale and clipped to the canvas bounds before export. A content hash skips re-upload when the saved name and scene are unchanged.
-
 ### Production posting (future)
 
 Posting will load the saved template by id (no canvas override), resolve bindings from the same `TemplateRenderMatchData` pipeline for the triggered fixture, render, and hand off to social APIs. Cron wiring and internal unauthenticated query variants are not built yet.
@@ -393,8 +379,6 @@ Browser editor and server render share these implementations:
 | --- | --- |
 | `convex/automations/scenes.test.ts` | Normalization, bindings, shapes, text styles, text fit |
 | `convex/automations/render/render.test.ts` | Font registration, per-node fonts, crest pixel checks |
-| `convex/automationsThumbnail.test.ts` | Thumbnail blob replace/delete |
-| `lib/template-scene/thumbnail-capture.test.ts` | Thumbnail content hash stability |
 
 Local smoke test (requires skia-canvas installed):
 
@@ -411,8 +395,7 @@ CI `pnpm build` catches accidental `canvas` / `skia-canvas` imports in the clien
 - Editor requires desktop viewport (≥ 1024px width).
 - Render test hits `fonts.gstatic.com` on first use of each font family (cold-start latency).
 - Render preview blobs accumulate one per template (`lastRenderPreviewStorageId`); old blobs are replaced, not orphaned.
-- List thumbnails (`thumbnailStorageId`) are separate JPEGs; one per template, replaced after each editor save.
-- List thumbnails stay stale until the next editor session if only match sync data changes (layout unchanged).
+- Template list shows a placeholder thumbnail box (no generated preview image yet).
 - No overlay guide layer (center crosshair / safe zones).
 - Property panel numeric fields commit on each change (autosave debounces the save, not keystrokes).
 - Pixel-perfect text parity between Chrome and skia-canvas is not guaranteed.
