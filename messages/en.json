@@ -434,7 +434,7 @@
           "properties": "Properties"
         },
         "variablesPanelTitle": "Variables",
-        "variablesPanelDescription": "Drag match variables onto the canvas. In design mode, text variables are shown with curly braces.",
+        "variablesPanelDescription": "Drag match variables onto the canvas. Each card shows the variable label and a live preview value.",
         "textVariables": "Text variables",
         "logoVariables": "Logo variables",
         "dragLogoVariable": "Drag a team logo onto the canvas",

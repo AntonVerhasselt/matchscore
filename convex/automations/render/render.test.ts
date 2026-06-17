@@ -251,5 +251,11 @@ describe("server template render pipeline", () => {
 
     expect(jpeg.byteLength).toBeGreaterThan(500);
     expect(jpeg.subarray(0, 2).toString("hex")).toBe("ffd8");
+
+    const { loadImage } = await import("skia-canvas");
+    const rendered = await loadImage(jpeg);
+    expect(Math.max(rendered.width, rendered.height)).toBe(256);
+    expect(rendered.width).toBe(256);
+    expect(rendered.height).toBe(256);
   });
 });

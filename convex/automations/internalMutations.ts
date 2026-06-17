@@ -13,7 +13,7 @@ export const replaceTemplateRenderPreview = internalMutation({
   handler: async (ctx, args) => {
     const template = await ctx.db.get(args.templateId);
     if (!template) {
-      return null;
+      throw new Error("Template not found");
     }
 
     const previousStorageId =
@@ -45,7 +45,7 @@ export const replaceTemplateThumbnail = internalMutation({
   handler: async (ctx, args) => {
     const template = await ctx.db.get(args.templateId);
     if (!template) {
-      return null;
+      throw new Error("Template not found");
     }
 
     const previousStorageId = template.thumbnailStorageId;

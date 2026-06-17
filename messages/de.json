@@ -434,7 +434,7 @@
           "properties": "Eigenschaften"
         },
         "variablesPanelTitle": "Variablen",
-        "variablesPanelDescription": "Ziehe Spielvariablen auf die Arbeitsfläche. Im Designmodus werden Textvariablen mit geschweiften Klammern angezeigt.",
+        "variablesPanelDescription": "Ziehe Spielvariablen auf die Arbeitsfläche. Textvariablen werden mit geschweiften Klammern angezeigt.",
         "textVariables": "Textvariablen",
         "logoVariables": "Logo-Variablen",
         "dragLogoVariable": "Ziehe ein Teamlogo auf die Arbeitsfläche",

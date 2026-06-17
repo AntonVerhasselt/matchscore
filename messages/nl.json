@@ -434,7 +434,7 @@
           "properties": "Opties"
         },
         "variablesPanelTitle": "Variabelen",
-        "variablesPanelDescription": "Sleep wedstrijdvariabelen naar het canvas. In ontwerpmodus worden tekstvariabelen met accolades getoond.",
+        "variablesPanelDescription": "Sleep wedstrijdvariabelen naar het canvas. Tekstvariabelen worden met accolades getoond.",
         "textVariables": "Tekstvariabelen",
         "logoVariables": "Logovariabelen",
         "dragLogoVariable": "Sleep een ploeglogo naar het canvas",

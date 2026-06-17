@@ -94,7 +94,11 @@ export async function renderTemplateToPng(
   input: RenderTemplateInput,
 ): Promise<Buffer> {
   const stage = await buildRenderedStage(input);
-  return exportStageToPngBuffer(stage);
+  try {
+    return exportStageToPngBuffer(stage);
+  } finally {
+    stage.destroy();
+  }
 }
 
 export async function renderTemplateToJpegThumbnail(
@@ -105,11 +109,15 @@ export async function renderTemplateToJpegThumbnail(
   },
 ): Promise<Buffer> {
   const stage = await buildRenderedStage(input);
-  return await exportStageToJpegThumbnailBuffer(
-    stage,
-    options?.maxEdgePx ?? 256,
-    options?.quality ?? 0.85,
-  );
+  try {
+    return await exportStageToJpegThumbnailBuffer(
+      stage,
+      options?.maxEdgePx ?? 256,
+      options?.quality ?? 0.85,
+    );
+  } finally {
+    stage.destroy();
+  }
 }
 
 export async function renderSolidColorSpikePng(

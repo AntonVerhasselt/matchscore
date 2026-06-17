@@ -434,7 +434,7 @@
           "properties": "Propriétés"
         },
         "variablesPanelTitle": "Variables",
-        "variablesPanelDescription": "Glissez les variables de match sur le canevas. En mode design, les variables de texte sont affichées avec des accolades.",
+        "variablesPanelDescription": "Glissez les variables de match sur le canevas. Les variables de texte sont affichées avec des accolades.",
         "textVariables": "Variables de texte",
         "logoVariables": "Variables de logo",
         "dragLogoVariable": "Glissez un logo d'équipe sur le canevas",
