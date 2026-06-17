@@ -59,6 +59,7 @@ export type AutomationTemplateSummary = {
   canvasPreset: CanvasPreset;
   schemaVersion: number;
   updatedAt: number;
+  thumbnailUrl: string | null;
 };
 
 const SLUG_TO_BACKEND: Record<AutomationTypeSlug, AutomationTypeBackend> = {

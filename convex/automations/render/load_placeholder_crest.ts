@@ -13,7 +13,7 @@ async function rasterizePlaceholderCrest(
   bindingKey: ImageBindingKey,
 ): Promise<SkiaImage> {
   const svgImage = await loadImage(
-    Buffer.from(createPlaceholderCrestSvg(bindingKey, "preview"), "utf8"),
+    Buffer.from(createPlaceholderCrestSvg(bindingKey), "utf8"),
   );
   const canvas = new Canvas(PLACEHOLDER_CREST_SIZE, PLACEHOLDER_CREST_SIZE);
   const ctx = canvas.getContext("2d");

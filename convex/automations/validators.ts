@@ -37,10 +37,12 @@ export const automationTemplateSummaryValidator = v.object({
   canvasPreset: canvasPresetValidator,
   schemaVersion: v.number(),
   updatedAt: v.number(),
+  thumbnailUrl: v.union(v.string(), v.null()),
 });
 
 export const automationTemplateDetailValidator = v.object({
   _id: v.id("automationTemplates"),
+  organizationId: v.id("organizations"),
   name: v.string(),
   automationType: automationTypeValidator,
   canvasPreset: canvasPresetValidator,

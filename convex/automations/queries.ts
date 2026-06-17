@@ -113,14 +113,19 @@ export const listTemplates = query({
           .order("desc")
           .collect();
 
-    return templates.map((template) => ({
-      _id: template._id,
-      name: template.name,
-      automationType: template.automationType,
-      canvasPreset: template.canvasPreset,
-      schemaVersion: template.schemaVersion,
-      updatedAt: template.updatedAt,
-    }));
+    return Promise.all(
+      templates.map(async (template) => ({
+        _id: template._id,
+        name: template.name,
+        automationType: template.automationType,
+        canvasPreset: template.canvasPreset,
+        schemaVersion: template.schemaVersion,
+        updatedAt: template.updatedAt,
+        thumbnailUrl: template.thumbnailStorageId
+          ? ((await ctx.storage.getUrl(template.thumbnailStorageId)) ?? null)
+          : null,
+      })),
+    );
   },
 });
 
@@ -139,6 +144,7 @@ export const getTemplate = query({
 
     return {
       _id: template._id,
+      organizationId: template.organizationId,
       name: template.name,
       automationType: template.automationType,
       canvasPreset: template.canvasPreset,

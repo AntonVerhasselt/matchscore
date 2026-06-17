@@ -1,7 +1,8 @@
 "use client";
 
-import { Pencil, Trash2 } from "lucide-react";
+import { Copy, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -16,6 +17,7 @@ import {
   type AutomationTypeSlug,
 } from "@/lib/automations/types";
 import { showErrorToast, showSuccessToast } from "@/lib/user-feedback";
+import { cn } from "@/lib/utils";
 import { useMutation } from "convex/react";
 
 type TemplateListItemProps = {
@@ -30,9 +32,29 @@ export function TemplateListItem({
   const t = useTranslations("app.automations.templates");
   const format = useFormatter();
   const now = useNow();
+  const router = useRouter();
   const deleteTemplate = useMutation(api.automations.mutations.deleteTemplate);
+  const duplicateTemplate = useMutation(
+    api.automations.mutations.duplicateTemplate,
+  );
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isDuplicating, setIsDuplicating] = useState(false);
+
+  const handleDuplicate = async () => {
+    setIsDuplicating(true);
+
+    try {
+      const duplicateId = await duplicateTemplate({
+        templateId: template._id,
+      });
+      router.push(automationEditorPath(automationType, duplicateId));
+    } catch {
+      showErrorToast(t("duplicateFailed"));
+    } finally {
+      setIsDuplicating(false);
+    }
+  };
 
   const handleDeleteConfirm = async () => {
     setIsDeleting(true);
@@ -52,9 +74,20 @@ export function TemplateListItem({
     <>
       <div className="flex items-center gap-4 border-b border-border py-4 last:border-b-0">
         <div
-          className="size-16 shrink-0 bg-muted ring-1 ring-foreground/10"
+          className={cn(
+            "size-16 shrink-0 overflow-hidden bg-muted ring-1 ring-foreground/10",
+            template.thumbnailUrl && "bg-background",
+          )}
           aria-hidden
-        />
+        >
+          {template.thumbnailUrl ? (
+            <img
+              src={template.thumbnailUrl}
+              alt=""
+              className="size-full object-cover"
+            />
+          ) : null}
+        </div>
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">{template.name}</p>
           <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -67,6 +100,15 @@ export function TemplateListItem({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            disabled={isDuplicating}
+            onClick={() => void handleDuplicate()}
+            aria-label={t("duplicate")}
+          >
+            <Copy aria-hidden />
+          </Button>
           <Button variant="ghost" size="icon-sm" asChild>
             <Link
               href={automationEditorPath(automationType, template._id)}

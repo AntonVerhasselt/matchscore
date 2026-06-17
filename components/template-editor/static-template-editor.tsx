@@ -56,7 +56,11 @@ import {
   Transformer,
 } from "react-konva";
 
-import { PreviewMatchProvider, usePreviewMatch } from "@/components/template-editor/preview-match-context";
+import type { TemplateRenderMatchData } from "@/lib/football/template-render-match";
+import {
+  PreviewMatchProvider,
+  usePreviewMatch,
+} from "@/components/template-editor/preview-match-context";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
@@ -81,7 +85,6 @@ import {
   resolveImageSource,
   resolveTextContent,
   type AutomationType,
-  type BindingPreviewMode,
   type ImageBindingKey,
   type ObjectFitMode,
   type SceneDocument,
@@ -260,8 +263,6 @@ export function StaticTemplateEditor({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [previewMode, setPreviewMode] =
-    useState<BindingPreviewMode>("design");
   const [activePanelTab, setActivePanelTab] =
     useState<EditorPanelTab>("variables");
   const [isUploadingAsset, setIsUploadingAsset] = useState(false);
@@ -768,13 +769,25 @@ export function StaticTemplateEditor({
       const node =
         payload.kind === "image"
           ? createLogoNode(sceneDocument, nodeId, payload.bindingKey, point)
-          : createTextBindingNode(sceneDocument, nodeId, payload.bindingKey, point);
+          : createTextBindingNode(
+              sceneDocument,
+              nodeId,
+              payload.bindingKey,
+              point,
+              backendAutomationType,
+              templateRenderMatch ?? null,
+            );
 
       commitSceneDocument((current) => appendSceneNodeToFirstLayer(current, node));
       setSelectedNodeId(nodeId);
       setActivePanelTab("properties");
     },
-    [commitSceneDocument, sceneDocument],
+    [
+      backendAutomationType,
+      commitSceneDocument,
+      sceneDocument,
+      templateRenderMatch,
+    ],
   );
 
   const insertAssetNode = useCallback(
@@ -1161,8 +1174,7 @@ export function StaticTemplateEditor({
     );
   }
 
-  const previewMatchForEditor =
-    previewMode === "preview" ? (templateRenderMatch ?? null) : null;
+  const previewMatchForEditor = templateRenderMatch ?? null;
 
   return (
     <PreviewMatchProvider value={previewMatchForEditor}>
@@ -1235,24 +1247,6 @@ export function StaticTemplateEditor({
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => {
-              setPreviewMode((current) => {
-                const next = current === "design" ? "preview" : "design";
-                if (next === "preview") {
-                  setPreviewSampleAt(Date.now());
-                }
-                return next;
-              });
-            }}
-          >
-            {previewMode === "design"
-              ? t("editor.showPreviewMode")
-              : t("editor.showDesignMode")}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
             disabled={isRenderingTest || isSaving}
             onClick={() => void handleRenderTest()}
           >
@@ -1308,7 +1302,6 @@ export function StaticTemplateEditor({
                   node={node}
                   nodeRefs={nodeRefs}
                   automationType={backendAutomationType}
-                  previewMode={previewMode}
                   templateAssetsById={templateAssetsById}
                   editingTextNodeId={editingTextNodeId}
                   onSelect={selectNode}
@@ -1362,7 +1355,6 @@ export function StaticTemplateEditor({
             isUploadingAsset={isUploadingAsset}
             deletingAssetId={deletingAssetId}
             automationType={backendAutomationType}
-            previewMode={previewMode}
             onTabChange={setActivePanelTab}
             onNodeSelect={selectNode}
             onLayerReorder={reorderLayerNode}
@@ -1428,7 +1420,6 @@ function EditorRightPanel({
   isUploadingAsset,
   deletingAssetId,
   automationType,
-  previewMode,
   onTabChange,
   onNodeSelect,
   onLayerReorder,
@@ -1460,7 +1451,6 @@ function EditorRightPanel({
   isUploadingAsset: boolean;
   deletingAssetId: Id<"templateAssets"> | null;
   automationType: AutomationType;
-  previewMode: BindingPreviewMode;
   onTabChange: (tab: EditorPanelTab) => void;
   onNodeSelect: (nodeId: string) => void;
   onLayerReorder: (
@@ -1576,7 +1566,6 @@ function EditorRightPanel({
           <PropertiesPanelShell
             selectedNode={selectedNode}
             automationType={automationType}
-            previewMode={previewMode}
             onChange={onPropertiesChange}
             onDelete={onNodeDelete}
           />
@@ -1738,6 +1727,7 @@ function VariablesPanel({
   onVariableActivate: (payload: VariableDragPayload) => void;
 }) {
   const t = useTranslations("app.automations.editor");
+  const previewMatch = usePreviewMatch();
 
   return (
     <div className="space-y-6">
@@ -1755,7 +1745,11 @@ function VariablesPanel({
             <VariableCard
               key={bindingKey}
               title={t(`bindings.${bindingKey}`)}
-              description={`{{ ${bindingKey} }}`}
+              description={resolveTextContent(
+                { bindingKey },
+                automationType,
+                previewMatch,
+              )}
               icon={Type}
               onDragStart={(event) =>
                 onVariableDragStart(event, { kind: "text", bindingKey })
@@ -1773,20 +1767,30 @@ function VariablesPanel({
           {t("logoVariables")}
         </h3>
         <div className="grid gap-2">
-          {getAvailableImageBindingKeys().map((bindingKey) => (
-            <VariableCard
-              key={bindingKey}
-              title={t(`bindings.${bindingKey}`)}
-              description={t("dragLogoVariable")}
-              icon={ImageIcon}
-              onDragStart={(event) =>
-                onVariableDragStart(event, { kind: "image", bindingKey })
-              }
-              onActivate={() =>
-                onVariableActivate({ kind: "image", bindingKey })
-              }
-            />
-          ))}
+          {getAvailableImageBindingKeys().map((bindingKey) => {
+            const clubName =
+              bindingKey === "homeClubLogo"
+                ? previewMatch?.homeClub.name
+                : previewMatch?.awayClub.name;
+            const description = clubName
+              ? `${t("dragLogoVariable")} · ${clubName}`
+              : t("dragLogoVariable");
+
+            return (
+              <VariableCard
+                key={bindingKey}
+                title={t(`bindings.${bindingKey}`)}
+                description={description}
+                icon={ImageIcon}
+                onDragStart={(event) =>
+                  onVariableDragStart(event, { kind: "image", bindingKey })
+                }
+                onActivate={() =>
+                  onVariableActivate({ kind: "image", bindingKey })
+                }
+              />
+            );
+          })}
         </div>
       </section>
     </div>
@@ -2376,13 +2380,11 @@ function VariableCard({
 function PropertiesPanelShell({
   selectedNode,
   automationType,
-  previewMode,
   onChange,
   onDelete,
 }: {
   selectedNode: SceneNode | null;
   automationType: AutomationType;
-  previewMode: BindingPreviewMode;
   onChange: (attrs: SceneNodeAttrs) => void;
   onDelete: () => void;
 }) {
@@ -2423,7 +2425,6 @@ function PropertiesPanelShell({
       <NodePropertiesPanel
         node={selectedNode}
         automationType={automationType}
-        previewMode={previewMode}
         onChange={onChange}
         onDelete={onDelete}
       />
@@ -2884,7 +2885,6 @@ function SceneNodeRenderer({
   node,
   nodeRefs,
   automationType,
-  previewMode,
   templateAssetsById,
   editingTextNodeId,
   onSelect,
@@ -2894,7 +2894,6 @@ function SceneNodeRenderer({
   node: SceneNode;
   nodeRefs: React.MutableRefObject<Map<string, Konva.Node>>;
   automationType: AutomationType;
-  previewMode: BindingPreviewMode;
   templateAssetsById: Map<string, TemplateAsset>;
   editingTextNodeId: string | null;
   onSelect: (nodeId: string) => void;
@@ -2917,7 +2916,6 @@ function SceneNodeRenderer({
       node={child}
       nodeRefs={nodeRefs}
       automationType={automationType}
-      previewMode={previewMode}
       templateAssetsById={templateAssetsById}
       editingTextNodeId={editingTextNodeId}
       onSelect={onSelect}
@@ -3094,7 +3092,6 @@ function SceneNodeRenderer({
     const text = resolveTextContent(
       node.attrs,
       automationType,
-      previewMode,
       previewMatch,
     );
     const baseFontSize = numberAttr(node.attrs, "fontSize", 48);
@@ -3145,7 +3142,6 @@ function SceneNodeRenderer({
       <SceneImage
         {...sharedProps}
         attrs={node.attrs}
-        previewMode={previewMode}
         templateAssetsById={templateAssetsById}
       />
     );
@@ -3156,12 +3152,10 @@ function SceneNodeRenderer({
 
 function SceneImage({
   attrs,
-  previewMode,
   templateAssetsById,
   ...sharedProps
 }: {
   attrs: SceneNodeAttrs;
-  previewMode: BindingPreviewMode;
   templateAssetsById: Map<string, TemplateAsset>;
   id?: string;
   ref?: (node: Konva.Node | null) => void;
@@ -3173,7 +3167,7 @@ function SceneImage({
 }) {
   const previewMatch = usePreviewMatch();
   const assetId = stringAttr(attrs, "assetId");
-  const dynamicSrc = resolveImageSource(attrs, previewMode, previewMatch);
+  const dynamicSrc = resolveImageSource(attrs, previewMatch);
   const staticSrc = assetId ? templateAssetsById.get(assetId)?.url ?? null : null;
   const src = dynamicSrc ?? staticSrc;
   const [image] = useImage(src ?? "", "anonymous");
@@ -3256,13 +3250,11 @@ function SceneImage({
 function NodePropertiesPanel({
   node,
   automationType,
-  previewMode,
   onChange,
   onDelete,
 }: {
   node: SceneNode;
   automationType: AutomationType;
-  previewMode: BindingPreviewMode;
   onChange: (attrs: SceneNodeAttrs) => void;
   onDelete: () => void;
 }) {
@@ -3466,7 +3458,6 @@ function NodePropertiesPanel({
                   value: resolveTextContent(
                     node.attrs,
                     automationType,
-                    previewMode,
                     previewMatch,
                   ),
                 })}
@@ -4003,9 +3994,15 @@ function createTextBindingNode(
   nodeId: string,
   bindingKey: TextBindingKey,
   point: { x: number; y: number },
+  automationType: AutomationType,
+  previewMatch: TemplateRenderMatchData | null,
 ): SceneNode {
   const fontSize = 52;
-  const token = `{{ ${bindingKey} }}`;
+  const resolvedText = resolveTextContent(
+    { bindingKey },
+    automationType,
+    previewMatch,
+  );
   const fill = pickContrastingTextColor(getSceneBackgroundFill(sceneDocument));
 
   return {
@@ -4015,7 +4012,7 @@ function createTextBindingNode(
       name: bindingKey,
       x: point.x,
       y: point.y,
-      width: estimateSingleLineTextWidth(token, fontSize),
+      width: estimateSingleLineTextWidth(resolvedText, fontSize),
       fontSize,
       fontFamily: "Arial",
       fill,

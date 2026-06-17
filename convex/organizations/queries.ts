@@ -1,8 +1,31 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
+import type { Doc } from "../_generated/dataModel";
+import type { QueryCtx } from "../_generated/server";
 import { authComponent } from "../auth/instance";
 import { normalizeEmail } from "../lib/email";
 import { getMembershipForUser } from "./helpers";
+
+async function resolveOrganizationLogoUrl(
+  ctx: Pick<QueryCtx, "db" | "storage">,
+  organization: Doc<"organizations">,
+): Promise<string | null> {
+  const storedLogoUrl = organization.logoImageUrl?.trim();
+  if (storedLogoUrl) {
+    return storedLogoUrl;
+  }
+
+  if (!organization.footballTeamId) {
+    return null;
+  }
+
+  const team = await ctx.db.get(organization.footballTeamId);
+  if (!team?.logoStorageId) {
+    return null;
+  }
+
+  return (await ctx.storage.getUrl(team.logoStorageId)) ?? null;
+}
 
 const memberSummaryValidator = v.object({
   memberId: v.id("organizationMembers"),
@@ -92,7 +115,7 @@ export const getCurrentMembership = query({
         _id: organization._id,
         name: organization.name,
         slug: organization.slug,
-        logoImageUrl: organization.logoImageUrl ?? null,
+        logoImageUrl: await resolveOrganizationLogoUrl(ctx, organization),
         footballTeamId: organization.footballTeamId,
         createdAt: organization.createdAt,
       },

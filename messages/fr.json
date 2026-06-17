@@ -344,6 +344,8 @@
           "description": "Créez votre premier modèle pour commencer à publier automatiquement."
         },
         "edit": "Modifier",
+        "duplicate": "Dupliquer",
+        "duplicateFailed": "Impossible de dupliquer le modèle. Veuillez réessayer.",
         "delete": "Supprimer",
         "deleting": "Suppression...",
         "cancel": "Annuler",
@@ -414,10 +416,6 @@
         "variable": "Variable",
         "variableBinding": "Variable",
         "resolvedPreview": "Affiché comme : {value}",
-        "designMode": "Design",
-        "previewMode": "Aperçu",
-        "showPreviewMode": "Afficher l'aperçu",
-        "showDesignMode": "Afficher le design",
         "renderTest": "Test de rendu",
         "renderTestRunning": "Rendu...",
         "renderTestTitle": "Test de rendu serveur",
@@ -436,7 +434,7 @@
           "properties": "Propriétés"
         },
         "variablesPanelTitle": "Variables",
-        "variablesPanelDescription": "Glissez les variables de match sur le canevas. En mode design, les variables de texte sont affichées avec des accolades.",
+        "variablesPanelDescription": "Glissez les variables de match sur le canevas. Les variables de texte sont affichées avec des accolades.",
         "textVariables": "Variables de texte",
         "logoVariables": "Variables de logo",
         "dragLogoVariable": "Glissez un logo d'équipe sur le canevas",

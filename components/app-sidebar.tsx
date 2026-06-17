@@ -19,7 +19,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
-  SidebarSeparator,
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -113,12 +112,9 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
         </SidebarGroup>
       </SidebarContent>
       {!isMobile ? (
-        <>
-          <SidebarSeparator className="bg-sidebar-border" />
-          <SidebarFooter>
-            <AppUserMenu variant="sidebar" />
-          </SidebarFooter>
-        </>
+        <SidebarFooter className="border-t border-sidebar-border">
+          <AppUserMenu variant="sidebar" />
+        </SidebarFooter>
       ) : null}
       <SidebarRail />
     </Sidebar>

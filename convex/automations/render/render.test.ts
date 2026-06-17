@@ -228,4 +228,34 @@ describe("server template render pipeline", () => {
     expect(png.byteLength).toBeGreaterThan(1000);
     expect(png.subarray(0, 8).toString("hex")).toBe("89504e470d0a1a0a");
   });
+
+  test("renderTemplateToJpegThumbnail exports a jpeg at reduced size", async () => {
+    const { renderTemplateToJpegThumbnail } =
+      await import("./render_template_to_png");
+    const { resetRegisteredSceneFontsForTests } =
+      await import("./register_scene_fonts");
+
+    resetRegisteredSceneFontsForTests();
+
+    const scene = createStarterSceneDocument("instagram_square");
+    const jpeg = await renderTemplateToJpegThumbnail(
+      {
+        sceneDocument: scene,
+        automationType: "match_result",
+        canvasPreset: "instagram_square",
+        match: DEFAULT_MOCK_MATCH,
+        loaders: emptyLoaders,
+      },
+      { maxEdgePx: 256, quality: 0.85 },
+    );
+
+    expect(jpeg.byteLength).toBeGreaterThan(500);
+    expect(jpeg.subarray(0, 2).toString("hex")).toBe("ffd8");
+
+    const { loadImage } = await import("skia-canvas");
+    const rendered = await loadImage(jpeg);
+    expect(Math.max(rendered.width, rendered.height)).toBe(256);
+    expect(rendered.width).toBe(256);
+    expect(rendered.height).toBe(256);
+  });
 });

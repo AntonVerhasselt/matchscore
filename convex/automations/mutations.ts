@@ -1,5 +1,7 @@
 import { ConvexError, v } from "convex/values";
-import { mutation } from "../_generated/server";
+import { mutation, type MutationCtx } from "../_generated/server";
+import { internal } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
 import {
   ensureOrganizationAutomations,
   getPrimaryOrganizationAutomation,
@@ -14,6 +16,23 @@ import {
   canvasPresetValidator,
   postingChannelValidator,
 } from "./validators";
+import { TEMPLATE_THUMBNAIL_GENERATION_DELAY_MS } from "./thumbnailConstants";
+
+async function scheduleTemplateThumbnailGeneration(
+  ctx: MutationCtx,
+  templateId: Id<"automationTemplates">,
+  updatedAt: number,
+  delayMs: number,
+) {
+  await ctx.scheduler.runAfter(
+    delayMs,
+    internal.automations.actions.generateTemplateThumbnail,
+    {
+      templateId,
+      expectedUpdatedAt: updatedAt,
+    },
+  );
+}
 
 export const ensureCurrentOrganizationAutomations = mutation({
   args: {},
@@ -108,7 +127,7 @@ export const createTemplate = mutation({
     }
 
     const now = Date.now();
-    return await ctx.db.insert("automationTemplates", {
+    const templateId = await ctx.db.insert("automationTemplates", {
       organizationId: membership.organizationId,
       automationType: args.automationType,
       name,
@@ -119,6 +138,10 @@ export const createTemplate = mutation({
       createdAt: now,
       updatedAt: now,
     });
+
+    await scheduleTemplateThumbnailGeneration(ctx, templateId, now, 0);
+
+    return templateId;
   },
 });
 
@@ -160,15 +183,63 @@ export const updateTemplate = mutation({
       membership.organizationId,
     );
 
+    const updatedAt = Date.now();
     await ctx.db.patch(template._id, {
       name,
       sceneDocument,
       schemaVersion: 1,
-      updatedAt: Date.now(),
+      updatedAt,
       updatedByUserId: membership.userId,
     });
 
+    await scheduleTemplateThumbnailGeneration(
+      ctx,
+      template._id,
+      updatedAt,
+      TEMPLATE_THUMBNAIL_GENERATION_DELAY_MS,
+    );
+
     return null;
+  },
+});
+
+export const duplicateTemplate = mutation({
+  args: {
+    templateId: v.id("automationTemplates"),
+  },
+  returns: v.id("automationTemplates"),
+  handler: async (ctx, args) => {
+    const { user, membership } = await requireCurrentMembership(ctx);
+    await ensureOrganizationAutomations(ctx, membership.organizationId, user._id);
+
+    const template = await ctx.db.get(args.templateId);
+
+    if (!template || template.organizationId !== membership.organizationId) {
+      throw new ConvexError("Template not found");
+    }
+
+    await assertTemplateAssetReferencesBelongToOrganization(
+      ctx,
+      template.sceneDocument,
+      membership.organizationId,
+    );
+
+    const now = Date.now();
+    const duplicateId = await ctx.db.insert("automationTemplates", {
+      organizationId: membership.organizationId,
+      automationType: template.automationType,
+      name: `${template.name.trim()} copy`,
+      sceneDocument: template.sceneDocument,
+      canvasPreset: template.canvasPreset,
+      schemaVersion: template.schemaVersion,
+      createdByUserId: user._id,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await scheduleTemplateThumbnailGeneration(ctx, duplicateId, now, 0);
+
+    return duplicateId;
   },
 });
 
@@ -187,6 +258,10 @@ export const deleteTemplate = mutation({
 
     if (template.lastRenderPreviewStorageId) {
       await ctx.storage.delete(template.lastRenderPreviewStorageId);
+    }
+
+    if (template.thumbnailStorageId) {
+      await ctx.storage.delete(template.thumbnailStorageId);
     }
 
     await ctx.db.delete(template._id);

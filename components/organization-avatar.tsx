@@ -19,17 +19,22 @@ export function OrganizationAvatar({
   const hasLogo = Boolean(logoImageUrl?.trim());
 
   return (
-    <Avatar className={className}>
+    <Avatar
+      className={cn(
+        "rounded-lg bg-white/65 after:border-white/30",
+        className,
+      )}
+    >
       {hasLogo ? (
         <AvatarImage
           src={logoImageUrl!}
           alt={name}
-          className="rounded-[inherit]"
+          className="rounded-[inherit] object-contain p-1"
         />
       ) : null}
       <AvatarFallback
         className={cn(
-          "rounded-lg bg-sidebar-primary text-sidebar-primary-foreground",
+          "rounded-[inherit] bg-white/65 text-sidebar-foreground",
           fallbackClassName,
         )}
       >

@@ -1,7 +1,6 @@
 import { ConvexError, v } from "convex/values";
 
-import { buildTemplateMatch } from "../../lib/football/build-template-match";
-import { selectSampleMatch } from "../../lib/football/select-sample-match";
+import { fetchTemplateRenderMatchForTeam } from "./templateRenderMatchHelpers";
 import { isCompetitionPathAllowed } from "../lib/voetbalinbelgie/allowlist";
 import { query } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
@@ -336,66 +335,20 @@ export const getTemplateRenderMatchData = query({
       throw new ConvexError("Organisation not found");
     }
 
-    const teamId = organization.footballTeamId;
-    const lookbackMs = 180 * 24 * 60 * 60 * 1000;
-    const minKickoff = args.now - lookbackMs;
-
-    const homeMatches = await ctx.db
-      .query("matches")
-      .withIndex("by_homeTeamId_and_kickoffAt", (q) =>
-        q.eq("homeTeamId", teamId).gte("kickoffAt", minKickoff),
-      )
-      .collect();
-
-    const awayMatches = await ctx.db
-      .query("matches")
-      .withIndex("by_awayTeamId_and_kickoffAt", (q) =>
-        q.eq("awayTeamId", teamId).gte("kickoffAt", minKickoff),
-      )
-      .collect();
-
-    const matchById = new Map<string, Doc<"matches">>();
-    for (const match of [...homeMatches, ...awayMatches]) {
-      matchById.set(match._id as string, match);
-    }
-
-    const selected = selectSampleMatch(
-      [...matchById.values()],
-      args.automationType,
-      args.now,
-    );
-    if (!selected) {
-      return null;
-    }
-
-    const homeTeam = await ctx.db.get(selected.homeTeamId);
-    const awayTeam = await ctx.db.get(selected.awayTeamId);
-    if (!homeTeam || !awayTeam) {
-      return null;
-    }
-
-    const match = buildTemplateMatch({
-      kickoffAt: selected.kickoffAt,
-      status: selected.status,
-      homeGoals: selected.homeGoals,
-      awayGoals: selected.awayGoals,
-      resultText: selected.resultText,
-      homeTeam: {
-        name: homeTeam.name,
-        logoStorageId: homeTeam.logoStorageId,
-        address: homeTeam.address,
-      },
-      awayTeam: {
-        name: awayTeam.name,
-        logoStorageId: awayTeam.logoStorageId,
-      },
+    const match = await fetchTemplateRenderMatchForTeam(ctx, {
+      footballTeamId: organization.footballTeamId,
+      automationType: args.automationType,
+      now: args.now,
     });
+    if (!match) {
+      return null;
+    }
 
-    const homeLogoUrl = homeTeam.logoStorageId
-      ? (await ctx.storage.getUrl(homeTeam.logoStorageId)) ?? null
+    const homeLogoUrl = match.homeClub.logoStorageId
+      ? ((await ctx.storage.getUrl(match.homeClub.logoStorageId)) ?? null)
       : null;
-    const awayLogoUrl = awayTeam.logoStorageId
-      ? (await ctx.storage.getUrl(awayTeam.logoStorageId)) ?? null
+    const awayLogoUrl = match.awayClub.logoStorageId
+      ? ((await ctx.storage.getUrl(match.awayClub.logoStorageId)) ?? null)
       : null;
 
     return {

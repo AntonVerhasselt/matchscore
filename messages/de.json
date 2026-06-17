@@ -344,6 +344,8 @@
           "description": "Erstelle deine erste Vorlage, um automatisch zu posten."
         },
         "edit": "Bearbeiten",
+        "duplicate": "Duplizieren",
+        "duplicateFailed": "Vorlage konnte nicht dupliziert werden. Bitte versuche es erneut.",
         "delete": "Löschen",
         "deleting": "Wird gelöscht...",
         "cancel": "Abbrechen",
@@ -414,10 +416,6 @@
         "variable": "Variable",
         "variableBinding": "Variable",
         "resolvedPreview": "Angezeigt als: {value}",
-        "designMode": "Design",
-        "previewMode": "Vorschau",
-        "showPreviewMode": "Vorschau anzeigen",
-        "showDesignMode": "Design anzeigen",
         "renderTest": "Render-Test",
         "renderTestRunning": "Rendering...",
         "renderTestTitle": "Server-Render-Test",
@@ -436,7 +434,7 @@
           "properties": "Eigenschaften"
         },
         "variablesPanelTitle": "Variablen",
-        "variablesPanelDescription": "Ziehe Spielvariablen auf die Arbeitsfläche. Im Designmodus werden Textvariablen mit geschweiften Klammern angezeigt.",
+        "variablesPanelDescription": "Ziehe Spielvariablen auf die Arbeitsfläche. Textvariablen werden mit geschweiften Klammern angezeigt.",
         "textVariables": "Textvariablen",
         "logoVariables": "Logo-Variablen",
         "dragLogoVariable": "Ziehe ein Teamlogo auf die Arbeitsfläche",

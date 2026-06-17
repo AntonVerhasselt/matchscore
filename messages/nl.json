@@ -344,6 +344,8 @@
           "description": "Maak je eerste template om te beginnen met automatisch posten."
         },
         "edit": "Bewerken",
+        "duplicate": "Dupliceren",
+        "duplicateFailed": "Template dupliceren mislukt. Probeer het opnieuw.",
         "delete": "Verwijderen",
         "deleting": "Verwijderen...",
         "cancel": "Annuleren",
@@ -414,10 +416,6 @@
         "variable": "Variabele",
         "variableBinding": "Variabele",
         "resolvedPreview": "Getoond als: {value}",
-        "designMode": "Ontwerp",
-        "previewMode": "Preview",
-        "showPreviewMode": "Preview tonen",
-        "showDesignMode": "Ontwerp tonen",
         "renderTest": "Render test",
         "renderTestRunning": "Renderen...",
         "renderTestTitle": "Server render test",
@@ -436,7 +434,7 @@
           "properties": "Opties"
         },
         "variablesPanelTitle": "Variabelen",
-        "variablesPanelDescription": "Sleep wedstrijdvariabelen naar het canvas. In ontwerpmodus worden tekstvariabelen met accolades getoond.",
+        "variablesPanelDescription": "Sleep wedstrijdvariabelen naar het canvas. Tekstvariabelen worden met accolades getoond.",
         "textVariables": "Tekstvariabelen",
         "logoVariables": "Logovariabelen",
         "dragLogoVariable": "Sleep een ploeglogo naar het canvas",

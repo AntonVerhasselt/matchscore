@@ -3,14 +3,14 @@
 import { ConvexError, v } from "convex/values";
 
 import { api, internal } from "../_generated/api";
-import type { Id } from "../_generated/dataModel";
 import { action, internalAction } from "../_generated/server";
-import { DEFAULT_MOCK_MATCH } from "../../lib/template-scene/mock-match";
 import { normalizeSceneDocument } from "../../lib/template-scene";
 import {
-  renderSolidColorSpikePng,
-  renderTemplateToPng,
-} from "./render/render_template_to_png";
+  renderTemplateSceneToPngBuffer,
+  renderTemplateSceneToThumbnailBuffer,
+  resolveTemplateRenderMatch,
+} from "./render/run_template_render";
+import { renderSolidColorSpikePng } from "./render/render_template_to_png";
 
 export const renderTemplateTest = action({
   args: {
@@ -29,11 +29,6 @@ export const renderTemplateTest = action({
     if (!template) {
       throw new ConvexError("Template not found");
     }
-
-    const assets = await ctx.runQuery(api.templateAssets.queries.listTemplateAssets, {});
-    const storageIdByAssetId = new Map<Id<"templateAssets">, Id<"_storage">>(
-      assets.map((asset) => [asset._id, asset.storageId]),
-    );
 
     const rawSceneDocument = args.sceneDocument ?? template.sceneDocument;
     let sceneDocument;
@@ -54,48 +49,24 @@ export const renderTemplateTest = action({
       { sceneDocument },
     );
 
-    const matchData = await ctx.runQuery(
-      api.football.queries.getTemplateRenderMatchData,
-      {
-        automationType: template.automationType,
-        now: Date.now(),
-      },
+    const match = await resolveTemplateRenderMatch(
+      ctx,
+      template.organizationId,
+      template.automationType,
     );
-    const match = matchData ?? DEFAULT_MOCK_MATCH;
 
     let pngBuffer: Buffer;
     try {
-      pngBuffer = await renderTemplateToPng({
-        sceneDocument,
-        automationType: template.automationType,
-        canvasPreset: template.canvasPreset,
-        match,
-        loaders: {
-          loadAsset: async (assetId) => {
-            const storageId = storageIdByAssetId.get(
-              assetId as Id<"templateAssets">,
-            );
-            if (!storageId) {
-              return null;
-            }
-
-            const blob = await ctx.storage.get(storageId);
-            if (!blob) {
-              return null;
-            }
-
-            return Buffer.from(await blob.arrayBuffer());
-          },
-          loadTeamLogo: async (storageId) => {
-            const blob = await ctx.storage.get(storageId);
-            if (!blob) {
-              return null;
-            }
-
-            return Buffer.from(await blob.arrayBuffer());
-          },
+      pngBuffer = await renderTemplateSceneToPngBuffer(
+        ctx,
+        {
+          organizationId: template.organizationId,
+          automationType: template.automationType,
+          canvasPreset: template.canvasPreset,
+          sceneDocument,
         },
-      });
+        match,
+      );
     } catch (error) {
       throw new ConvexError(
         error instanceof Error ? error.message : "Template render failed",
@@ -126,6 +97,76 @@ export const renderTemplateTest = action({
     }
 
     return { storageId, previewUrl };
+  },
+});
+
+export const generateTemplateThumbnail = internalAction({
+  args: {
+    templateId: v.id("automationTemplates"),
+    expectedUpdatedAt: v.number(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const template = await ctx.runQuery(
+      internal.automations.internalQueries.getTemplateForThumbnail,
+      { templateId: args.templateId },
+    );
+
+    if (!template || template.updatedAt !== args.expectedUpdatedAt) {
+      return null;
+    }
+
+    let sceneDocument;
+    try {
+      sceneDocument = normalizeSceneDocument(
+        template.sceneDocument,
+        template.canvasPreset,
+        template.automationType,
+      );
+    } catch {
+      return null;
+    }
+
+    const match = await resolveTemplateRenderMatch(
+      ctx,
+      template.organizationId,
+      template.automationType,
+    );
+
+    let jpegBuffer: Buffer;
+    try {
+      jpegBuffer = await renderTemplateSceneToThumbnailBuffer(
+        ctx,
+        {
+          organizationId: template.organizationId,
+          automationType: template.automationType,
+          canvasPreset: template.canvasPreset,
+          sceneDocument,
+        },
+        match,
+      );
+    } catch {
+      return null;
+    }
+
+    const storageId = await ctx.storage.store(
+      new Blob([Uint8Array.from(jpegBuffer)], { type: "image/jpeg" }),
+    );
+
+    try {
+      await ctx.runMutation(
+        internal.automations.internalMutations.replaceTemplateThumbnail,
+        {
+          templateId: args.templateId,
+          newStorageId: storageId,
+          previousStorageId: template.thumbnailStorageId,
+        },
+      );
+    } catch {
+      await ctx.storage.delete(storageId);
+    }
+
+    return null;
   },
 });
 

@@ -344,6 +344,8 @@
           "description": "Create your first template to start posting automatically."
         },
         "edit": "Edit",
+        "duplicate": "Duplicate",
+        "duplicateFailed": "Couldn't duplicate template. Please try again.",
         "delete": "Delete",
         "deleting": "Deleting...",
         "cancel": "Cancel",
@@ -414,10 +416,6 @@
         "variable": "Variable",
         "variableBinding": "Variable",
         "resolvedPreview": "Shown as: {value}",
-        "designMode": "Design",
-        "previewMode": "Preview",
-        "showPreviewMode": "Show preview mode",
-        "showDesignMode": "Show design mode",
         "renderTest": "Render test",
         "renderTestRunning": "Rendering...",
         "renderTestTitle": "Server render test",
@@ -436,7 +434,7 @@
           "properties": "Properties"
         },
         "variablesPanelTitle": "Variables",
-        "variablesPanelDescription": "Drag match variables onto the canvas. In design mode, text variables are shown with curly braces.",
+        "variablesPanelDescription": "Drag match variables onto the canvas. Each card shows the variable label and a live preview value.",
         "textVariables": "Text variables",
         "logoVariables": "Logo variables",
         "dragLogoVariable": "Drag a team logo onto the canvas",

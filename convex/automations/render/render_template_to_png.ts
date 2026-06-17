@@ -2,6 +2,7 @@
 
 import Konva from "konva";
 import "konva/skia-backend";
+import { Canvas, loadImage } from "skia-canvas";
 
 import {
   collectSceneFontFamilies,
@@ -31,9 +32,38 @@ function exportStageToPngBuffer(stage: Konva.Stage): Buffer {
   return Buffer.from(base64, "base64");
 }
 
-export async function renderTemplateToPng(
-  input: RenderTemplateInput,
+async function exportStageToJpegThumbnailBuffer(
+  stage: Konva.Stage,
+  maxEdgePx: number,
+  quality: number,
 ): Promise<Buffer> {
+  // Export via PNG first — Konva's direct JPEG + pixelRatio export on the skia
+  // backend can drop image layers (transparent areas become black in JPEG).
+  const pngBuffer = exportStageToPngBuffer(stage);
+  return await resizePngBufferToJpeg(pngBuffer, maxEdgePx, quality);
+}
+
+async function resizePngBufferToJpeg(
+  pngBuffer: Buffer,
+  maxEdgePx: number,
+  quality: number,
+): Promise<Buffer> {
+  const image = await loadImage(pngBuffer);
+  const longestEdge = Math.max(image.width, image.height);
+  const scale = maxEdgePx / longestEdge;
+  const targetWidth = Math.max(1, Math.round(image.width * scale));
+  const targetHeight = Math.max(1, Math.round(image.height * scale));
+
+  const canvas = new Canvas(targetWidth, targetHeight);
+  const context = canvas.getContext("2d");
+  context.drawImage(image, 0, 0, targetWidth, targetHeight);
+
+  return canvas.toBuffer("jpeg", { quality });
+}
+
+async function buildRenderedStage(
+  input: RenderTemplateInput,
+): Promise<Konva.Stage> {
   const sceneDocument = normalizeSceneDocument(
     input.sceneDocument,
     input.canvasPreset,
@@ -57,7 +87,37 @@ export async function renderTemplateToPng(
     input.loaders,
   );
 
-  return exportStageToPngBuffer(stage);
+  return stage;
+}
+
+export async function renderTemplateToPng(
+  input: RenderTemplateInput,
+): Promise<Buffer> {
+  const stage = await buildRenderedStage(input);
+  try {
+    return exportStageToPngBuffer(stage);
+  } finally {
+    stage.destroy();
+  }
+}
+
+export async function renderTemplateToJpegThumbnail(
+  input: RenderTemplateInput,
+  options?: {
+    maxEdgePx?: number;
+    quality?: number;
+  },
+): Promise<Buffer> {
+  const stage = await buildRenderedStage(input);
+  try {
+    return await exportStageToJpegThumbnailBuffer(
+      stage,
+      options?.maxEdgePx ?? 256,
+      options?.quality ?? 0.85,
+    );
+  } finally {
+    stage.destroy();
+  }
 }
 
 export async function renderSolidColorSpikePng(

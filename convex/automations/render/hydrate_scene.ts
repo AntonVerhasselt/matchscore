@@ -32,6 +32,49 @@ function stringAttr(attrs: SceneNodeAttrs, key: string): string | undefined {
   return typeof value === "string" ? value : undefined;
 }
 
+function collectImageAttrsByNodeId(
+  sceneDocument: SceneDocument,
+): Map<string, SceneNodeAttrs> {
+  const attrsByNodeId = new Map<string, SceneNodeAttrs>();
+
+  function walk(node: SceneNode) {
+    if (node.className === "Image") {
+      const nodeId = stringAttr(node.attrs, "id");
+      if (nodeId) {
+        attrsByNodeId.set(nodeId, node.attrs);
+      }
+    }
+    node.children?.forEach(walk);
+  }
+
+  sceneDocument.stage.children?.forEach(walk);
+  return attrsByNodeId;
+}
+
+function mergeImageNodeAttrs(
+  imageNode: Konva.Image,
+  sceneAttrsByNodeId: Map<string, SceneNodeAttrs>,
+): SceneNodeAttrs {
+  const nodeId = imageNode.id();
+  const sceneAttrs = nodeId ? sceneAttrsByNodeId.get(nodeId) : undefined;
+
+  return {
+    id: nodeId,
+    x: imageNode.x(),
+    y: imageNode.y(),
+    width: imageNode.width(),
+    height: imageNode.height(),
+    objectFit: imageNode.getAttr("objectFit") ?? sceneAttrs?.objectFit,
+    assetId: stringAttr(
+      {
+        assetId: imageNode.getAttr("assetId") ?? sceneAttrs?.assetId,
+      },
+      "assetId",
+    ),
+    bindingKey: imageNode.getAttr("bindingKey") ?? sceneAttrs?.bindingKey,
+  };
+}
+
 function collectTextRenderByNodeId(
   node: SceneNode,
   automationType: AutomationType,
@@ -116,7 +159,7 @@ async function loadSceneImageSource(
       }
     }
 
-    return await loadImage(createPlaceholderCrestDataUrl(bindingKey, "preview"));
+    return await loadImage(createPlaceholderCrestDataUrl(bindingKey));
   }
 
   return null;
@@ -215,6 +258,8 @@ export async function hydrateKonvaStage(
   match: TemplateMatchDto,
   loaders: RenderAssetLoader,
 ): Promise<void> {
+  const sceneImageAttrsByNodeId = collectImageAttrsByNodeId(sceneDocument);
+
   const textRenderById = new Map<string, PreparedTextRender>();
   collectTextRenderByNodeId(
     sceneDocument.stage,
@@ -235,16 +280,7 @@ export async function hydrateKonvaStage(
 
   const imageNodes = stage.find("Image") as Konva.Image[];
   for (const imageNode of imageNodes) {
-    const attrs: SceneNodeAttrs = {
-      id: imageNode.id(),
-      x: imageNode.x(),
-      y: imageNode.y(),
-      width: imageNode.width(),
-      height: imageNode.height(),
-      objectFit: imageNode.getAttr("objectFit"),
-      assetId: imageNode.getAttr("assetId"),
-      bindingKey: imageNode.getAttr("bindingKey"),
-    };
+    const attrs = mergeImageNodeAttrs(imageNode, sceneImageAttrsByNodeId);
 
     if (imageNode.visible() === false) {
       continue;

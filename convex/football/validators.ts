@@ -159,3 +159,21 @@ export const templateRenderMatchValidator = v.object({
   status: v.optional(v.string()),
   resultText: v.optional(v.string()),
 });
+
+/** Match DTO used by server render (no signed logo URLs). */
+export const templateMatchDtoValidator = v.object({
+  homeClub: v.object({
+    name: v.string(),
+    logoStorageId: v.optional(v.id("_storage")),
+  }),
+  awayClub: v.object({
+    name: v.string(),
+    logoStorageId: v.optional(v.id("_storage")),
+  }),
+  address: v.string(),
+  kickoffAt: v.number(),
+  homeScore: v.optional(v.number()),
+  awayScore: v.optional(v.number()),
+  status: v.optional(v.string()),
+  resultText: v.optional(v.string()),
+});
