@@ -158,34 +158,31 @@ Users never type template syntax manually. The property panel offers **Inhoud** 
 
 ### Text bindings
 
-| `bindingKey` | Automation types | Design-mode display | Preview-mode display |
-| --- | --- | --- | --- |
-| `homeClubName` | both | `{{ homeClubName }}` | Linked match home team name |
-| `awayClubName` | both | `{{ awayClubName }}` | Linked match away team name |
-| `homeAwayClubNames` | both | `{{ homeClubName }} - {{ awayClubName }}` | `Home - Away` from synced match |
-| `matchAddress` | both | `{{ matchAddress }}` | Home team imported address |
-| `matchDateTime` | both | `{{ matchDateTime }}` | `kickoffAt` formatted `nl-BE` |
-| `score` | `match_result` only | `{{ score }}` | Goals or `resultText` if non-standard status |
+| `bindingKey` | Automation types | Editor display |
+| --- | --- | --- |
+| `homeClubName` | both | Linked match home team name (or static mock when no synced match) |
+| `awayClubName` | both | Linked match away team name |
+| `homeAwayClubNames` | both | `Home - Away` from synced match |
+| `matchAddress` | both | Home team imported address |
+| `matchDateTime` | both | `kickoffAt` formatted `nl-BE` |
+| `score` | `match_result` only | Goals or `resultText` if non-standard status |
 
 `score` is rejected for `match_announcement` templates at validation time.
 
 ### Image bindings
 
-| `bindingKey` | Design mode | Preview mode | Server render |
-| --- | --- | --- | --- |
-| `homeClubLogo` | SVG crest placeholder | Signed URL from `footballTeams.logoStorageId` | PNG from Convex storage |
-| `awayClubLogo` | SVG crest placeholder | Signed URL from `footballTeams.logoStorageId` | PNG from Convex storage |
+| `bindingKey` | Editor display | Server render |
+| --- | --- | --- |
+| `homeClubLogo` | Signed URL from `footballTeams.logoStorageId`, or SVG crest placeholder | PNG from Convex storage |
+| `awayClubLogo` | Signed URL from `footballTeams.logoStorageId`, or SVG crest placeholder | PNG from Convex storage |
 
-Missing logo: empty/transparent box (no crest fallback on server or in preview).
+Missing logo: SVG crest placeholder in the editor; empty/transparent box on server render.
 
-### Preview modes
+### Live variable resolution
 
-The toolbar toggles **Design** vs **Preview**:
+The canvas always resolves dynamic bindings from `football.queries.getTemplateRenderMatchData` via `PreviewMatchProvider`. Sample match rules match the render test (announcement → next future or latest past; result → latest played). Falls back to static mock strings when no synced match exists.
 
-- **Design** — token-like placeholders for bound text; generic crests for logos.
-- **Preview** — resolves bindings from `football.queries.getTemplateRenderMatchData` via `PreviewMatchProvider`. Sample match rules match the render test (announcement → next future or latest past; result → latest played). Falls back to static mock strings only when no synced match exists.
-
-Toggling to Preview refreshes the sample timestamp so the query picks the current next/latest fixture.
+The variables sidebar shows each binding's human label plus its resolved sample value. Dragging a variable onto the canvas inserts a node with `bindingKey` only; display width is estimated from the resolved text.
 
 The saved scene always stores `bindingKey`, never resolved URLs or display strings for dynamic content.
 
@@ -216,7 +213,7 @@ Client validation improves UX; server validation is authoritative.
 
 `static-template-editor.tsx` implements the full editor in one module:
 
-- **Toolbar** — back link, template name, design/preview toggle, undo/redo, save status, render test, manual save.
+- **Toolbar** — back link, template name, undo/redo, save status, render test, manual save.
 - **Left panel tabs** — Layers, Assets, Text, Shapes, Background.
 - **Center** — scaled Konva stage with transformer and line endpoint handles.
 - **Right panel** — context-sensitive properties for the selected node.

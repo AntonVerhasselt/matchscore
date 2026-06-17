@@ -6,7 +6,7 @@ Matchscore helps Belgian amateur football clubs automate social media posts. Eac
 2. Toggle **automations** on or off per post type and per social channel.
 3. *(Future)* Connect social accounts so Matchscore picks a template, fills match variables, renders a PNG, and publishes it.
 
-The template editor and automation settings are fully implemented for MVP. **Real match data** powers the editor preview mode and server render test. Scheduled posting and social OAuth are **not** implemented yet.
+The template editor and automation settings are fully implemented for MVP. **Real match data** powers the editor canvas and server render test. Scheduled posting and social OAuth are **not** implemented yet.
 
 ---
 
@@ -153,7 +153,7 @@ Scene validation runs through `normalizeSceneDocument` in `lib/template-scene/` 
 | --- | --- | --- |
 | `queries.getTemplateRenderMatchData` | query | Sample match for org's linked team (announcement vs result rules) |
 
-Called by the template editor (preview mode) and `renderTemplateTest`. Passes `now` from the client/action so the query stays cache-friendly.
+Called by the template editor and `renderTemplateTest`. Passes `now` from the client/action so the query stays cache-friendly.
 
 ---
 
@@ -203,7 +203,7 @@ No template count check runs on enable. When globally disabled, channel switches
 ### Edit and save
 
 1. Editor loads `getTemplate` and hydrates static images from signed URLs.
-2. **Preview mode** (toolbar toggle) resolves dynamic bindings from `getTemplateRenderMatchData` — real club names, address, date, logos when synced matches exist; falls back to design placeholders when toggled off or when no match data.
+2. The editor always resolves dynamic bindings from `getTemplateRenderMatchData` — real club names, address, date, logos when synced matches exist; falls back to static mock values when no match data.
 3. Changes are tracked as dirty state; **autosave** runs after 2.5 s idle (`hooks/use-template-autosave.ts`).
 4. Manual save (toolbar button or Cmd/Ctrl+S) also calls `updateTemplate`.
 5. `beforeunload` warns if there are unsaved changes.
@@ -219,7 +219,7 @@ No template count check runs on enable. When globally disabled, channel switches
 
 1. User clicks **Render test** in the editor toolbar.
 2. `renderTemplateTest` receives the **current canvas** (`sceneDocument` override) plus `templateId`.
-3. Server loads sample match via `getTemplateRenderMatchData` (same rules as preview mode).
+3. Server loads sample match via `getTemplateRenderMatchData` (same rules as the editor).
 4. Server normalizes, registers fonts, hydrates bindings with real match data (or `DEFAULT_MOCK_MATCH` fallback), exports PNG.
 5. PNG is stored in `_storage`; a dialog shows the signed URL.
 

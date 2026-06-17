@@ -159,7 +159,7 @@ async function loadSceneImageSource(
       }
     }
 
-    return await loadImage(createPlaceholderCrestDataUrl(bindingKey, "preview"));
+    return await loadImage(createPlaceholderCrestDataUrl(bindingKey));
   }
 
   return null;

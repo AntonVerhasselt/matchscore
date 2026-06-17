@@ -64,8 +64,6 @@ export const IMAGE_BINDING_KEYS = ["homeClubLogo", "awayClubLogo"] as const;
 
 export type ImageBindingKey = (typeof IMAGE_BINDING_KEYS)[number];
 
-export type BindingPreviewMode = "design" | "preview";
-
 export type ObjectFitMode = "cover" | "contain" | "fill";
 export type TextOverflowMode = "wrap" | "shrink" | "ellipsis" | "fixed";
 export type TextTransform = "none" | "uppercase";
@@ -180,15 +178,6 @@ const TEXT_BINDING_KEYS_BY_AUTOMATION_TYPE: Record<
     "matchDateTime",
     "score",
   ],
-};
-
-const TEXT_BINDING_DESIGN_VALUES: Record<TextBindingKey, string> = {
-  homeClubName: "{{ homeClubName }}",
-  awayClubName: "{{ awayClubName }}",
-  homeAwayClubNames: "{{ homeClubName }} - {{ awayClubName }}",
-  matchAddress: "{{ matchAddress }}",
-  matchDateTime: "{{ matchDateTime }}",
-  score: "{{ score }}",
 };
 
 const TEXT_BINDING_PREVIEW_VALUES: Record<TextBindingKey, string> = {
@@ -321,7 +310,6 @@ export function getImageBindingKey(value: unknown): ImageBindingKey | null {
 export function resolveTextContent(
   attrs: SceneNodeAttrs,
   automationType: AutomationType,
-  previewMode: BindingPreviewMode,
   previewMatch?: TemplateRenderMatchData | null,
 ): string {
   const bindingKey = getTextBindingKey(attrs.bindingKey, automationType);
@@ -329,19 +317,15 @@ export function resolveTextContent(
     return displayText(stringAttr(attrs, "text") ?? "", attrs);
   }
 
-  if (previewMode === "preview" && previewMatch) {
+  if (previewMatch) {
     return displayText(formatBinding(bindingKey, previewMatch, "nl-BE"), attrs);
   }
 
-  const resolved = previewMode === "preview"
-    ? TEXT_BINDING_PREVIEW_VALUES[bindingKey]
-    : TEXT_BINDING_DESIGN_VALUES[bindingKey];
-  return displayText(resolved, attrs);
+  return displayText(TEXT_BINDING_PREVIEW_VALUES[bindingKey], attrs);
 }
 
 export function resolveImageSource(
   attrs: SceneNodeAttrs,
-  previewMode: BindingPreviewMode,
   previewMatch?: TemplateRenderMatchData | null,
 ): string | null {
   const bindingKey = getImageBindingKey(attrs.bindingKey);
@@ -349,15 +333,15 @@ export function resolveImageSource(
     return null;
   }
 
-  if (previewMode === "preview" && previewMatch) {
+  if (previewMatch) {
     const logoUrl =
       bindingKey === "homeClubLogo"
         ? previewMatch.homeClub.logoUrl
         : previewMatch.awayClub.logoUrl;
-    return logoUrl ?? createPlaceholderCrestDataUrl(bindingKey, previewMode);
+    return logoUrl ?? createPlaceholderCrestDataUrl(bindingKey);
   }
 
-  return createPlaceholderCrestDataUrl(bindingKey, previewMode);
+  return createPlaceholderCrestDataUrl(bindingKey);
 }
 
 export function collectSceneAssetIds(rawSceneDocument: unknown): string[] {

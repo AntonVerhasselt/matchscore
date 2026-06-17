@@ -401,40 +401,20 @@ describe("automation phase 1 foundations", () => {
 
   test("resolves fixed and bound text content", () => {
     expect(
-      resolveTextContent(
-        { text: "Static title" },
-        "match_announcement",
-        "design",
-      ),
+      resolveTextContent({ text: "Static title" }, "match_announcement"),
     ).toBe("Static title");
     expect(
       resolveTextContent(
         { bindingKey: "homeClubName" },
         "match_announcement",
-        "design",
-      ),
-    ).toBe("{{ homeClubName }}");
-    expect(
-      resolveTextContent(
-        { bindingKey: "homeAwayClubNames" },
-        "match_announcement",
-        "design",
-      ),
-    ).toBe("{{ homeClubName }} - {{ awayClubName }}");
-    expect(
-      resolveTextContent(
-        { bindingKey: "homeAwayClubNames" },
-        "match_announcement",
-        "preview",
-      ),
-    ).toBe("KFC Eendracht - Sporting Zuid");
-    expect(
-      resolveTextContent(
-        { bindingKey: "homeClubName" },
-        "match_announcement",
-        "preview",
       ),
     ).toBe("KFC Eendracht");
+    expect(
+      resolveTextContent(
+        { bindingKey: "homeAwayClubNames" },
+        "match_announcement",
+      ),
+    ).toBe("KFC Eendracht - Sporting Zuid");
   });
 
   test("applies uppercase text transform to fixed and bound text", () => {
@@ -445,7 +425,6 @@ describe("automation phase 1 foundations", () => {
       resolveTextContent(
         { bindingKey: "homeClubName", textTransform: "uppercase" },
         "match_announcement",
-        "preview",
       ),
     ).toBe("KFC EENDRACHT");
   });
@@ -617,7 +596,7 @@ describe("automation phase 1 foundations", () => {
     expect(normalizedImage?.attrs.bindingKey).toBe("homeClubLogo");
     expect(normalizedImage?.attrs.assetId).toBeUndefined();
     expect(
-      resolveImageSource({ bindingKey: "homeClubLogo" }, "design"),
+      resolveImageSource({ bindingKey: "homeClubLogo" }),
     ).toContain("data:image/svg+xml");
   });
 
