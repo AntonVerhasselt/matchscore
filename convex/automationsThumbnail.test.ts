@@ -136,6 +136,9 @@ describe("replaceTemplateThumbnail", () => {
       },
     );
 
+    const template = await t.run(async (ctx) => ctx.db.get(templateId));
+    expect(template?.thumbnailStorageId).toBe(secondStorageId);
+
     const unrelatedBlobExists = await t.run(async (ctx) => {
       const blob = await ctx.storage.get(unrelatedStorageId);
       return blob !== null;
