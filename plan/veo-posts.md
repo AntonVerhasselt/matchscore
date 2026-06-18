@@ -3,7 +3,7 @@
 > **Status:** Plan (not implemented)  
 > **Veo API reference:** [Documentation/veo-api-research.md](../Documentation/veo-api-research.md)  
 > **Video processing:** [Very Good FFmpeg](https://verygoodffmpeg.com/docs) (external; no ffmpeg on Convex)  
-> **Last updated:** 2026-06-17
+> **Last updated:** 2026-06-17 (vertical phases + compose UX)
 
 ---
 
@@ -18,9 +18,9 @@ A new app section **“Goal highlights”** (navbar between Automations and Conn
 5. Downloads the **final compiled MP4 once** and stores it in **Convex file storage**
 6. Links the result to a **`veoPostJobs`** database row for the organisation
 
-MVP scope: **preview + download only**. Social posting is a later phase.
+MVP scope: **compile goal highlights**, **preview + download**, and a **social compose shell** (caption + channel toggles + disabled “Post to social” until the video is ready). Actual posting to Facebook/Instagram is **not wired yet**.
 
-This is **separate from automations** — no template editor, no scheduled posting in v1.
+This is **separate from automations** — no template editor — but reuses the **same social channel UI patterns** as the automations overview.
 
 ---
 
@@ -30,13 +30,14 @@ This is **separate from automations** — no template editor, no scheduled posti
 |---|----------|
 | 1 | **Nav label:** “Goal highlights” with a **video icon** (`Video` from lucide-react) |
 | 2 | **Goal filter:** **All goals** — any goal-type tag; explicitly **exclude** `shot-on-goal` |
-| 3 | **Re-submit same URL:** Always create a **new job**; keep full **history** (no replace/dedupe) |
+| 3 | **Re-submit same URL:** **Do not reprocess** if a `ready` job with a valid stored video already exists for this org + slug — **open that job** instead |
 | 4 | **Retention:** Auto-expire compilations after **90 days** (delete MP4 + job row) |
-| 5 | **History UI:** Chronological list per org (see §4.2) |
+| 5 | **History UI:** List past jobs; selecting one opens the job workspace (see §4) |
 | 6 | **Legal:** OK to use Veo’s undocumented public web API |
-| 7 | **MVP output:** Preview in browser + download link only; social automations later |
-| 8 | **No goals found:** Hard error — “No goals found in this match” |
-| 9 | **Max goals per job:** Cap at **15** (~200 MB VGF input) |
+| 7 | **Social compose (MVP):** Caption textarea + channel toggles visible **during processing**; “Post to social” **disabled** until video is `ready`; button is a **no-op stub** for now |
+| 8 | **Private match:** Toast error — do not start processing |
+| 9 | **No goals found:** Toast error — “No goals found in this match” |
+| 10 | **Max goals per job:** Cap at **15** (~200 MB VGF input) |
 
 ### Goal tag filter (all goals)
 
@@ -53,7 +54,20 @@ export function isGoalHighlightTag(slug: string): boolean {
 }
 ```
 
-Sort matched highlights by `start` ascending before concat. Re-fetch from Veo on each new job (no cached source URLs in DB).
+Sort matched highlights by `start` ascending before concat. Re-fetch from Veo only when creating a **new** job (not when reopening an existing `ready` job).
+
+### Dedupe rule (same Veo link)
+
+On submit, parse slug and look up existing job for `(organizationId, veoMatchSlug)`:
+
+| Existing job | Action |
+|--------------|--------|
+| `ready` + `outputStorageId` + `expiresAt > now` | **Open existing job** — no Veo/VGF calls |
+| `pending` / `fetching` / `processing` | **Open in-flight job** — do not start a second pipeline |
+| `failed`, or `ready` but expired / missing blob | **Create new job** and process again |
+| None | **Create new job** and process |
+
+Toast when reopening: “Opening existing compilation for this match.”
 
 ---
 
@@ -106,31 +120,66 @@ Insert between Automations and Connected Socials in `components/app-sidebar.tsx`
 | Icon | `Video` (lucide-react) |
 | i18n key | `app.shell.nav.goalHighlights` (+ FR/NL as needed) |
 
-### 4.2 Page layout (recommended history UX)
+### 4.2 Page structure — two views on one route
 
-Single page, top to bottom:
+Route: `/app/goal-highlights` (list) and `/app/goal-highlights/[jobId]` (workspace). Alternatively a single page with list + selected job panel — **prefer separate `[jobId]` route** so reopen/dedupe can navigate directly.
 
-1. **Create** — Veo URL input + “Generate” button
-2. **Preview** (after submit) — match title, clubs, score, goal count before processing starts
-3. **Active job** — inline status for the job just created (`fetching` → `processing` → `ready` / `failed`)
-4. **History** — all org jobs, **`createdAt` descending**
+#### A. List view (`/app/goal-highlights`)
 
-Each history row shows:
+1. **URL input** — single text field + “Generate” (primary)
+2. **History** — org jobs, `createdAt` descending; click row → job workspace
+3. On Generate: run dedupe (§2); navigate to existing or new `[jobId]`
 
-| Column | Content |
-|--------|---------|
-| Match | `veoMatchTitle` (fallback: slug) |
-| Meta | Goal count · created date · “Expires {date}” for `ready` jobs |
-| Status | Badge: processing / ready / failed / expired (only while visible before cron) |
-| Actions | Play/expand when `ready`; download; optional manual delete (Phase 3) |
+#### B. Job workspace (`/app/goal-highlights/[jobId]`)
 
-**Why this layout:** Users often re-generate the same match; a flat chronological list makes every run visible without hiding older compilations. Grouping by match slug is optional polish later — not needed for MVP.
+Single column, `max-w-4xl`, top to bottom:
 
-Use Sonner toasts via `@/lib/user-feedback` on success/failure.
+```
+┌─────────────────────────────────────────────────────────┐
+│ ← Back    Berchem - KSVA-Seniors-A    [status badge]    │
+├─────────────────────────────────────────────────────────┤
+│ VIDEO AREA                                              │
+│  • processing: skeleton + “Compiling goal highlights…”  │
+│  • ready: <video controls> preview + Download           │
+│  • failed: inline error (also surfaced via toast)       │
+├─────────────────────────────────────────────────────────┤
+│ Match meta: score · N goals · expires on …              │
+├─────────────────────────────────────────────────────────┤
+│ Caption                                                 │
+│  ┌─────────────────────────────────────────────────┐   │
+│  │ Textarea — editable while processing & after     │   │
+│  └─────────────────────────────────────────────────┘   │
+│  (autosave draft to job row on blur/debounce)           │
+├─────────────────────────────────────────────────────────┤
+│ Social channels (same visual pattern as automations)    │
+│  Facebook    Posts [switch]  Story [switch]           │
+│  Instagram   Posts [switch]  Story [switch]           │
+│  (reuse PlatformBlock / posting channel toggles)        │
+├─────────────────────────────────────────────────────────┤
+│ [ Post to social ]  ← disabled until status === ready   │
+│                     ← no-op stub (toast “Coming soon”)  │
+└─────────────────────────────────────────────────────────┘
+```
+
+**UX details:**
+
+| Moment | Behaviour |
+|--------|-----------|
+| User submits URL | Validate format client-side; mutation handles dedupe + kickoff |
+| Private / 404 match | Sonner **error** toast; stay on list or show failed workspace |
+| No goals | Sonner **error** toast; job → `failed` |
+| Processing | Video area shows spinner/skeleton; **caption + channels stay enabled** so user can draft while waiting |
+| Ready | Video preview loads via storage URL; **Post to social** enables (still stub) |
+| Post click (stub) | Toast: “Social posting coming soon” — no API call |
+| Re-open cached job | Toast: “Opening existing compilation”; video visible immediately |
+
+**Social channels:** Reuse automations UI building blocks (`PlatformBlock` pattern from `automation-type-card.tsx`, `postingChannelStatusesValidator`, Facebook/Instagram × posts/story). Read org connection state from existing automations/socials queries where available; toggles persist on **`veoPostJobs.postingChannels`** for this compilation (not global automation settings).
+
+Use Sonner via `@/lib/user-feedback` for all user-initiated errors and the stub post action.
 
 ### 4.3 Layout
 
-Standard app shell (`max-w-4xl`), same as automations overview — not full-width editor.
+Standard app shell (`max-w-4xl`), same width as automations overview.
 
 ---
 
@@ -173,6 +222,10 @@ veoPostJobs: defineTable({
   veoScoreOwn: v.optional(v.number()),
   veoScoreOpponent: v.optional(v.number()),
 
+  // Social compose (draft — posting not wired in MVP)
+  draftCaption: v.optional(v.string()),
+  postingChannels: postingChannelStatusesValidator, // same shape as organizationAutomations
+
   // Processing
   status: v.union(
     v.literal("pending"),      // row created
@@ -201,11 +254,12 @@ veoPostJobs: defineTable({
 })
   .index("by_organizationId", ["organizationId"])
   .index("by_organizationId_and_createdAt", ["organizationId", "createdAt"])
+  .index("by_organizationId_and_veoMatchSlug", ["organizationId", "veoMatchSlug"])
   .index("by_vgffmpegJobId", ["vgffmpegJobId"])
   .index("by_expiresAt", ["expiresAt"]),
 ```
 
-**Index note:** No dedupe index on `(organizationId, veoMatchSlug)` — same match may produce many historical jobs.
+**Dedupe lookup:** query `by_organizationId_and_veoMatchSlug`, filter in handler for `ready` + valid `expiresAt` (or in-flight statuses). Compound index supports efficient slug lookup per org.
 
 ---
 
@@ -258,7 +312,8 @@ Show “Expires on …” in history UI for ready jobs.
 | Storing per-goal clips | **Never** — only compiled output |
 | Failed job leaves orphan blob | Only call `storage.store` after VGF success; on failure, no `outputStorageId` |
 | Duplicate webhook stores twice | Idempotent handler: skip if already `ready` |
-| Re-submit same URL | New row + new blob; old rows expire on their own 90-day clock |
+| Re-submit same URL | Dedupe to existing `ready` job (§2); no second blob |
+| Same URL while in-flight | Open existing job; never two pipelines per slug |
 | VGF output not copied | Download to Convex within webhook action; never link UI to VGF URL long-term |
 | Unbounded history | 90-day cron caps storage per org (~45 MB × jobs in rolling window) |
 | Large match (15 goals) | Hard cap at 15 goals; ~200 MB input to VGF, ~200 MB output stored |
@@ -282,13 +337,20 @@ Metadata rows are negligible (< 2 KB each).
 
 ## 8. Job lifecycle
 
-| Status | Trigger | Next step |
-|--------|---------|-----------|
-| `pending` | User submits URL | Schedule `processVeoPostJob` action |
-| `fetching` | Action starts | GET Veo match + highlights |
-| `processing` | Goals found | POST Very Good FFmpeg job; save `vgffmpegJobId` |
-| `ready` | Webhook `succeeded` | Output in Convex storage; UI shows video |
-| `failed` | Any error | Set `errorMessage`; toast user |
+| Status | Trigger | UI |
+|--------|---------|-----|
+| `pending` | User submits URL (new job) | Navigate to workspace; skeleton video area |
+| `fetching` | Action starts | “Fetching match…” + compose enabled |
+| `processing` | VGF job submitted | “Compiling video…” + compose enabled |
+| `ready` | Webhook success | Video preview + Download; Post button enabled (stub) |
+| `failed` | Any error | Error message + toast; Post stays disabled |
+
+### Create flow (`createOrOpenJob` mutation)
+
+1. Parse + validate URL
+2. Dedupe check (§2)
+3. If new: insert row, schedule `processVeoPostJob` action
+4. Return `{ jobId, reopened: boolean }` for navigation + toast
 
 ### Idempotency
 
@@ -511,11 +573,12 @@ Add placeholders to `.env.example` (Convex-only secrets — not Next.js public v
 
 | Scenario | User message | System action |
 |----------|--------------|---------------|
-| Invalid URL / slug | “Paste a valid app.veo.co match link” | Fail before job row |
-| Veo 404 | “Match not found or private” | `failed` |
-| `privacy !== "public"` | “This match is not public” | `failed` (if verified) |
-| No goals | “No goals found in this match” | `failed` |
-| > max goals | “Too many goals (max 15)” | `failed` |
+| Invalid URL / slug | Toast: “Paste a valid app.veo.co match link” | Reject before job row |
+| Veo 404 / private | Toast: “This match is not public or was not found” | `failed` or no row |
+| `privacy !== "public"` | Toast: “This match is not public” | `failed` |
+| No goals | Toast: “No goals found in this match” | `failed` |
+| Existing ready job | Toast: “Opening existing compilation…” | Navigate; no processing |
+| > max goals | Toast: “Too many goals (max 15)” | `failed` |
 | Missing `videos[0]` | “Goal clip not ready yet” | `failed` |
 | VGF `failed` | Show `error_message` | `failed` |
 | Output download fails | “Could not save video” | Retry once in action, then `failed` |
@@ -533,68 +596,142 @@ Add placeholders to `.env.example` (Convex-only secrets — not Next.js public v
 
 ---
 
-## 13. Implementation phases
+## 13. Implementation phases (vertical slices)
 
-### Phase 0 — Spike (required before UI)
+Each phase ships **backend + frontend + wiring + manual test** before moving on. Max **3 phases** — no horizontal “all backend then all UI”.
 
-1. Obtain VGF API key
-2. Convex action: fetch real match goals → submit 3-clip concat job with webhook
-3. Implement HTTP webhook + internal action → Convex storage
-4. Confirm audio streams exist on goal clips (or adjust ffmpeg command)
-5. Document actual webhook payload in a comment or test fixture
+---
 
-### Phase 1 — Backend
+### Phase 1 — Enter URL, open job, validate Veo, dedupe
 
-1. `veoPostJobs` schema + indexes (including `expiresAt`)
-2. `veoPosts/` module (queries, mutations, actions, helpers)
-3. Webhook route in `http.ts`
-4. Daily cron: 90-day expiry cleanup
-5. Env vars + `.env.example`
+**Goal:** User can paste a link, land on a job workspace, and see real match metadata or a clear toast error. Cached compilations reopen instantly.
 
-### Phase 2 — UI
+#### Backend
 
-1. Sidebar nav item (“Goal highlights”, `Video` icon) + i18n
-2. `/app/goal-highlights` page (form, preview, active job, history list)
-3. Sonner feedback
+- [ ] `veoPostJobs` table + indexes (include `draftCaption`, `postingChannels`, dedupe index)
+- [ ] `veoPosts/helpers.ts` — URL parse, goal tag filter, Veo fetch client
+- [ ] `createOrOpenJob` mutation — dedupe logic (§2), schedule action only for new jobs
+- [ ] `processVeoPostJob` action — fetch match + highlights; validate public + goals; set `fetching` → `processing` or `failed`
+- [ ] `getJob`, `listJobs` queries; `updateDraftCaption` mutation
+- [ ] Unit tests: slug parse, goal filter, dedupe helper
 
-### Phase 3 — Hardening
+#### Frontend
 
-1. Manual “Delete now” (early blob + row removal)
-2. Polling fallback for missed webhooks
-3. Optional link to calendar match
-4. Social automation handoff (future — out of MVP scope)
+- [ ] Nav item “Goal highlights” + i18n
+- [ ] List page: URL input, Generate button, history list
+- [ ] Job workspace route `[jobId]`: header, status badge, match meta, processing skeleton
+- [ ] Wire `useMutation(createOrOpenJob)` → router push; `useQuery(getJob)` reactive status
+- [ ] Toasts: invalid URL, private match, no goals, reopened existing job
+
+#### Manual test checklist
+
+- [ ] Public example URL → new job, match title visible, status progresses to `processing` (VGF stub OK: action sets processing after Veo OK without calling VGF yet, **or** mock VGF in dev)
+- [ ] Same URL again → opens same job, toast, no second action scheduled
+- [ ] Private/invalid URL → error toast, no duplicate storage
+- [ ] History list shows jobs; click opens workspace
+
+**Phase 1 note:** VGF can be stubbed initially (`processing` held) if API key not ready — but prefer wiring real VGF in Phase 2. Minimum bar: Veo validation + dedupe + workspace shell fully working.
+
+---
+
+### Phase 2 — Full video pipeline + preview + download
+
+**Goal:** End-to-end compilation via Very Good FFmpeg; user watches the result in the workspace.
+
+#### Backend
+
+- [ ] VGF job submit in `processVeoPostJob` (concat filter command builder)
+- [ ] `POST /webhooks/vgffmpeg` in `http.ts` → schedule `handleVgfWebhook`
+- [ ] `internalActions.handleVgfWebhook` — download output, `storage.store`, `markReady` with `expiresAt`
+- [ ] `markFailed` paths for VGF + download errors
+- [ ] Env: `VGFFMPEG_API_KEY`, `CONVEX_SITE_URL`
+- [ ] Optional: polling fallback scheduled from action if webhook slow
+
+#### Frontend
+
+- [ ] Video `<video src={storageUrl} controls>` when `ready`
+- [ ] Download link/button (storage URL or blob download)
+- [ ] Processing copy updates (`fetching` vs `processing`)
+- [ ] Failed state inline in video area
+
+#### Manual test checklist
+
+- [ ] Example public match → webhook fires → video plays in browser
+- [ ] Download saves playable MP4
+- [ ] Failed VGF job shows error toast + failed UI
+- [ ] Dedupe still returns cached video without calling VGF
+
+---
+
+### Phase 3 — Social compose shell, caption persistence, retention
+
+**Goal:** Complete MVP UX — draft post while waiting, channel toggles, disabled-then-enabled stub post button, history polish, 90-day cleanup.
+
+#### Backend
+
+- [ ] `updatePostingChannels` mutation on job row
+- [ ] Daily cron — delete expired jobs + storage blobs (§7.3)
+- [ ] Default `postingChannels` from org automation settings on job create (optional)
+
+#### Frontend
+
+- [ ] Caption `<Textarea>` — autosave `draftCaption` (debounced mutation)
+- [ ] Social channels block — reuse automations `PlatformBlock` / switches (Facebook + Instagram × posts + story)
+- [ ] **Post to social** button: `disabled={status !== "ready"}`; onClick → toast “Coming soon” only
+- [ ] History list polish: status chips, expiry date, goal count
+- [ ] Empty states + back navigation
+
+#### Manual test checklist
+
+- [ ] During processing: can type caption and toggle channels; post button disabled
+- [ ] After ready: post button enabled; click shows stub toast only
+- [ ] Refresh page — caption + channel toggles restored from DB
+- [ ] Cron/manual test: expired job removed from list; re-submit same URL triggers new pipeline
+
+---
+
+### Post-MVP (out of scope for these 3 phases)
+
+- Wire “Post to social” to real Meta APIs
+- Link job to calendar `matches` row
+- Manual “Delete now” before 90-day expiry
+- `pnpm test:veo-api` integration script
 
 ---
 
 ## 14. Testing plan
 
-| Test | Method |
-|------|--------|
-| URL parsing | Unit tests on `parseVeoMatchSlug` |
-| Goal filter | Unit tests with fixture JSON from [veo-api-research.md](../Documentation/veo-api-research.md) |
-| FFmpeg command builder | Unit test for n=1, n=3 |
-| Veo fetch | Integration script (like `pnpm test:voetbalinbelgie-api`) |
-| End-to-end | Manual: example public match → ready video in UI |
-| Webhook | VGF dashboard test hook or replay saved payload |
+| Area | Phase | Method |
+|------|-------|--------|
+| URL parsing + goal filter | 1 | Unit tests |
+| Dedupe helper | 1 | Unit tests + manual same-URL twice |
+| Veo validation errors | 1 | Manual + toast assertions |
+| VGF webhook + storage | 2 | Manual E2E + fixture payload test |
+| Video preview + download | 2 | Manual in browser |
+| Caption + channel persistence | 3 | Manual refresh test |
+| Post stub button | 3 | Manual — enabled only when `ready` |
+| 90-day expiry | 3 | Cron test with shortened TTL in dev |
 
-Suggested script: `pnpm test:veo-api` (future).
+Suggested script (Phase 2+): `pnpm test:veo-api`
 
 ---
 
 ## 15. Files to create/modify (checklist)
 
-| File | Action |
-|------|--------|
-| `Documentation/veo-api-research.md` | ✅ Created |
-| `plan/veo-posts.md` | ✅ This file |
-| `convex/schema.ts` | Add `veoPostJobs` |
-| `convex/veoPosts/*` | New module |
-| `convex/http.ts` | Webhook route |
-| `components/app-sidebar.tsx` | Nav item |
-| `app/app/goal-highlights/page.tsx` | New page |
-| `convex/crons.ts` | 90-day expiry cleanup |
-| `messages/en.json`, `fr.json`, … | i18n strings |
-| `.env.example` | Document Convex env vars |
+| File | Phase | Action |
+|------|-------|--------|
+| `Documentation/veo-api-research.md` | — | ✅ Created |
+| `plan/veo-posts.md` | — | ✅ This file |
+| `convex/schema.ts` | 1 | Add `veoPostJobs` |
+| `convex/veoPosts/*` | 1–3 | New module (grow per phase) |
+| `convex/http.ts` | 2 | Webhook route |
+| `convex/crons.ts` | 3 | 90-day expiry |
+| `components/app-sidebar.tsx` | 1 | Nav item |
+| `app/app/goal-highlights/page.tsx` | 1 | List + URL input |
+| `app/app/goal-highlights/[jobId]/page.tsx` | 1–3 | Job workspace |
+| `components/goal-highlights/*` | 1–3 | Video area, compose panel, history row |
+| `messages/en.json`, `fr.json`, … | 1–3 | i18n strings |
+| `.env.example` | 2 | Convex env vars |
 
 ---
 
