@@ -18,6 +18,38 @@ import {
 
 const MAX_RESULTS = 20;
 
+function shouldPreferMatchSummary(
+  candidate: {
+    matchStatus: "upcoming" | "played";
+    homeGoals?: number;
+    awayGoals?: number;
+  },
+  current: {
+    matchStatus: "upcoming" | "played";
+    homeGoals?: number;
+    awayGoals?: number;
+  },
+): boolean {
+  if (candidate.matchStatus === "played" && current.matchStatus !== "played") {
+    return true;
+  }
+  if (current.matchStatus === "played" && candidate.matchStatus !== "played") {
+    return false;
+  }
+
+  const candidateHasGoals =
+    typeof candidate.homeGoals === "number" &&
+    typeof candidate.awayGoals === "number";
+  const currentHasGoals =
+    typeof current.homeGoals === "number" &&
+    typeof current.awayGoals === "number";
+  if (candidateHasGoals && !currentHasGoals) {
+    return true;
+  }
+
+  return false;
+}
+
 async function toFootballTeamSummary(
   ctx: Pick<QueryCtx, "storage">,
   team: Doc<"footballTeams">,
@@ -194,15 +226,21 @@ export const listTeamMatches = query({
 
     summaries.sort((a, b) => a.kickoffAt - b.kickoffAt);
 
-    const seen = new Set<string>();
-    const deduped = summaries.filter((summary) => {
-      const key = `${summary.kickoffAt}|${summary.opponentName}|${summary.isHome ? "home" : "away"}`;
-      if (seen.has(key)) {
-        return false;
+    const bestByKey = new Map<string, (typeof summaries)[number]>();
+    for (const summary of summaries) {
+      const opponentTeamId = summary.isHome
+        ? summary.awayTeamId
+        : summary.homeTeamId;
+      const key = `${summary.kickoffAt}|${summary.isHome ? "home" : "away"}|${opponentTeamId}`;
+      const existing = bestByKey.get(key);
+      if (!existing || shouldPreferMatchSummary(summary, existing)) {
+        bestByKey.set(key, summary);
       }
-      seen.add(key);
-      return true;
-    });
+    }
+
+    const deduped = [...bestByKey.values()].sort(
+      (a, b) => a.kickoffAt - b.kickoffAt,
+    );
 
     return deduped.slice(0, limit);
   },

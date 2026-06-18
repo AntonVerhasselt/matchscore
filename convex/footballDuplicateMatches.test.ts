@@ -179,5 +179,8 @@ describe("duplicate match prevention", () => {
     expect(matches[0]?.vibMatchKey).toBe(
       buildVibMatchKey(SOURCE_COMPETITION_ID, DATE, HOME, AWAY),
     );
+    expect(matches[0]?.status).toBe("Gespeeld");
+    expect(matches[0]?.homeGoals).toBe(1);
+    expect(matches[0]?.awayGoals).toBe(0);
   });
 });

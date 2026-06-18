@@ -114,13 +114,28 @@ describe("match dedupe helpers", () => {
     ]);
 
     expect(groups.size).toBe(1);
-    expect(
-      buildLogicalMatchKey({
-        competitionId,
-        kickoffAt,
-        homeTeamId,
-        awayTeamId,
-      }),
-    ).toBe(`${competitionId}|${kickoffAt}|${homeTeamId}|${awayTeamId}`);
+
+    const logicalKey = buildLogicalMatchKey({
+      competitionId,
+      kickoffAt,
+      homeTeamId,
+      awayTeamId,
+    });
+    expect(logicalKey).toBe(
+      `${competitionId}|${kickoffAt}|${homeTeamId}|${awayTeamId}`,
+    );
+
+    const groupedMatches = groups.get(logicalKey);
+    expect(groupedMatches).toHaveLength(2);
+    expect(groupedMatches?.map((match) => match._id)).toEqual([
+      "legacy",
+      "canonical",
+    ]);
+  });
+
+  test("pickCanonicalMatch rejects empty input", () => {
+    expect(() => pickCanonicalMatch([])).toThrow(
+      "pickCanonicalMatch requires at least one match",
+    );
   });
 });

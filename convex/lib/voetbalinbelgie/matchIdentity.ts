@@ -33,6 +33,10 @@ export type MatchLike = {
 
 /** Prefer canonical JSON vibMatchKey, then newest updatedAt. */
 export function pickCanonicalMatch<T extends MatchLike>(matches: T[]): T {
+  if (matches.length === 0) {
+    throw new Error("pickCanonicalMatch requires at least one match");
+  }
+
   return [...matches].sort((a, b) => {
     const aCanonical = a.vibMatchKey.startsWith("[") ? 1 : 0;
     const bCanonical = b.vibMatchKey.startsWith("[") ? 1 : 0;

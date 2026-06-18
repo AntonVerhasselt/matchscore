@@ -281,7 +281,11 @@ async function upsertMatchForCompetition(
   competitionId: Id<"competitions">,
   sourceCompetitionId: number,
   args: MatchUpsertInput,
-): Promise<Id<"matches">> {
+): Promise<{
+  matchId: Id<"matches">;
+  homeTeamId: Id<"footballTeams">;
+  awayTeamId: Id<"footballTeams">;
+}> {
   const homeTeamId = await requireFootballTeamId(
     ctx,
     sourceCompetitionId,
@@ -319,10 +323,11 @@ async function upsertMatchForCompetition(
 
   if (existing) {
     await ctx.db.patch(existing._id, fields);
-    return existing._id;
+    return { matchId: existing._id, homeTeamId, awayTeamId };
   }
 
-  return await ctx.db.insert("matches", fields);
+  const matchId = await ctx.db.insert("matches", fields);
+  return { matchId, homeTeamId, awayTeamId };
 }
 
 export const upsertFootballTeam = internalMutation({
@@ -445,24 +450,13 @@ export const replaceCompetitionSnapshot = internalMutation({
     const syncedLogicalKeys = new Set<string>();
 
     for (const match of args.matches) {
-      const matchId = await upsertMatchForCompetition(
+      const { matchId, homeTeamId, awayTeamId } = await upsertMatchForCompetition(
         ctx,
         args.competitionId,
         args.sourceCompetitionId,
         match,
       );
       syncedMatchIds.add(matchId);
-
-      const homeTeamId = await requireFootballTeamId(
-        ctx,
-        args.sourceCompetitionId,
-        match.homeVibTeamName,
-      );
-      const awayTeamId = await requireFootballTeamId(
-        ctx,
-        args.sourceCompetitionId,
-        match.awayVibTeamName,
-      );
       syncedLogicalKeys.add(
         buildLogicalMatchKey({
           competitionId: args.competitionId,
@@ -520,12 +514,14 @@ export const upsertMatch = internalMutation({
     const competition = await loadCompetitionForPath(ctx, args.competitionPath);
     assertCompetitionSourceMatch(competition, args.sourceCompetitionId);
 
-    return await upsertMatchForCompetition(
-      ctx,
-      competition._id,
-      args.sourceCompetitionId,
-      args,
-    );
+    return (
+      await upsertMatchForCompetition(
+        ctx,
+        competition._id,
+        args.sourceCompetitionId,
+        args,
+      )
+    ).matchId;
   },
 });
 
