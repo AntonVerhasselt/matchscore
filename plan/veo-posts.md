@@ -1,9 +1,9 @@
 # Goal highlights — implementation plan
 
-> **Status:** Plan (not implemented)  
+> **Status:** Phase 1 complete · Phase 2 next  
 > **Veo API reference:** [Documentation/veo-api-research.md](../Documentation/veo-api-research.md)  
 > **Video processing:** [Very Good FFmpeg](https://verygoodffmpeg.com/docs) (external; no ffmpeg on Convex)  
-> **Last updated:** 2026-06-17 (vertical phases + compose UX)
+> **Last updated:** 2026-06-18 (Phase 1 shipped on `veo-posts`)
 
 ---
 
@@ -35,9 +35,12 @@ This is **separate from automations** — no template editor — but reuses the 
 | 5 | **History UI:** List past jobs; selecting one opens the job workspace (see §4) |
 | 6 | **Legal:** OK to use Veo’s undocumented public web API |
 | 7 | **Social compose (MVP):** Caption textarea + channel toggles visible **during processing**; “Post to social” **disabled** until video is `ready`; button is a **no-op stub** for now |
-| 8 | **Private match:** Toast error — do not start processing |
-| 9 | **No goals found:** Toast error — “No goals found in this match” |
+| 8 | **Private match:** Toast error — **do not create a job row** |
+| 9 | **No goals found:** Toast error — **do not create a job row** |
 | 10 | **Max goals per job:** Cap at **15** (~200 MB VGF input) |
+| 11 | **Invalid Veo URL / validation errors:** Toast with translated message — **never persist a failed row** (retry same URL later after e.g. making match public) |
+| 12 | **Score mismatch (AI vs scoreline):** Proceed with compilation; show inline **warning** on job workspace |
+| 13 | **In-flight dedupe:** Reopen existing job **silently** (no toast) |
 
 ### Goal tag filter (all goals)
 
@@ -74,15 +77,15 @@ Toast when reopening: “Opening existing compilation for this match.”
 ## 3. Architecture
 
 ```
-┌──────────┐    ┌─────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│ Next.js  │───▶│ Convex      │───▶│ Veo API          │    │ Very Good FFmpeg │
-│ /goal-highlights│ │ mutation    │    │ (public match)   │    │ POST /api/ffmpeg │
-└──────────┘    └──────┬──────┘    └──────────────────┘    └────────┬────────┘
-                       │                                                │
-                       │         ┌──────────────────┐                     │
-                       └────────▶│ Convex action    │─────────────────────┘
-                                 │ submit VGF job   │   (Veo CDN URLs as inputs)
-                                 └──────────────────┘
+┌──────────┐    ┌─────────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│ Next.js  │───▶│ Convex action       │───▶│ Veo API          │    │ Very Good FFmpeg │
+│ /goal-highlights│ │ createOrOpenJob     │    │ (public match)   │    │ POST /api/ffmpeg │
+└──────────┘    └──────────┬──────────┘    └──────────────────┘    └────────┬────────┘
+                             │ validate first; insert job only on success          │
+                             │         ┌──────────────────┐                     │
+                             └────────▶│ (Phase 2) submit   │─────────────────────┘
+                                       │ VGF job            │   (Veo CDN URLs as inputs)
+                                       └──────────────────┘
                                            │
                        ┌───────────────────┴───────────────────┐
                        ▼                                       ▼
@@ -165,13 +168,13 @@ Single column, `max-w-4xl`, top to bottom:
 
 | Moment | Behaviour |
 |--------|-----------|
-| User submits URL | Validate format client-side; mutation handles dedupe + kickoff |
-| Private / 404 match | Sonner **error** toast; stay on list or show failed workspace |
-| No goals | Sonner **error** toast; job → `failed` |
-| Processing | Video area shows spinner/skeleton; **caption + channels stay enabled** so user can draft while waiting |
-| Ready | Video preview loads via storage URL; **Post to social** enables (still stub) |
-| Post click (stub) | Toast: “Social posting coming soon” — no API call |
-| Re-open cached job | Toast: “Opening existing compilation”; video visible immediately |
+| User submits URL | Client calls **`createOrOpenJob` action**; Veo validated before any row is inserted |
+| Private / 404 / no goals / invalid URL | Sonner **error** toast (translated); **stay on list** — no job row |
+| Processing | Video area shows skeleton; compose UI deferred to Phase 3 |
+| Ready | Video preview loads via storage URL; **Post to social** enables (Phase 3 stub) |
+| Post click (stub) | Phase 3 — toast: “Social posting coming soon” |
+| Re-open cached ready job | Toast: “Opening existing compilation”; video visible immediately |
+| Re-open in-flight job | Navigate silently to existing workspace |
 
 **Social channels:** Reuse automations UI building blocks (`PlatformBlock` pattern from `automation-type-card.tsx`, `postingChannelStatusesValidator`, Facebook/Instagram × posts/story). Read org connection state from existing automations/socials queries where available; toggles persist on **`veoPostJobs.postingChannels`** for this compilation (not global automation settings).
 
@@ -191,14 +194,19 @@ Follow [Documentation/convex-structure.md](../Documentation/convex-structure.md)
 convex/
 ├── veoPosts/
 │   ├── queries.ts           # listJobs, getJob
-│   ├── mutations.ts         # createJob, markProcessing, markReady, markFailed, deleteJob
-│   ├── actions.ts           # "use node" — fetch Veo, submit VGF job
-│   ├── internalActions.ts   # "use node" — download VGF output → storage
-│   ├── internalMutations.ts # status patches from webhook/action
-│   ├── helpers.ts           # parse URL, filter goals, build ffmpeg command
+│   ├── actions.ts           # "use node" — createOrOpenJob (validate Veo, insert job)
+│   ├── internalQueries.ts   # getCreateOrOpenPlan (auth + dedupe)
+│   ├── internalMutations.ts # insertProcessingJob, markFailed (Phase 2+)
+│   ├── internalActions.ts   # "use node" — (Phase 2) download VGF output → storage
+│   ├── access.ts            # org-scoped job lookups
+│   ├── helpers.ts           # parse URL, filter goals, Veo fetch client
 │   └── validators.ts
-├── http.ts                  # POST /webhooks/vgffmpeg
-├── crons.ts                 # daily expiry cleanup (90 days)
+lib/
+└── goal-highlights/
+    ├── errors.ts            # shared error codes (ConvexError data)
+    └── get-error-message.ts # map codes → i18n on client
+├── http.ts                  # (Phase 2) POST /webhooks/vgffmpeg
+├── crons.ts                 # (Phase 3) daily expiry cleanup (90 days)
 └── schema.ts                # veoPostJobs table
 ```
 
@@ -237,6 +245,7 @@ veoPostJobs: defineTable({
   goalCount: v.optional(v.number()),
   goalStartsSeconds: v.optional(v.array(v.number())), // chronological order
   goalHighlightIds: v.optional(v.array(v.string())),  // Veo highlight UUIDs
+  warningMessage: v.optional(v.string()),             // scoreline vs goal-count mismatch
 
   // External job correlation
   vgffmpegJobId: v.optional(v.string()),
@@ -339,18 +348,21 @@ Metadata rows are negligible (< 2 KB each).
 
 | Status | Trigger | UI |
 |--------|---------|-----|
-| `pending` | User submits URL (new job) | Navigate to workspace; skeleton video area |
-| `fetching` | Action starts | “Fetching match…” + compose enabled |
-| `processing` | VGF job submitted | “Compiling video…” + compose enabled |
-| `ready` | Webhook success | Video preview + Download; Post button enabled (stub) |
-| `failed` | Any error | Error message + toast; Post stays disabled |
+| `processing` | Veo validation succeeded; job row inserted (VGF stub in Phase 1) | Skeleton + “Compiling goal highlights…” |
+| `ready` | Webhook success (Phase 2) | Video preview + Download; Post button enabled (Phase 3 stub) |
+| `failed` | VGF / download error (Phase 2+) | Error message + toast; Post stays disabled |
 
-### Create flow (`createOrOpenJob` mutation)
+`pending` / `fetching` remain in schema for Phase 2 pipeline states but are **not used** in Phase 1 create flow.
 
-1. Parse + validate URL
-2. Dedupe check (§2)
-3. If new: insert row, schedule `processVeoPostJob` action
-4. Return `{ jobId, reopened: boolean }` for navigation + toast
+### Create flow (`createOrOpenJob` action — Phase 1)
+
+1. `internalQueries.getCreateOrOpenPlan` — auth, parse URL, dedupe (§2)
+2. If reopen → return `{ jobId, reopened }` immediately
+3. **`validateVeoMatchForCompilation`** in action (Veo HTTP) — on failure throw `ConvexError({ code })` → **no row**
+4. `internalMutations.insertProcessingJob` — row inserted as `processing` with match + goal metadata
+5. Return `{ jobId, reopened: false }` for navigation
+
+Client maps error codes to translated toasts via `lib/goal-highlights/get-error-message.ts`.
 
 ### Idempotency
 
@@ -573,15 +585,16 @@ Add placeholders to `.env.example` (Convex-only secrets — not Next.js public v
 
 | Scenario | User message | System action |
 |----------|--------------|---------------|
-| Invalid URL / slug | Toast: “Paste a valid app.veo.co match link” | Reject before job row |
-| Veo 404 / private | Toast: “This match is not public or was not found” | `failed` or no row |
-| `privacy !== "public"` | Toast: “This match is not public” | `failed` |
-| No goals | Toast: “No goals found in this match” | `failed` |
+| Invalid URL / slug | Toast: translated `errors.invalidUrl` | Reject before job row |
+| Veo 404 / private | Toast: translated `errors.notPublic` | **No job row** |
+| No goals | Toast: translated `errors.noGoals` | **No job row** |
 | Existing ready job | Toast: “Opening existing compilation…” | Navigate; no processing |
-| > max goals | Toast: “Too many goals (max 15)” | `failed` |
-| Missing `videos[0]` | “Goal clip not ready yet” | `failed` |
-| VGF `failed` | Show `error_message` | `failed` |
-| Output download fails | “Could not save video” | Retry once in action, then `failed` |
+| > max goals | Toast: translated `errors.tooManyGoals` | **No job row** |
+| Missing `videos[0]` | Toast: translated `errors.clipNotReady` | **No job row** |
+| Veo fetch error | Toast: translated `errors.fetchFailed` | **No job row** |
+| Score mismatch | Inline warning on workspace | Proceed; store `warningMessage` |
+| VGF `failed` (Phase 2) | Show `error_message` | `failed` row kept |
+| Output download fails (Phase 2) | “Could not save video” | Retry once, then `failed` |
 | Duplicate webhook | — | No-op if already `ready` |
 
 ---
@@ -602,35 +615,39 @@ Each phase ships **backend + frontend + wiring + manual test** before moving on.
 
 ---
 
-### Phase 1 — Enter URL, open job, validate Veo, dedupe
+### Phase 1 — Enter URL, open job, validate Veo, dedupe ✅
 
 **Goal:** User can paste a link, land on a job workspace, and see real match metadata or a clear toast error. Cached compilations reopen instantly.
 
+**Shipped in commit `7443cf7` on branch `veo-posts`.**
+
 #### Backend
 
-- [ ] `veoPostJobs` table + indexes (include `draftCaption`, `postingChannels`, dedupe index)
-- [ ] `veoPosts/helpers.ts` — URL parse, goal tag filter, Veo fetch client
-- [ ] `createOrOpenJob` mutation — dedupe logic (§2), schedule action only for new jobs
-- [ ] `processVeoPostJob` action — fetch match + highlights; validate public + goals; set `fetching` → `processing` or `failed`
-- [ ] `getJob`, `listJobs` queries; `updateDraftCaption` mutation
-- [ ] Unit tests: slug parse, goal filter, dedupe helper
+- [x] `veoPostJobs` table + indexes (include `draftCaption`, `postingChannels`, `warningMessage`, dedupe index)
+- [x] `veoPosts/helpers.ts` — URL parse, goal tag filter, Veo fetch client, `validateVeoMatchForCompilation`
+- [x] `createOrOpenJob` **action** — validate Veo before insert; dedupe via `internalQueries.getCreateOrOpenPlan`
+- [x] `internalMutations.insertProcessingJob` — insert as `processing` after validation (VGF stub; no submit yet)
+- [x] `getJob`, `listJobs` queries
+- [ ] ~~`updateDraftCaption` mutation~~ — deferred to Phase 3
+- [x] Unit tests: slug parse, goal filter, dedupe helper (`convex/veoPosts/helpers.test.ts`)
+- [x] Structured `ConvexError({ code })` + `lib/goal-highlights/errors.ts` for translated client toasts
 
 #### Frontend
 
-- [ ] Nav item “Goal highlights” + i18n
-- [ ] List page: URL input, Generate button, history list
-- [ ] Job workspace route `[jobId]`: header, status badge, match meta, processing skeleton
-- [ ] Wire `useMutation(createOrOpenJob)` → router push; `useQuery(getJob)` reactive status
-- [ ] Toasts: invalid URL, private match, no goals, reopened existing job
+- [x] Nav item “Goal highlights” + i18n (en, fr, nl, de)
+- [x] List page: URL input, Generate button, history list
+- [x] Job workspace route `[jobId]`: header, status badge, match meta, processing skeleton, score-mismatch warning
+- [x] Wire `useAction(createOrOpenJob)` → router push; `useQuery(getJob)` reactive status
+- [x] Toasts: invalid URL, private match, no goals (translated); reopened cached ready job
 
 #### Manual test checklist
 
-- [ ] Public example URL → new job, match title visible, status progresses to `processing` (VGF stub OK: action sets processing after Veo OK without calling VGF yet, **or** mock VGF in dev)
-- [ ] Same URL again → opens same job, toast, no second action scheduled
-- [ ] Private/invalid URL → error toast, no duplicate storage
-- [ ] History list shows jobs; click opens workspace
+- [x] Public example URL → new job, match title visible, status `processing` (VGF not wired yet)
+- [x] Same URL again → opens same job; cached ready shows reopen toast
+- [x] Private/invalid URL → error toast, **no job row** in history
+- [x] History list shows jobs; click opens workspace
 
-**Phase 1 note:** VGF can be stubbed initially (`processing` held) if API key not ready — but prefer wiring real VGF in Phase 2. Minimum bar: Veo validation + dedupe + workspace shell fully working.
+**Phase 1 deviations:** No `pending`/`fetching`/`failed` rows for Veo validation errors. VGF submit deferred to Phase 2 — jobs sit in `processing` until webhook pipeline lands.
 
 ---
 
@@ -640,7 +657,7 @@ Each phase ships **backend + frontend + wiring + manual test** before moving on.
 
 #### Backend
 
-- [ ] VGF job submit in `processVeoPostJob` (concat filter command builder)
+- [ ] VGF job submit after `insertProcessingJob` (concat filter command builder in `helpers.ts`)
 - [ ] `POST /webhooks/vgffmpeg` in `http.ts` → schedule `handleVgfWebhook`
 - [ ] `internalActions.handleVgfWebhook` — download output, `storage.store`, `markReady` with `expiresAt`
 - [ ] `markFailed` paths for VGF + download errors
@@ -722,15 +739,16 @@ Suggested script (Phase 2+): `pnpm test:veo-api`
 |------|-------|--------|
 | `Documentation/veo-api-research.md` | — | ✅ Created |
 | `plan/veo-posts.md` | — | ✅ This file |
-| `convex/schema.ts` | 1 | Add `veoPostJobs` |
-| `convex/veoPosts/*` | 1–3 | New module (grow per phase) |
+| `convex/schema.ts` | 1 | ✅ `veoPostJobs` |
+| `convex/veoPosts/*` | 1–3 | ✅ Phase 1 module; grow in 2–3 |
+| `lib/goal-highlights/*` | 1 | ✅ Error codes + client toast mapping |
 | `convex/http.ts` | 2 | Webhook route |
 | `convex/crons.ts` | 3 | 90-day expiry |
-| `components/app-sidebar.tsx` | 1 | Nav item |
-| `app/app/goal-highlights/page.tsx` | 1 | List + URL input |
-| `app/app/goal-highlights/[jobId]/page.tsx` | 1–3 | Job workspace |
-| `components/goal-highlights/*` | 1–3 | Video area, compose panel, history row |
-| `messages/en.json`, `fr.json`, … | 1–3 | i18n strings |
+| `components/app-sidebar.tsx` | 1 | ✅ Nav item |
+| `app/app/goal-highlights/page.tsx` | 1 | ✅ List + URL input |
+| `app/app/goal-highlights/[jobId]/page.tsx` | 1–3 | ✅ Phase 1 workspace shell |
+| `components/goal-highlights/*` | 1–3 | ✅ Phase 1 components |
+| `messages/en.json`, `fr.json`, … | 1–3 | ✅ Phase 1 strings (+ `errors.*`) |
 | `.env.example` | 2 | Convex env vars |
 
 ---
@@ -751,6 +769,6 @@ Suggested script (Phase 2+): `pnpm test:veo-api`
 
 1. **Webhook payload schema** — jobs docs confirm webhooks exist; dedicated webhooks page returned 404. Validate full payload on first production job.
 2. **Audio on goal clips** — concat filter assumes `[i:a]` exists; verify with ffprobe during spike.
-3. **Private Veo matches** — behaviour untested.
+3. **Private Veo matches** — handled generically (403/404, `privacy`, `is_accessible`); no test URL available yet
 4. **Other goal tag slugs** — allowlist in §2 covers `-goal` suffix; add to `NON_GOAL_SLUGS` if false positives appear.
 5. **VGF webhook signing** — docs did not expose HMAC verification; confirm whether requests can be forged (mitigate with secret query token on webhook URL).
