@@ -247,6 +247,7 @@
       "nav": {
         "calendar": "Kalender",
         "automations": "Automatisierungen",
+        "goalHighlights": "Tor-Highlights",
         "socials": "Verbundene Socials"
       },
       "user": {
@@ -292,6 +293,44 @@
           "automationUsage": "Anzeigen, welche Automatisierungen jedes verbundene Konto nutzen, damit Admins die Auswirkungen einer Trennung verstehen.",
           "reauth": "Admins auffordern, sich erneut zu verbinden, wenn Tokens ablaufen oder sich Meta-Berechtigungen ändern."
         }
+      }
+    },
+    "goalHighlights": {
+      "title": "Tor-Highlights",
+      "description": "Fügen Sie einen öffentlichen Veo-Spiel-Link ein, um Tore zu einem Highlight-Video zusammenzufügen.",
+      "urlLabel": "Veo-Spiel URL",
+      "urlPlaceholder": "https://app.veo.co/matches/…",
+      "generate": "Generieren",
+      "generating": "Spiel wird geprüft…",
+      "generateFailed": "Diese Zusammenstellung konnte nicht gestartet werden. Bitte erneut versuchen.",
+      "reopenedExisting": "Vorhandene Zusammenstellung für dieses Spiel wird geöffnet.",
+      "errors": {
+        "invalidUrl": "Fügen Sie einen gültigen app.veo.co Spiel-Link ein",
+        "notPublic": "Dieses Spiel ist nicht öffentlich oder wurde nicht gefunden",
+        "noGoals": "In diesem Spiel wurden keine Tore gefunden",
+        "tooManyGoals": "Zu viele Tore (max {max})",
+        "clipNotReady": "Ein Tor-Clip ist noch nicht bereit",
+        "fetchFailed": "Dieses Spiel konnte nicht von Veo geladen werden. Bitte erneut versuchen.",
+        "unexpected": "Beim Prüfen dieses Spiels ist ein Fehler aufgetreten"
+      },
+      "historyTitle": "Letzte Zusammenstellungen",
+      "historyEmpty": "Noch keine Tor-Highlights.",
+      "backToList": "Zurück zu Tor-Highlights",
+      "scoreLine": "{own} - {opponent}",
+      "goalCount": "{count, plural, one {# Tor} other {# Tore}}",
+      "warningTitle": "Ergebnisabweichung",
+      "status": {
+        "pending": "Warteschlange",
+        "fetching": "Abrufen",
+        "processing": "Zusammenstellen",
+        "ready": "Fertig",
+        "failed": "Fehlgeschlagen"
+      },
+      "videoArea": {
+        "pending": "Zusammenstellung wird gestartet…",
+        "fetching": "Spieldaten werden abgerufen…",
+        "processing": "Tore werden zusammengestellt…",
+        "failed": "Diese Zusammenstellung ist fehlgeschlagen."
       }
     },
     "automations": {

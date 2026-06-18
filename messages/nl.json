@@ -247,6 +247,7 @@
       "nav": {
         "calendar": "Kalender",
         "automations": "Automatiseringen",
+        "goalHighlights": "Doelpunt highlights",
         "socials": "Gekoppelde socials"
       },
       "user": {
@@ -292,6 +293,44 @@
           "automationUsage": "Geef aan welke automatiseringen elk gekoppeld account gebruiken, zodat admins begrijpen wat ontkoppelen inhoudt.",
           "reauth": "Vraag admins om opnieuw te koppelen wanneer tokens verlopen of Meta-rechten wijzigen."
         }
+      }
+    },
+    "goalHighlights": {
+      "title": "Doelpunt highlights",
+      "description": "Plak een publieke Veo-wedstrijdlink om doelpunten te bundelen in één highlightvideo.",
+      "urlLabel": "Veo-wedstrijd URL",
+      "urlPlaceholder": "https://app.veo.co/matches/…",
+      "generate": "Genereren",
+      "generating": "Wedstrijd valideren…",
+      "generateFailed": "Deze compilatie kon niet worden gestart. Probeer het opnieuw.",
+      "reopenedExisting": "Bestaande compilatie voor deze wedstrijd openen.",
+      "errors": {
+        "invalidUrl": "Plak een geldige app.veo.co wedstrijdlink",
+        "notPublic": "Deze wedstrijd is niet publiek of is niet gevonden",
+        "noGoals": "Geen doelpunten gevonden in deze wedstrijd",
+        "tooManyGoals": "Te veel doelpunten (max {max})",
+        "clipNotReady": "Een doelpuntclip is nog niet klaar",
+        "fetchFailed": "Deze wedstrijd kon niet van Veo worden geladen. Probeer het opnieuw.",
+        "unexpected": "Er ging iets mis bij het valideren van deze wedstrijd"
+      },
+      "historyTitle": "Recente compilaties",
+      "historyEmpty": "Nog geen doelpuntcompilaties.",
+      "backToList": "Terug naar doelpunt highlights",
+      "scoreLine": "{own} - {opponent}",
+      "goalCount": "{count, plural, one {# doelpunt} other {# doelpunten}}",
+      "warningTitle": "Scoreverschil",
+      "status": {
+        "pending": "In wachtrij",
+        "fetching": "Ophalen",
+        "processing": "Compileren",
+        "ready": "Klaar",
+        "failed": "Mislukt"
+      },
+      "videoArea": {
+        "pending": "Compilatie starten…",
+        "fetching": "Wedstrijdgegevens ophalen…",
+        "processing": "Doelpunten compileren…",
+        "failed": "Deze compilatie is mislukt."
       }
     },
     "automations": {

@@ -68,6 +68,13 @@ import type * as templateAssets_queries from "../templateAssets/queries.js";
 import type * as templateAssets_validators from "../templateAssets/validators.js";
 import type * as users_emailLocales from "../users/emailLocales.js";
 import type * as users_settings from "../users/settings.js";
+import type * as veoPosts_access from "../veoPosts/access.js";
+import type * as veoPosts_actions from "../veoPosts/actions.js";
+import type * as veoPosts_helpers from "../veoPosts/helpers.js";
+import type * as veoPosts_internalMutations from "../veoPosts/internalMutations.js";
+import type * as veoPosts_internalQueries from "../veoPosts/internalQueries.js";
+import type * as veoPosts_queries from "../veoPosts/queries.js";
+import type * as veoPosts_validators from "../veoPosts/validators.js";
 import type * as voetbalinbelgie_fetch from "../voetbalinbelgie/fetch.js";
 import type * as voetbalinbelgie_logos from "../voetbalinbelgie/logos.js";
 
@@ -138,6 +145,13 @@ declare const fullApi: ApiFromModules<{
   "templateAssets/validators": typeof templateAssets_validators;
   "users/emailLocales": typeof users_emailLocales;
   "users/settings": typeof users_settings;
+  "veoPosts/access": typeof veoPosts_access;
+  "veoPosts/actions": typeof veoPosts_actions;
+  "veoPosts/helpers": typeof veoPosts_helpers;
+  "veoPosts/internalMutations": typeof veoPosts_internalMutations;
+  "veoPosts/internalQueries": typeof veoPosts_internalQueries;
+  "veoPosts/queries": typeof veoPosts_queries;
+  "veoPosts/validators": typeof veoPosts_validators;
   "voetbalinbelgie/fetch": typeof voetbalinbelgie_fetch;
   "voetbalinbelgie/logos": typeof voetbalinbelgie_logos;
 }>;

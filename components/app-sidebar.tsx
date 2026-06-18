@@ -1,6 +1,6 @@
 "use client";
 
-import { Bot, Calendar, Share2 } from "lucide-react";
+import { Bot, Calendar, Share2, Video } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 type NavItem = {
   href: string;
   icon: LucideIcon;
-  labelKey: "calendar" | "automations" | "socials";
+  labelKey: "calendar" | "automations" | "goalHighlights" | "socials";
   isActive: (pathname: string) => boolean;
 };
 
@@ -43,6 +43,12 @@ const navItems: NavItem[] = [
     icon: Bot,
     labelKey: "automations",
     isActive: (pathname) => pathname.startsWith("/app/automations"),
+  },
+  {
+    href: "/app/goal-highlights",
+    icon: Video,
+    labelKey: "goalHighlights",
+    isActive: (pathname) => pathname.startsWith("/app/goal-highlights"),
   },
   {
     href: "/app/socials",
