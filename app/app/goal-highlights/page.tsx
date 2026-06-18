@@ -1,28 +1,44 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { AppPageHeader } from "@/components/app-page";
+import { DeleteJobDialog } from "@/components/goal-highlights/delete-job-dialog";
 import { JobHistoryList } from "@/components/goal-highlights/job-history-list";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/convex/_generated/api";
-import type { Doc } from "@/convex/_generated/dataModel";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 import { getGoalHighlightsErrorMessage } from "@/lib/goal-highlights/get-error-message";
 import { showErrorToast, showSuccessToast } from "@/lib/user-feedback";
+
+type JobSummary = {
+  _id: Id<"veoPostJobs">;
+  veoMatchSlug: string;
+  veoMatchTitle: string | null;
+  status: Doc<"veoPostJobs">["status"];
+  goalCount: number | null;
+  createdAt: number;
+  expiresAt: number | null;
+  hasVideo: boolean;
+  videoExpired: boolean;
+};
 
 export default function GoalHighlightsPage() {
   const t = useTranslations("app.goalHighlights");
   const router = useRouter();
   const jobs = useQuery(api.veoPosts.queries.listJobs);
   const createOrOpenJob = useAction(api.veoPosts.actions.createOrOpenJob);
+  const deleteJob = useMutation(api.veoPosts.mutations.deleteJob);
   const [veoMatchUrl, setVeoMatchUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [jobToDelete, setJobToDelete] = useState<JobSummary | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const statusLabels: Record<Doc<"veoPostJobs">["status"], string> = {
     pending: t("status.pending"),
@@ -37,6 +53,13 @@ export default function GoalHighlightsPage() {
       dateStyle: "medium",
       timeStyle: "short",
     }).format(new Date(createdAt));
+
+  const formatExpiresAt = (expiresAt: number) =>
+    t("expiresOn", {
+      date: new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+      }).format(new Date(expiresAt)),
+    });
 
   const handleGenerate = async () => {
     const trimmedUrl = veoMatchUrl.trim();
@@ -56,6 +79,23 @@ export default function GoalHighlightsPage() {
       showErrorToast(getGoalHighlightsErrorMessage(error, (key, values) => t(key, values)));
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteJob = async () => {
+    if (!jobToDelete) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await deleteJob({ jobId: jobToDelete._id });
+      showSuccessToast(t("deleteSuccess"));
+      setJobToDelete(null);
+    } catch {
+      showErrorToast(t("deleteFailed"));
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -102,12 +142,28 @@ export default function GoalHighlightsPage() {
               jobs={jobs}
               emptyLabel={t("historyEmpty")}
               statusLabels={statusLabels}
+              videoExpiredLabel={t("videoExpired")}
               formatCreatedAt={formatCreatedAt}
+              formatExpiresAt={formatExpiresAt}
               goalCountLabel={(count) => t("goalCount", { count })}
+              deleteLabel={t("delete")}
+              onDeleteJob={setJobToDelete}
             />
           )}
         </section>
       </div>
+
+      <DeleteJobDialog
+        jobTitle={jobToDelete?.veoMatchTitle ?? jobToDelete?.veoMatchSlug ?? ""}
+        open={jobToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setJobToDelete(null);
+          }
+        }}
+        onConfirm={() => void handleDeleteJob()}
+        isDeleting={isDeleting}
+      />
     </>
   );
 }

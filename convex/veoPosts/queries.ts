@@ -9,6 +9,22 @@ import {
 } from "./validators";
 import { requireCurrentMembership } from "../automations/helpers";
 
+function jobHasStoredVideo(job: { outputStorageId?: string }): boolean {
+  return job.outputStorageId !== undefined;
+}
+
+function jobVideoExpired(job: {
+  status: string;
+  outputStorageId?: string;
+  completedAt?: number;
+}): boolean {
+  return (
+    job.status === "ready" &&
+    job.completedAt !== undefined &&
+    job.outputStorageId === undefined
+  );
+}
+
 function toJobSummary(
   job: Awaited<ReturnType<typeof listVeoPostJobsForOrganization>>[number],
 ) {
@@ -20,6 +36,8 @@ function toJobSummary(
     goalCount: job.goalCount ?? null,
     createdAt: job.createdAt,
     expiresAt: job.expiresAt ?? null,
+    hasVideo: jobHasStoredVideo(job),
+    videoExpired: jobVideoExpired(job),
     errorMessage: job.errorMessage ?? null,
   };
 }
@@ -28,6 +46,7 @@ function toJobDetail(
   job: Awaited<ReturnType<typeof listVeoPostJobsForOrganization>>[number],
   outputVideoUrl: string | null,
 ) {
+  const hasVideo = jobHasStoredVideo(job);
   return {
     _id: job._id,
     organizationId: job.organizationId,
@@ -46,7 +65,9 @@ function toJobDetail(
     warningMessage: job.warningMessage ?? null,
     errorMessage: job.errorMessage ?? null,
     outputStorageId: job.outputStorageId ?? null,
-    outputVideoUrl,
+    outputVideoUrl: hasVideo ? outputVideoUrl : null,
+    hasVideo,
+    videoExpired: jobVideoExpired(job),
     createdAt: job.createdAt,
     completedAt: job.completedAt ?? null,
     failedAt: job.failedAt ?? null,
@@ -80,9 +101,10 @@ export const getJob = query({
       return null;
     }
 
-    const outputVideoUrl = job.outputStorageId
-      ? ((await ctx.storage.getUrl(job.outputStorageId)) ?? null)
-      : null;
+    const outputVideoUrl =
+      job.outputStorageId && jobHasStoredVideo(job)
+        ? ((await ctx.storage.getUrl(job.outputStorageId)) ?? null)
+        : null;
 
     return toJobDetail(job, outputVideoUrl);
   },

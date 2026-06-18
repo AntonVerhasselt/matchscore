@@ -97,7 +97,7 @@ export const handleVgfWebhook = internalAction({
       return null;
     }
 
-    if (job.status === "ready") {
+    if (job.status === "ready" && job.outputStorageId) {
       return null;
     }
 

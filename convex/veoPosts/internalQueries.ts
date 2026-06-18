@@ -76,6 +76,21 @@ const jobForProcessingValidator = v.union(
       v.literal("failed"),
     ),
     vgffmpegJobId: v.union(v.string(), v.null()),
+    outputStorageId: v.union(v.id("_storage"), v.null()),
+  }),
+  v.null(),
+);
+
+const jobForRegenerationValidator = v.union(
+  v.object({
+    veoMatchSlug: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("fetching"),
+      v.literal("processing"),
+      v.literal("ready"),
+      v.literal("failed"),
+    ),
   }),
   v.null(),
 );
@@ -95,6 +110,27 @@ export const getJobForProcessing = internalQuery({
       _id: job._id,
       status: job.status,
       vgffmpegJobId: job.vgffmpegJobId ?? null,
+      outputStorageId: job.outputStorageId ?? null,
+    };
+  },
+});
+
+export const getJobForRegeneration = internalQuery({
+  args: {
+    jobId: v.id("veoPostJobs"),
+  },
+  returns: jobForRegenerationValidator,
+  handler: async (ctx, args) => {
+    const { membership } = await requireCurrentMembership(ctx);
+    const job = await ctx.db.get("veoPostJobs", args.jobId);
+
+    if (!job || job.organizationId !== membership.organizationId) {
+      return null;
+    }
+
+    return {
+      veoMatchSlug: job.veoMatchSlug,
+      status: job.status,
     };
   },
 });

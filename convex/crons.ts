@@ -11,4 +11,11 @@ crons.interval(
   {},
 );
 
+crons.daily(
+  "expire goal highlight stored videos",
+  { hourUTC: 3, minuteUTC: 0 },
+  internal.veoPosts.internalMutations.expireStoredVideos,
+  {},
+);
+
 export default crons;

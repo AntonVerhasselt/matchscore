@@ -88,7 +88,7 @@ export const markReady = internalMutation({
   returns: v.null(),
   handler: async (ctx, args) => {
     const job = await getJobOrThrow(ctx, args.jobId);
-    if (job.status === "ready") {
+    if (job.status === "ready" && job.outputStorageId) {
       return null;
     }
 
@@ -125,5 +125,111 @@ export const markFailed = internalMutation({
       failedAt: Date.now(),
     });
     return null;
+  },
+});
+
+const resetJobForRegenerationArgsValidator = v.object({
+  jobId: v.id("veoPostJobs"),
+  veoMatchTitle: v.string(),
+  veoClubName: v.optional(v.string()),
+  veoOpponentName: v.optional(v.string()),
+  veoScoreOwn: v.optional(v.number()),
+  veoScoreOpponent: v.optional(v.number()),
+  goalCount: v.number(),
+  goalStartsSeconds: v.array(v.number()),
+  goalHighlightIds: v.array(v.string()),
+  warningMessage: v.optional(v.string()),
+});
+
+export const resetJobForRegeneration = internalMutation({
+  args: resetJobForRegenerationArgsValidator,
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const job = await getJobOrThrow(ctx, args.jobId);
+
+    if (
+      job.status === "pending" ||
+      job.status === "fetching" ||
+      job.status === "processing"
+    ) {
+      throw new ConvexError("This compilation is already in progress");
+    }
+
+    if (job.outputStorageId) {
+      try {
+        await ctx.storage.delete(job.outputStorageId);
+      } catch (error) {
+        console.warn(
+          "Failed to delete previous goal highlight video blob",
+          job._id,
+          job.outputStorageId,
+          error,
+        );
+      }
+    }
+
+    await ctx.db.patch(args.jobId, {
+      status: "processing",
+      veoMatchTitle: args.veoMatchTitle,
+      veoClubName: args.veoClubName,
+      veoOpponentName: args.veoOpponentName,
+      veoScoreOwn: args.veoScoreOwn,
+      veoScoreOpponent: args.veoScoreOpponent,
+      goalCount: args.goalCount,
+      goalStartsSeconds: args.goalStartsSeconds,
+      goalHighlightIds: args.goalHighlightIds,
+      warningMessage: args.warningMessage,
+      outputStorageId: undefined,
+      outputByteSize: undefined,
+      outputDurationSeconds: undefined,
+      vgffmpegJobId: undefined,
+      errorMessage: undefined,
+      failedAt: undefined,
+      completedAt: undefined,
+      expiresAt: undefined,
+    });
+    return null;
+  },
+});
+
+export const expireStoredVideos = internalMutation({
+  args: {},
+  returns: v.object({
+    clearedCount: v.number(),
+  }),
+  handler: async (ctx) => {
+    const now = Date.now();
+    const expiredJobs = await ctx.db
+      .query("veoPostJobs")
+      .withIndex("by_expiresAt", (q) => q.lt("expiresAt", now))
+      .collect();
+
+    let clearedCount = 0;
+
+    for (const job of expiredJobs) {
+      if (!job.outputStorageId) {
+        continue;
+      }
+
+      try {
+        await ctx.storage.delete(job.outputStorageId);
+      } catch (error) {
+        console.warn(
+          "Failed to delete expired goal highlight video blob",
+          job._id,
+          job.outputStorageId,
+          error,
+        );
+      }
+
+      await ctx.db.patch(job._id, {
+        outputStorageId: undefined,
+        outputByteSize: undefined,
+        outputDurationSeconds: undefined,
+      });
+      clearedCount += 1;
+    }
+
+    return { clearedCount };
   },
 });

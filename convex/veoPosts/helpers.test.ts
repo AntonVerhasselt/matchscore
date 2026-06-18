@@ -139,7 +139,27 @@ describe("resolveExistingJob", () => {
     });
   });
 
-  test("creates a new job when only failed or expired rows exist", () => {
+  test("creates a new job when no reusable rows exist", () => {
+    expect(
+      resolveExistingJob(
+        [
+          {
+            _id: "job_expired",
+            status: "ready",
+            expiresAt: now - 1,
+            createdAt: now - 2000,
+          },
+        ],
+        now,
+      ),
+    ).toEqual({
+      action: "open",
+      jobId: "job_expired",
+      reopenCached: false,
+    });
+  });
+
+  test("opens failed jobs instead of creating duplicates", () => {
     expect(
       resolveExistingJob(
         [
@@ -148,17 +168,18 @@ describe("resolveExistingJob", () => {
             status: "failed",
             createdAt: now - 1000,
           },
-          {
-            _id: "job_expired",
-            status: "ready",
-            outputStorageId: "storage",
-            expiresAt: now - 1,
-            createdAt: now - 2000,
-          },
         ],
         now,
       ),
-    ).toEqual({ action: "create" });
+    ).toEqual({
+      action: "open",
+      jobId: "job_failed",
+      reopenCached: false,
+    });
+  });
+
+  test("creates a new job when no rows exist", () => {
+    expect(resolveExistingJob([], now)).toEqual({ action: "create" });
   });
 });
 

@@ -17,6 +17,8 @@ export const veoPostJobSummaryValidator = v.object({
   goalCount: v.union(v.number(), v.null()),
   createdAt: v.number(),
   expiresAt: v.union(v.number(), v.null()),
+  hasVideo: v.boolean(),
+  videoExpired: v.boolean(),
   errorMessage: v.union(v.string(), v.null()),
 });
 
@@ -39,6 +41,8 @@ export const veoPostJobDetailValidator = v.object({
   errorMessage: v.union(v.string(), v.null()),
   outputStorageId: v.union(v.id("_storage"), v.null()),
   outputVideoUrl: v.union(v.string(), v.null()),
+  hasVideo: v.boolean(),
+  videoExpired: v.boolean(),
   createdAt: v.number(),
   completedAt: v.union(v.number(), v.null()),
   failedAt: v.union(v.number(), v.null()),

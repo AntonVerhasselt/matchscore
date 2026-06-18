@@ -234,6 +234,12 @@ export function resolveExistingJob<TId extends string>(
     }
   }
 
+  for (const job of sorted) {
+    if (job.status === "ready" || job.status === "failed") {
+      return { action: "open", jobId: job._id, reopenCached: false };
+    }
+  }
+
   return { action: "create" };
 }
 

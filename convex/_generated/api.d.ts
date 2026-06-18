@@ -76,6 +76,7 @@ import type * as veoPosts_helpers from "../veoPosts/helpers.js";
 import type * as veoPosts_internalActions from "../veoPosts/internalActions.js";
 import type * as veoPosts_internalMutations from "../veoPosts/internalMutations.js";
 import type * as veoPosts_internalQueries from "../veoPosts/internalQueries.js";
+import type * as veoPosts_mutations from "../veoPosts/mutations.js";
 import type * as veoPosts_queries from "../veoPosts/queries.js";
 import type * as veoPosts_validators from "../veoPosts/validators.js";
 import type * as veoPosts_vgfClient from "../veoPosts/vgfClient.js";
@@ -158,6 +159,7 @@ declare const fullApi: ApiFromModules<{
   "veoPosts/internalActions": typeof veoPosts_internalActions;
   "veoPosts/internalMutations": typeof veoPosts_internalMutations;
   "veoPosts/internalQueries": typeof veoPosts_internalQueries;
+  "veoPosts/mutations": typeof veoPosts_mutations;
   "veoPosts/queries": typeof veoPosts_queries;
   "veoPosts/validators": typeof veoPosts_validators;
   "veoPosts/vgfClient": typeof veoPosts_vgfClient;
