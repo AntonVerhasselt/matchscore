@@ -5,6 +5,7 @@ import { describe, expect, test } from "vitest";
 
 import { internal } from "./_generated/api";
 import { assertAllCompetitionTeamsImported } from "./football/helpers";
+import { buildVibMatchKey } from "./lib/voetbalinbelgie/vibMatchKey";
 import type { ParsedCompetitionDto } from "./lib/voetbalinbelgie/types";
 import schema from "./schema";
 
@@ -201,12 +202,19 @@ describe("football internalMutations", () => {
 
     expect(rowCount).toBe(2);
 
+    const matchKey = buildVibMatchKey(
+      389,
+      "2026-04-26T15:00:00+02:00",
+      "KSV Aartselaar",
+      "KFC Putte",
+    );
+
     const matchId = await t.mutation(
       internal.football.internalMutations.upsertMatch,
       {
         sourceCompetitionId: 389,
         competitionPath: "/competities/2025-2026/antwerpen/mannen/2a/",
-        vibMatchKey: "389:2026-04-26T15:00:00+02:00:KSV Aartselaar:KFC Putte",
+        vibMatchKey: matchKey,
         homeVibTeamName: "KSV Aartselaar",
         awayVibTeamName: "KFC Putte",
         kickoffAt: Date.parse("2026-04-26T15:00:00+02:00"),
@@ -222,7 +230,7 @@ describe("football internalMutations", () => {
       {
         sourceCompetitionId: 389,
         competitionPath: "/competities/2025-2026/antwerpen/mannen/2a/",
-        vibMatchKey: "389:2026-04-26T15:00:00+02:00:KSV Aartselaar:KFC Putte",
+        vibMatchKey: matchKey,
         homeVibTeamName: "KSV Aartselaar",
         awayVibTeamName: "KFC Putte",
         kickoffAt: Date.parse("2026-04-26T15:00:00+02:00"),
