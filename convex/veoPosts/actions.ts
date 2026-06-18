@@ -9,6 +9,8 @@ import {
   validateVeoMatchForCompilation,
 } from "./helpers";
 import { createOrOpenJobResultValidator } from "./validators";
+import { submitGoalCompilationJob } from "./vgfClient";
+import { VGF_POLL_FALLBACK_DELAY_MS } from "./vgfHelpers";
 
 type CreateOrOpenJobResult = {
   jobId: Id<"veoPostJobs">;
@@ -60,6 +62,33 @@ export const createOrOpenJob = action({
         warningMessage: warningMessage ?? undefined,
       },
     );
+
+    try {
+      const vgffmpegJobId = await submitGoalCompilationJob({
+        goals,
+        veoPostJobId: jobId,
+      });
+
+      await ctx.runMutation(internal.veoPosts.internalMutations.attachVgfJobId, {
+        jobId,
+        vgffmpegJobId,
+      });
+
+      await ctx.scheduler.runAfter(
+        VGF_POLL_FALLBACK_DELAY_MS,
+        internal.veoPosts.internalActions.pollVgfJobIfPending,
+        { jobId },
+      );
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Video compilation could not be started";
+      await ctx.runMutation(internal.veoPosts.internalMutations.markFailed, {
+        jobId,
+        errorMessage,
+      });
+    }
 
     return { jobId, reopened: false };
   },

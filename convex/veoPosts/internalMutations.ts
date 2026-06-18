@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { internalMutation } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { DEFAULT_POSTING_CHANNEL_STATUSES } from "../automations/constants";
+import { VGF_JOB_RETENTION_MS } from "./vgfHelpers";
 
 const insertProcessingJobArgsValidator = v.object({
   organizationId: v.id("organizations"),
@@ -59,6 +60,50 @@ export const insertProcessingJob = internalMutation({
       status: "processing",
       createdAt: Date.now(),
     });
+  },
+});
+
+export const attachVgfJobId = internalMutation({
+  args: {
+    jobId: v.id("veoPostJobs"),
+    vgffmpegJobId: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    await getJobOrThrow(ctx, args.jobId);
+    await ctx.db.patch(args.jobId, {
+      vgffmpegJobId: args.vgffmpegJobId,
+    });
+    return null;
+  },
+});
+
+export const markReady = internalMutation({
+  args: {
+    jobId: v.id("veoPostJobs"),
+    outputStorageId: v.id("_storage"),
+    outputByteSize: v.optional(v.number()),
+    outputDurationSeconds: v.optional(v.number()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const job = await getJobOrThrow(ctx, args.jobId);
+    if (job.status === "ready") {
+      return null;
+    }
+
+    const completedAt = Date.now();
+    await ctx.db.patch(args.jobId, {
+      status: "ready",
+      outputStorageId: args.outputStorageId,
+      outputByteSize: args.outputByteSize,
+      outputDurationSeconds: args.outputDurationSeconds,
+      completedAt,
+      expiresAt: completedAt + VGF_JOB_RETENTION_MS,
+      errorMessage: undefined,
+      failedAt: undefined,
+    });
+    return null;
   },
 });
 

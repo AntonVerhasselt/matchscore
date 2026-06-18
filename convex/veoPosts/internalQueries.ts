@@ -64,3 +64,37 @@ export const getCreateOrOpenPlan = internalQuery({
     };
   },
 });
+
+const jobForProcessingValidator = v.union(
+  v.object({
+    _id: v.id("veoPostJobs"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("fetching"),
+      v.literal("processing"),
+      v.literal("ready"),
+      v.literal("failed"),
+    ),
+    vgffmpegJobId: v.union(v.string(), v.null()),
+  }),
+  v.null(),
+);
+
+export const getJobForProcessing = internalQuery({
+  args: {
+    jobId: v.id("veoPostJobs"),
+  },
+  returns: jobForProcessingValidator,
+  handler: async (ctx, args) => {
+    const job = await ctx.db.get("veoPostJobs", args.jobId);
+    if (!job) {
+      return null;
+    }
+
+    return {
+      _id: job._id,
+      status: job.status,
+      vgffmpegJobId: job.vgffmpegJobId ?? null,
+    };
+  },
+});

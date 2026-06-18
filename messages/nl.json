@@ -330,8 +330,10 @@
         "pending": "Compilatie starten…",
         "fetching": "Wedstrijdgegevens ophalen…",
         "processing": "Doelpunten compileren…",
-        "failed": "Deze compilatie is mislukt."
-      }
+        "failed": "Deze compilatie is mislukt.",
+        "download": "Video downloaden"
+      },
+      "expiresOn": "Verloopt op {date}"
     },
     "automations": {
       "title": "Automatiseringen",

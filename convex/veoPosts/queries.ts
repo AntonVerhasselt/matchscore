@@ -26,6 +26,7 @@ function toJobSummary(
 
 function toJobDetail(
   job: Awaited<ReturnType<typeof listVeoPostJobsForOrganization>>[number],
+  outputVideoUrl: string | null,
 ) {
   return {
     _id: job._id,
@@ -45,6 +46,7 @@ function toJobDetail(
     warningMessage: job.warningMessage ?? null,
     errorMessage: job.errorMessage ?? null,
     outputStorageId: job.outputStorageId ?? null,
+    outputVideoUrl,
     createdAt: job.createdAt,
     completedAt: job.completedAt ?? null,
     failedAt: job.failedAt ?? null,
@@ -78,6 +80,10 @@ export const getJob = query({
       return null;
     }
 
-    return toJobDetail(job);
+    const outputVideoUrl = job.outputStorageId
+      ? ((await ctx.storage.getUrl(job.outputStorageId)) ?? null)
+      : null;
+
+    return toJobDetail(job, outputVideoUrl);
   },
 });

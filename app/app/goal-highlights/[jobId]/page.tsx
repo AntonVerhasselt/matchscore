@@ -91,14 +91,29 @@ export default function GoalHighlightJobPage() {
         processingLabel={t("videoArea.processing")}
         failedLabel={t("videoArea.failed")}
         errorMessage={job.errorMessage}
+        outputVideoUrl={job.outputVideoUrl}
+        downloadLabel={t("videoArea.download")}
+        videoTitle={title}
       />
 
-      {(scoreLine || job.goalCount !== null) && (
+      {(scoreLine || job.goalCount !== null || job.expiresAt !== null) && (
         <div className="text-sm text-muted-foreground">
           {scoreLine ? <span>{scoreLine}</span> : null}
           {scoreLine && job.goalCount !== null ? <span> · </span> : null}
           {job.goalCount !== null ? (
             <span>{t("goalCount", { count: job.goalCount })}</span>
+          ) : null}
+          {job.expiresAt !== null ? (
+            <>
+              {(scoreLine || job.goalCount !== null) ? <span> · </span> : null}
+              <span>
+                {t("expiresOn", {
+                  date: new Intl.DateTimeFormat(undefined, {
+                    dateStyle: "medium",
+                  }).format(new Date(job.expiresAt)),
+                })}
+              </span>
+            </>
           ) : null}
         </div>
       )}

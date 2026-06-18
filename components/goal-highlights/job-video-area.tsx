@@ -1,4 +1,5 @@
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Doc } from "@/convex/_generated/dataModel";
 
@@ -11,6 +12,9 @@ type JobVideoAreaProps = {
   pendingLabel: string;
   failedLabel: string;
   errorMessage: string | null;
+  outputVideoUrl: string | null;
+  downloadLabel: string;
+  videoTitle: string;
 };
 
 export function JobVideoArea({
@@ -20,6 +24,9 @@ export function JobVideoArea({
   pendingLabel,
   failedLabel,
   errorMessage,
+  outputVideoUrl,
+  downloadLabel,
+  videoTitle,
 }: JobVideoAreaProps) {
   if (status === "failed") {
     return (
@@ -29,8 +36,35 @@ export function JobVideoArea({
     );
   }
 
+  if (status === "ready" && outputVideoUrl) {
+    return (
+      <div className="space-y-3">
+        <div className="overflow-hidden rounded-lg border bg-black">
+          <video
+            className="aspect-video w-full"
+            controls
+            preload="metadata"
+            src={outputVideoUrl}
+            title={videoTitle}
+          />
+        </div>
+        <div>
+          <Button asChild variant="outline">
+            <a href={outputVideoUrl} download={`${videoTitle}.mp4`}>
+              {downloadLabel}
+            </a>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   if (status === "ready") {
-    return null;
+    return (
+      <Alert>
+        <AlertDescription>{failedLabel}</AlertDescription>
+      </Alert>
+    );
   }
 
   const message =

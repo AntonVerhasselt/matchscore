@@ -38,6 +38,7 @@ export const veoPostJobDetailValidator = v.object({
   warningMessage: v.union(v.string(), v.null()),
   errorMessage: v.union(v.string(), v.null()),
   outputStorageId: v.union(v.id("_storage"), v.null()),
+  outputVideoUrl: v.union(v.string(), v.null()),
   createdAt: v.number(),
   completedAt: v.union(v.number(), v.null()),
   failedAt: v.union(v.number(), v.null()),

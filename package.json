@@ -25,6 +25,7 @@
     "@formatjs/intl-localematcher": "^0.8.10",
     "@react-email/components": "^1.0.12",
     "@react-email/render": "^2.0.8",
+    "@verygoodffmpeg/sdk": "^1.0.1",
     "better-auth": "~1.6.14",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -59,9 +60,9 @@
     "prettier": "^3.8.3",
     "shadcn": "^4.10.0",
     "tailwindcss": "^4.2.2",
+    "tsx": "^4.21.0",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.8",
-    "tsx": "^4.21.0"
+    "vitest": "^4.1.8"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

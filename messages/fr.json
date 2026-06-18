@@ -330,8 +330,10 @@
         "pending": "Démarrage de la compilation…",
         "fetching": "Récupération des données du match…",
         "processing": "Compilation des buts…",
-        "failed": "Cette compilation a échoué."
-      }
+        "failed": "Cette compilation a échoué.",
+        "download": "Télécharger la vidéo"
+      },
+      "expiresOn": "Expire le {date}"
     },
     "automations": {
       "title": "Automatisations",

@@ -23,6 +23,9 @@ importers:
       '@react-email/render':
         specifier: ^2.0.8
         version: 2.0.8(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+      '@verygoodffmpeg/sdk':
+        specifier: ^1.0.1
+        version: 1.0.1
       better-auth:
         specifier: ~1.6.14
         version: 1.6.14(next@16.2.4(@babel/core@7.29.7)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(vitest@4.1.8(@edge-runtime/vm@5.0.0)(@types/node@24.13.1)(msw@2.14.6(@types/node@24.13.1)(typescript@6.0.3))(vite@8.0.16(@types/node@24.13.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)))
@@ -2685,6 +2688,10 @@ packages:
     resolution: {integrity: sha512-nAB74NfSNKknqQ1RrYj6uz8FcXEomu/MATJZxh/x+BArzN2U3JbOYC0APYzUIGhVY3m5hRxA8VPNdPBoG8txlA==}
     cpu: [x64]
     os: [win32]
+
+  '@verygoodffmpeg/sdk@1.0.1':
+    resolution: {integrity: sha512-PmKe+IlUaj9NEiJUyFb+ct4WjOve9jMrc+ccWSgbx82fk2tFMQ3iZxliPE1u7gVyoCXHFfBFI+ZkE+/dLBwZXg==}
+    engines: {node: '>=18'}
 
   '@vitest/expect@4.1.8':
     resolution: {integrity: sha512-h3nDO677RDLEGlBxyQ5CW8RlMThSKSRLUePLOx09gNIWRL40edgA1GCZSZgf1W55MFAG6/Sw14KeaAnqv0NKdQ==}
@@ -7552,6 +7559,8 @@ snapshots:
 
   '@unrs/resolver-binding-win32-x64-msvc@1.12.2':
     optional: true
+
+  '@verygoodffmpeg/sdk@1.0.1': {}
 
   '@vitest/expect@4.1.8':
     dependencies:

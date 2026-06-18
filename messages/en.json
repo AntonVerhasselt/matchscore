@@ -330,8 +330,10 @@
         "pending": "Starting compilation…",
         "fetching": "Fetching match data…",
         "processing": "Compiling goal highlights…",
-        "failed": "This compilation failed."
-      }
+        "failed": "This compilation failed.",
+        "download": "Download video"
+      },
+      "expiresOn": "Expires on {date}"
     },
     "automations": {
       "title": "Automations",

@@ -330,8 +330,10 @@
         "pending": "Zusammenstellung wird gestartet…",
         "fetching": "Spieldaten werden abgerufen…",
         "processing": "Tore werden zusammengestellt…",
-        "failed": "Diese Zusammenstellung ist fehlgeschlagen."
-      }
+        "failed": "Diese Zusammenstellung ist fehlgeschlagen.",
+        "download": "Video herunterladen"
+      },
+      "expiresOn": "Läuft ab am {date}"
     },
     "automations": {
       "title": "Automatisierungen",
