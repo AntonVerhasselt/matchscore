@@ -3,6 +3,12 @@ import { ConvexError, v } from "convex/values";
 import type { GenericMutationCtx } from "convex/server";
 import { applyDisplayNameDisambiguation } from "../lib/voetbalinbelgie/disambiguateTeamNames";
 import { normalizeCompetitionPath } from "../lib/voetbalinbelgie/allowlist";
+import {
+  buildLogicalMatchKey,
+  buildSemanticMatchKey,
+  groupMatchesByLogicalKey,
+  pickCanonicalMatch,
+} from "../lib/voetbalinbelgie/matchIdentity";
 import { internalMutation } from "../_generated/server";
 import type { DataModel, Doc, Id } from "../_generated/dataModel";
 import {
@@ -130,6 +136,146 @@ async function replaceStandingsForCompetition(
   return rows.length;
 }
 
+async function findExistingMatchForUpsert(
+  ctx: GenericMutationCtx<DataModel>,
+  args: {
+    competitionId: Id<"competitions">;
+    vibMatchKey: string;
+    kickoffAt: number;
+    homeTeamId: Id<"footballTeams">;
+    awayTeamId: Id<"footballTeams">;
+    homeVibTeamName: string;
+    awayVibTeamName: string;
+  },
+): Promise<Doc<"matches"> | null> {
+  const byKey = await ctx.db
+    .query("matches")
+    .withIndex("by_vibMatchKey", (q) => q.eq("vibMatchKey", args.vibMatchKey))
+    .first();
+  if (byKey) {
+    return byKey;
+  }
+
+  const candidates = await ctx.db
+    .query("matches")
+    .withIndex("by_competitionId_and_kickoffAt", (q) =>
+      q.eq("competitionId", args.competitionId).eq("kickoffAt", args.kickoffAt),
+    )
+    .collect();
+
+  const logicalMatches = candidates.filter(
+    (match) =>
+      match.homeTeamId === args.homeTeamId &&
+      match.awayTeamId === args.awayTeamId,
+  );
+
+  if (logicalMatches.length > 0) {
+    return pickCanonicalMatch(logicalMatches);
+  }
+
+  const targetSemanticKey = buildSemanticMatchKey({
+    competitionId: args.competitionId,
+    kickoffAt: args.kickoffAt,
+    homeVibTeamName: args.homeVibTeamName,
+    awayVibTeamName: args.awayVibTeamName,
+  });
+
+  const semanticMatches: Doc<"matches">[] = [];
+  for (const match of candidates) {
+    const homeTeam = await ctx.db.get(match.homeTeamId);
+    const awayTeam = await ctx.db.get(match.awayTeamId);
+    if (!homeTeam || !awayTeam) {
+      continue;
+    }
+
+    const semanticKey = buildSemanticMatchKey({
+      competitionId: match.competitionId,
+      kickoffAt: match.kickoffAt,
+      homeVibTeamName: homeTeam.vibTeamName,
+      awayVibTeamName: awayTeam.vibTeamName,
+    });
+    if (semanticKey === targetSemanticKey) {
+      semanticMatches.push(match);
+    }
+  }
+
+  if (semanticMatches.length === 0) {
+    return null;
+  }
+
+  return pickCanonicalMatch(semanticMatches);
+}
+
+async function dedupeCompetitionMatches(
+  ctx: GenericMutationCtx<DataModel>,
+  competitionId: Id<"competitions">,
+): Promise<number> {
+  const matches = await ctx.db
+    .query("matches")
+    .withIndex("by_competitionId_and_kickoffAt", (q) =>
+      q.eq("competitionId", competitionId),
+    )
+    .collect();
+
+  let removed = 0;
+
+  for (const group of groupMatchesByLogicalKey(matches).values()) {
+    if (group.length < 2) {
+      continue;
+    }
+
+    const keep = pickCanonicalMatch(group);
+    for (const duplicate of group) {
+      if (duplicate._id !== keep._id) {
+        await ctx.db.delete(duplicate._id);
+        removed += 1;
+      }
+    }
+  }
+
+  const remaining = await ctx.db
+    .query("matches")
+    .withIndex("by_competitionId_and_kickoffAt", (q) =>
+      q.eq("competitionId", competitionId),
+    )
+    .collect();
+
+  const semanticGroups = new Map<string, Doc<"matches">[]>();
+  for (const match of remaining) {
+    const homeTeam = await ctx.db.get(match.homeTeamId);
+    const awayTeam = await ctx.db.get(match.awayTeamId);
+    if (!homeTeam || !awayTeam) {
+      continue;
+    }
+
+    const semanticKey = buildSemanticMatchKey({
+      competitionId: match.competitionId,
+      kickoffAt: match.kickoffAt,
+      homeVibTeamName: homeTeam.vibTeamName,
+      awayVibTeamName: awayTeam.vibTeamName,
+    });
+    const group = semanticGroups.get(semanticKey) ?? [];
+    group.push(match);
+    semanticGroups.set(semanticKey, group);
+  }
+
+  for (const group of semanticGroups.values()) {
+    if (group.length < 2) {
+      continue;
+    }
+
+    const keep = pickCanonicalMatch(group);
+    for (const duplicate of group) {
+      if (duplicate._id !== keep._id) {
+        await ctx.db.delete(duplicate._id);
+        removed += 1;
+      }
+    }
+  }
+
+  return removed;
+}
+
 async function upsertMatchForCompetition(
   ctx: GenericMutationCtx<DataModel>,
   competitionId: Id<"competitions">,
@@ -161,10 +307,15 @@ async function upsertMatchForCompetition(
     updatedAt: now,
   };
 
-  const existing = await ctx.db
-    .query("matches")
-    .withIndex("by_vibMatchKey", (q) => q.eq("vibMatchKey", args.vibMatchKey))
-    .unique();
+  const existing = await findExistingMatchForUpsert(ctx, {
+    competitionId,
+    vibMatchKey: args.vibMatchKey,
+    kickoffAt: args.kickoffAt,
+    homeTeamId,
+    awayTeamId,
+    homeVibTeamName: args.homeVibTeamName,
+    awayVibTeamName: args.awayVibTeamName,
+  });
 
   if (existing) {
     await ctx.db.patch(existing._id, fields);
@@ -278,6 +429,8 @@ export const replaceCompetitionSnapshot = internalMutation({
   returns: v.object({
     standingCount: v.number(),
     matchCount: v.number(),
+    removedStaleMatches: v.number(),
+    removedDuplicateMatches: v.number(),
   }),
   handler: async (ctx, args) => {
     const competition = await loadCompetitionForPath(ctx, args.competitionPath);
@@ -288,14 +441,61 @@ export const replaceCompetitionSnapshot = internalMutation({
     }
     assertCompetitionSourceMatch(competition, args.sourceCompetitionId);
 
+    const syncedMatchIds = new Set<Id<"matches">>();
+    const syncedLogicalKeys = new Set<string>();
+
     for (const match of args.matches) {
-      await upsertMatchForCompetition(
+      const matchId = await upsertMatchForCompetition(
         ctx,
         args.competitionId,
         args.sourceCompetitionId,
         match,
       );
+      syncedMatchIds.add(matchId);
+
+      const homeTeamId = await requireFootballTeamId(
+        ctx,
+        args.sourceCompetitionId,
+        match.homeVibTeamName,
+      );
+      const awayTeamId = await requireFootballTeamId(
+        ctx,
+        args.sourceCompetitionId,
+        match.awayVibTeamName,
+      );
+      syncedLogicalKeys.add(
+        buildLogicalMatchKey({
+          competitionId: args.competitionId,
+          kickoffAt: match.kickoffAt,
+          homeTeamId,
+          awayTeamId,
+        }),
+      );
     }
+
+    const existingMatches = await ctx.db
+      .query("matches")
+      .withIndex("by_competitionId_and_kickoffAt", (q) =>
+        q.eq("competitionId", args.competitionId),
+      )
+      .collect();
+
+    let removedStaleMatches = 0;
+    for (const match of existingMatches) {
+      const logicalKey = buildLogicalMatchKey(match);
+      if (
+        !syncedMatchIds.has(match._id) &&
+        !syncedLogicalKeys.has(logicalKey)
+      ) {
+        await ctx.db.delete(match._id);
+        removedStaleMatches += 1;
+      }
+    }
+
+    const removedDuplicateMatches = await dedupeCompetitionMatches(
+      ctx,
+      args.competitionId,
+    );
 
     const standingCount = await replaceStandingsForCompetition(
       ctx,
@@ -307,6 +507,8 @@ export const replaceCompetitionSnapshot = internalMutation({
     return {
       standingCount,
       matchCount: args.matches.length,
+      removedStaleMatches,
+      removedDuplicateMatches,
     };
   },
 });
@@ -489,5 +691,34 @@ export const repairDuplicateTeamDisplayNames = internalMutation({
     }
 
     return { updated, clubsWithDuplicates };
+  },
+});
+
+/** Removes duplicate match rows caused by legacy vibMatchKey format changes. */
+export const dedupeDuplicateMatches = internalMutation({
+  args: {
+    competitionId: v.optional(v.id("competitions")),
+  },
+  returns: v.object({
+    competitionsProcessed: v.number(),
+    removed: v.number(),
+  }),
+  handler: async (ctx, args) => {
+    let competitionsProcessed = 0;
+    let removed = 0;
+
+    if (args.competitionId) {
+      removed += await dedupeCompetitionMatches(ctx, args.competitionId);
+      competitionsProcessed = 1;
+      return { competitionsProcessed, removed };
+    }
+
+    const competitions = await ctx.db.query("competitions").collect();
+    for (const competition of competitions) {
+      removed += await dedupeCompetitionMatches(ctx, competition._id);
+      competitionsProcessed += 1;
+    }
+
+    return { competitionsProcessed, removed };
   },
 });

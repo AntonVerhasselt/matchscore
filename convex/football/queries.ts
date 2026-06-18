@@ -193,7 +193,18 @@ export const listTeamMatches = query({
     );
 
     summaries.sort((a, b) => a.kickoffAt - b.kickoffAt);
-    return summaries.slice(0, limit);
+
+    const seen = new Set<string>();
+    const deduped = summaries.filter((summary) => {
+      const key = `${summary.kickoffAt}|${summary.opponentName}|${summary.isHome ? "home" : "away"}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
+
+    return deduped.slice(0, limit);
   },
 });
 

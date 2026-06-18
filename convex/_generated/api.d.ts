@@ -49,6 +49,7 @@ import type * as lib_email from "../lib/email.js";
 import type * as lib_slugify from "../lib/slugify.js";
 import type * as lib_voetbalinbelgie_allowlist from "../lib/voetbalinbelgie/allowlist.js";
 import type * as lib_voetbalinbelgie_disambiguateTeamNames from "../lib/voetbalinbelgie/disambiguateTeamNames.js";
+import type * as lib_voetbalinbelgie_matchIdentity from "../lib/voetbalinbelgie/matchIdentity.js";
 import type * as lib_voetbalinbelgie_matchMerge from "../lib/voetbalinbelgie/matchMerge.js";
 import type * as lib_voetbalinbelgie_parseCompetition from "../lib/voetbalinbelgie/parseCompetition.js";
 import type * as lib_voetbalinbelgie_parseHtml from "../lib/voetbalinbelgie/parseHtml.js";
@@ -132,6 +133,7 @@ declare const fullApi: ApiFromModules<{
   "lib/slugify": typeof lib_slugify;
   "lib/voetbalinbelgie/allowlist": typeof lib_voetbalinbelgie_allowlist;
   "lib/voetbalinbelgie/disambiguateTeamNames": typeof lib_voetbalinbelgie_disambiguateTeamNames;
+  "lib/voetbalinbelgie/matchIdentity": typeof lib_voetbalinbelgie_matchIdentity;
   "lib/voetbalinbelgie/matchMerge": typeof lib_voetbalinbelgie_matchMerge;
   "lib/voetbalinbelgie/parseCompetition": typeof lib_voetbalinbelgie_parseCompetition;
   "lib/voetbalinbelgie/parseHtml": typeof lib_voetbalinbelgie_parseHtml;
