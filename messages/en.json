@@ -247,6 +247,7 @@
       "nav": {
         "calendar": "Calendar",
         "automations": "Automations",
+        "goalHighlights": "Goal highlights",
         "socials": "Connected socials"
       },
       "user": {
@@ -293,6 +294,73 @@
           "reauth": "Prompt admins to reconnect when tokens expire or Meta permissions change."
         }
       }
+    },
+    "goalHighlights": {
+      "title": "Goal highlights",
+      "description": "Paste a public Veo match link to compile goal clips into one highlight video.",
+      "urlLabel": "Veo match URL",
+      "urlPlaceholder": "https://app.veo.co/matches/…",
+      "generate": "Generate",
+      "generating": "Validating match…",
+      "generateFailed": "Couldn't start this compilation. Please try again.",
+      "reopenedExisting": "Opening existing compilation for this match.",
+      "errors": {
+        "invalidUrl": "Paste a valid app.veo.co match link",
+        "notPublic": "This match is not public or was not found",
+        "noGoals": "No goals found in this match",
+        "tooManyGoals": "Too many goals (max {max})",
+        "clipNotReady": "A goal clip is not ready yet",
+        "fetchFailed": "Couldn't load this match from Veo. Please try again.",
+        "unexpected": "Something went wrong while validating this match"
+      },
+      "historyTitle": "Recent compilations",
+      "historyEmpty": "No goal highlight compilations yet.",
+      "backToList": "Back to goal highlights",
+      "scoreLine": "{own} - {opponent}",
+      "goalCount": "{count, plural, one {# goal} other {# goals}}",
+      "warningTitle": "Score mismatch",
+      "status": {
+        "pending": "Queued",
+        "fetching": "Fetching",
+        "processing": "Compiling",
+        "ready": "Ready",
+        "failed": "Failed"
+      },
+      "videoArea": {
+        "pending": "Starting compilation…",
+        "fetching": "Fetching match data…",
+        "processing": "Compiling goal highlights…",
+        "failed": "This compilation failed.",
+        "expired": "Stored video removed",
+        "expiredDescription": "The compiled video was removed after 90 days. Regenerate to create a new one.",
+        "download": "Download video",
+        "downloading": "Downloading…",
+        "downloadFailed": "Couldn't download the video. Please try again."
+      },
+      "expiresOn": "Expires on {date}",
+      "videoExpired": "Video removed",
+      "captionLabel": "Caption",
+      "captionPlaceholder": "Write a caption for your social post…",
+      "captionCharacterCount": "{count} / {max} characters",
+      "composeSaving": "Saving…",
+      "composeSaved": "Saved",
+      "composeUnsaved": "Unsaved changes",
+      "composeSaveFailed": "Couldn't save caption. Please try again.",
+      "channelToggleSuccess": "Posting channel updated.",
+      "channelToggleFailed": "Couldn't update posting channel. Please try again.",
+      "socialChannelsTitle": "Social channels",
+      "postToSocial": "Post to social",
+      "postComingSoon": "Social posting coming soon",
+      "regenerateVideo": "Regenerate video",
+      "regenerating": "Regenerating…",
+      "regenerateStarted": "Video compilation started.",
+      "delete": "Delete",
+      "deleting": "Deleting…",
+      "cancel": "Cancel",
+      "deleteConfirmTitle": "Delete compilation?",
+      "deleteConfirmDescription": "This will permanently delete \"{name}\" and any stored video. This cannot be undone.",
+      "deleteSuccess": "Compilation deleted.",
+      "deleteFailed": "Couldn't delete compilation. Please try again."
     },
     "automations": {
       "title": "Automations",

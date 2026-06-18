@@ -46,6 +46,20 @@ convex/
 │   ├── internalQueries.ts     # Org-scoped asset storage ids for server render
 │   └── mutations.ts           # Upload URL, save, delete assets
 │
+├── veoPosts/
+│   ├── queries.ts             # listJobs, getJob
+│   ├── mutations.ts           # updateDraftCaption, setPostingChannelEnabled, deleteJob
+│   ├── actions.ts             # "use node" — createOrOpenJob, regenerateJob
+│   ├── internalQueries.ts     # Dedupe plan, processing/regeneration lookups
+│   ├── internalMutations.ts   # Pipeline state, expiry cron
+│   ├── internalActions.ts     # "use node" — VGF webhook + poll fallback
+│   ├── helpers.ts             # Veo client, goal filter, dedupe
+│   ├── vgfHelpers.ts          # FFmpeg command builder, webhook URL
+│   ├── vgfClient.ts           # "use node" — VGF SDK submit
+│   ├── downloadVgfOutput.ts   # "use node" — stream VGF output to storage
+│   ├── access.ts              # Org-scoped job access
+│   └── validators.ts
+│
 └── lib/                       # Pure TypeScript helpers (no Convex exports)
     ├── email.ts
     └── slugify.ts
@@ -61,6 +75,8 @@ Convex maps file paths to API references:
 | `auth/queries.ts` | `api.auth.queries.getCurrentUser` |
 | `organizations/mutations.ts` | `api.organizations.mutations.createOrganization` |
 | `emails/actions.ts` | `internal.emails.actions.sendOtpEmail` |
+| `veoPosts/queries.ts` | `api.veoPosts.queries.listJobs` |
+| `veoPosts/actions.ts` | `api.veoPosts.actions.createOrOpenJob` |
 
 ## Conventions
 

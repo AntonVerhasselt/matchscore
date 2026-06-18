@@ -187,4 +187,46 @@ export default defineSchema({
   })
     .index("by_organizationId", ["organizationId"])
     .index("by_storageId", ["storageId"]),
+
+  veoPostJobs: defineTable({
+    organizationId: v.id("organizations"),
+    createdByUserId: v.string(),
+    veoMatchSlug: v.string(),
+    veoMatchUrl: v.string(),
+    veoMatchTitle: v.optional(v.string()),
+    veoClubName: v.optional(v.string()),
+    veoOpponentName: v.optional(v.string()),
+    veoScoreOwn: v.optional(v.number()),
+    veoScoreOpponent: v.optional(v.number()),
+    draftCaption: v.optional(v.string()),
+    postingChannels: postingChannelStatusesValidator,
+    status: v.union(
+      v.literal("pending"),
+      v.literal("fetching"),
+      v.literal("processing"),
+      v.literal("ready"),
+      v.literal("failed"),
+    ),
+    goalCount: v.optional(v.number()),
+    goalStartsSeconds: v.optional(v.array(v.number())),
+    goalHighlightIds: v.optional(v.array(v.string())),
+    warningMessage: v.optional(v.string()),
+    vgffmpegJobId: v.optional(v.string()),
+    outputStorageId: v.optional(v.id("_storage")),
+    outputByteSize: v.optional(v.number()),
+    outputDurationSeconds: v.optional(v.number()),
+    errorMessage: v.optional(v.string()),
+    createdAt: v.number(),
+    completedAt: v.optional(v.number()),
+    failedAt: v.optional(v.number()),
+    expiresAt: v.optional(v.number()),
+  })
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_and_createdAt", ["organizationId", "createdAt"])
+    .index("by_organizationId_and_veoMatchSlug", [
+      "organizationId",
+      "veoMatchSlug",
+    ])
+    .index("by_vgffmpegJobId", ["vgffmpegJobId"])
+    .index("by_expiresAt", ["expiresAt"]),
 });

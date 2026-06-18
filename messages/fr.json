@@ -247,6 +247,7 @@
       "nav": {
         "calendar": "Calendrier",
         "automations": "Automatisations",
+        "goalHighlights": "Buts en vidéo",
         "socials": "Réseaux connectés"
       },
       "user": {
@@ -293,6 +294,73 @@
           "reauth": "Inviter les admins à se reconnecter lorsque les tokens expirent ou que les autorisations Meta changent."
         }
       }
+    },
+    "goalHighlights": {
+      "title": "Buts en vidéo",
+      "description": "Collez un lien public de match Veo pour compiler les buts en une seule vidéo.",
+      "urlLabel": "URL du match Veo",
+      "urlPlaceholder": "https://app.veo.co/matches/…",
+      "generate": "Générer",
+      "generating": "Validation du match…",
+      "generateFailed": "Impossible de démarrer cette compilation. Veuillez réessayer.",
+      "reopenedExisting": "Ouverture de la compilation existante pour ce match.",
+      "errors": {
+        "invalidUrl": "Collez un lien de match app.veo.co valide",
+        "notPublic": "Ce match n'est pas public ou est introuvable",
+        "noGoals": "Aucun but trouvé dans ce match",
+        "tooManyGoals": "Trop de buts (max {max})",
+        "clipNotReady": "Un clip de but n'est pas encore prêt",
+        "fetchFailed": "Impossible de charger ce match depuis Veo. Veuillez réessayer.",
+        "unexpected": "Une erreur s'est produite lors de la validation de ce match"
+      },
+      "historyTitle": "Compilations récentes",
+      "historyEmpty": "Aucune compilation de buts pour l'instant.",
+      "backToList": "Retour aux buts en vidéo",
+      "scoreLine": "{own} - {opponent}",
+      "goalCount": "{count, plural, one {# but} other {# buts}}",
+      "warningTitle": "Écart de score",
+      "status": {
+        "pending": "En file d'attente",
+        "fetching": "Récupération",
+        "processing": "Compilation",
+        "ready": "Prêt",
+        "failed": "Échec"
+      },
+      "videoArea": {
+        "pending": "Démarrage de la compilation…",
+        "fetching": "Récupération des données du match…",
+        "processing": "Compilation des buts…",
+        "failed": "Cette compilation a échoué.",
+        "expired": "Vidéo stockée supprimée",
+        "expiredDescription": "La vidéo compilée a été supprimée après 90 jours. Regénérez pour en créer une nouvelle.",
+        "download": "Télécharger la vidéo",
+        "downloading": "Téléchargement…",
+        "downloadFailed": "Impossible de télécharger la vidéo. Veuillez réessayer."
+      },
+      "expiresOn": "Expire le {date}",
+      "videoExpired": "Vidéo supprimée",
+      "captionLabel": "Légende",
+      "captionPlaceholder": "Rédigez une légende pour votre publication…",
+      "captionCharacterCount": "{count} / {max} caractères",
+      "composeSaving": "Enregistrement…",
+      "composeSaved": "Enregistré",
+      "composeUnsaved": "Modifications non enregistrées",
+      "composeSaveFailed": "Impossible d'enregistrer la légende. Veuillez réessayer.",
+      "channelToggleSuccess": "Canal de publication mis à jour.",
+      "channelToggleFailed": "Impossible de mettre à jour le canal de publication. Veuillez réessayer.",
+      "socialChannelsTitle": "Canaux sociaux",
+      "postToSocial": "Publier sur les réseaux",
+      "postComingSoon": "Publication sur les réseaux bientôt disponible",
+      "regenerateVideo": "Regénérer la vidéo",
+      "regenerating": "Regénération…",
+      "regenerateStarted": "Compilation vidéo démarrée.",
+      "delete": "Supprimer",
+      "deleting": "Suppression…",
+      "cancel": "Annuler",
+      "deleteConfirmTitle": "Supprimer la compilation ?",
+      "deleteConfirmDescription": "Cela supprimera définitivement « {name} » et toute vidéo stockée. Cette action est irréversible.",
+      "deleteSuccess": "Compilation supprimée.",
+      "deleteFailed": "Impossible de supprimer la compilation. Veuillez réessayer."
     },
     "automations": {
       "title": "Automatisations",

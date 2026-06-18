@@ -247,6 +247,7 @@
       "nav": {
         "calendar": "Kalender",
         "automations": "Automatisierungen",
+        "goalHighlights": "Tor-Highlights",
         "socials": "Verbundene Socials"
       },
       "user": {
@@ -293,6 +294,73 @@
           "reauth": "Admins auffordern, sich erneut zu verbinden, wenn Tokens ablaufen oder sich Meta-Berechtigungen ändern."
         }
       }
+    },
+    "goalHighlights": {
+      "title": "Tor-Highlights",
+      "description": "Fügen Sie einen öffentlichen Veo-Spiel-Link ein, um Tore zu einem Highlight-Video zusammenzufügen.",
+      "urlLabel": "Veo-Spiel URL",
+      "urlPlaceholder": "https://app.veo.co/matches/…",
+      "generate": "Generieren",
+      "generating": "Spiel wird geprüft…",
+      "generateFailed": "Diese Zusammenstellung konnte nicht gestartet werden. Bitte erneut versuchen.",
+      "reopenedExisting": "Vorhandene Zusammenstellung für dieses Spiel wird geöffnet.",
+      "errors": {
+        "invalidUrl": "Fügen Sie einen gültigen app.veo.co Spiel-Link ein",
+        "notPublic": "Dieses Spiel ist nicht öffentlich oder wurde nicht gefunden",
+        "noGoals": "In diesem Spiel wurden keine Tore gefunden",
+        "tooManyGoals": "Zu viele Tore (max {max})",
+        "clipNotReady": "Ein Tor-Clip ist noch nicht bereit",
+        "fetchFailed": "Dieses Spiel konnte nicht von Veo geladen werden. Bitte erneut versuchen.",
+        "unexpected": "Beim Prüfen dieses Spiels ist ein Fehler aufgetreten"
+      },
+      "historyTitle": "Letzte Zusammenstellungen",
+      "historyEmpty": "Noch keine Tor-Highlights.",
+      "backToList": "Zurück zu Tor-Highlights",
+      "scoreLine": "{own} - {opponent}",
+      "goalCount": "{count, plural, one {# Tor} other {# Tore}}",
+      "warningTitle": "Ergebnisabweichung",
+      "status": {
+        "pending": "Warteschlange",
+        "fetching": "Abrufen",
+        "processing": "Zusammenstellen",
+        "ready": "Fertig",
+        "failed": "Fehlgeschlagen"
+      },
+      "videoArea": {
+        "pending": "Zusammenstellung wird gestartet…",
+        "fetching": "Spieldaten werden abgerufen…",
+        "processing": "Tore werden zusammengestellt…",
+        "failed": "Diese Zusammenstellung ist fehlgeschlagen.",
+        "expired": "Gespeichertes Video entfernt",
+        "expiredDescription": "Das zusammengestellte Video wurde nach 90 Tagen entfernt. Neu generieren, um ein neues zu erstellen.",
+        "download": "Video herunterladen",
+        "downloading": "Wird heruntergeladen…",
+        "downloadFailed": "Video konnte nicht heruntergeladen werden. Bitte erneut versuchen."
+      },
+      "expiresOn": "Läuft ab am {date}",
+      "videoExpired": "Video entfernt",
+      "captionLabel": "Bildunterschrift",
+      "captionPlaceholder": "Schreiben Sie eine Bildunterschrift für Ihren Social-Post…",
+      "captionCharacterCount": "{count} / {max} Zeichen",
+      "composeSaving": "Speichern…",
+      "composeSaved": "Gespeichert",
+      "composeUnsaved": "Ungespeicherte Änderungen",
+      "composeSaveFailed": "Bildunterschrift konnte nicht gespeichert werden. Bitte erneut versuchen.",
+      "channelToggleSuccess": "Posting-Kanal aktualisiert.",
+      "channelToggleFailed": "Postkanal konnte nicht aktualisiert werden. Bitte erneut versuchen.",
+      "socialChannelsTitle": "Social-Kanäle",
+      "postToSocial": "Auf Social posten",
+      "postComingSoon": "Social Posting demnächst verfügbar",
+      "regenerateVideo": "Video neu generieren",
+      "regenerating": "Wird neu generiert…",
+      "regenerateStarted": "Videozusammenstellung gestartet.",
+      "delete": "Löschen",
+      "deleting": "Wird gelöscht…",
+      "cancel": "Abbrechen",
+      "deleteConfirmTitle": "Zusammenstellung löschen?",
+      "deleteConfirmDescription": "Dies löscht \"{name}\" und jedes gespeicherte Video dauerhaft. Dies kann nicht rückgängig gemacht werden.",
+      "deleteSuccess": "Zusammenstellung gelöscht.",
+      "deleteFailed": "Zusammenstellung konnte nicht gelöscht werden. Bitte erneut versuchen."
     },
     "automations": {
       "title": "Automatisierungen",

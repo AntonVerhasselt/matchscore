@@ -1,26 +1,25 @@
 "use client";
 
 import { ArrowRight, Megaphone, Trophy } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { api } from "@/convex/_generated/api";
+import {
+  POSTING_CHANNEL_PLATFORMS,
+  PostingChannelBlock,
+} from "@/components/automations/posting-channel-block";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { SOCIAL_PLATFORM_FAVICONS } from "@/lib/automations/social-platforms";
 import {
   automationTemplatesPath,
-  toPostingChannel,
   toBackendAutomationType,
   type AutomationSummary,
   type AutomationTypeSlug,
   type PostingChannel,
-  type SocialChannel,
-  type SocialPlatform,
 } from "@/lib/automations/types";
 import { showErrorToast, showSuccessToast } from "@/lib/user-feedback";
 import { useMutation } from "convex/react";
@@ -32,107 +31,6 @@ const TYPE_ICONS: Record<
   result: Trophy,
   preview: Megaphone,
 };
-
-const CHANNELS: SocialChannel[] = ["posts", "story"];
-const PLATFORMS: SocialPlatform[] = ["facebook", "instagram"];
-
-function PlatformHeader({ platform }: { platform: SocialPlatform }) {
-  const tSocial = useTranslations("app.automations.social");
-
-  return (
-    <div className="flex items-center gap-2">
-      <Image
-        src={SOCIAL_PLATFORM_FAVICONS[platform]}
-        alt=""
-        width={16}
-        height={16}
-        className="size-4 shrink-0"
-        unoptimized
-      />
-      <p className="text-sm font-medium">{tSocial(platform)}</p>
-    </div>
-  );
-}
-
-type PlatformBlockProps = {
-  platform: SocialPlatform;
-  automationType: AutomationTypeSlug;
-  automation?: AutomationSummary;
-  isSavingGlobalStatus: boolean;
-  savingPostingChannel: PostingChannel | null;
-  onPostingChannelChange: (
-    postingChannel: PostingChannel,
-    isEnabled: boolean,
-  ) => void;
-};
-
-function PlatformBlock({
-  platform,
-  automationType,
-  automation,
-  isSavingGlobalStatus,
-  savingPostingChannel,
-  onPostingChannelChange,
-}: PlatformBlockProps) {
-  const tSocial = useTranslations("app.automations.social");
-  const isGloballyEnabled = automation?.isGloballyEnabled ?? true;
-  const isAnyPostingChannelSaving = savingPostingChannel !== null;
-
-  return (
-    <div>
-      <PlatformHeader platform={platform} />
-      <div className="mt-2 space-y-1.5 pl-6">
-        {CHANNELS.map((channel) => {
-          const postingChannel = toPostingChannel(platform, channel);
-          const channelSwitchId = `${automationType}-${postingChannel}`;
-          const isPostingChannelEnabled =
-            automation?.postingChannels?.[postingChannel] ?? true;
-
-          return (
-            <div
-            key={channel}
-              className="flex items-center justify-between gap-6"
-            >
-              <span
-                className={
-                  isGloballyEnabled
-                    ? "text-xs text-muted-foreground"
-                    : "text-xs text-muted-foreground/50"
-                }
-              >
-                {tSocial(channel)}
-              </span>
-              <Label htmlFor={channelSwitchId} className="sr-only">
-                {tSocial("toggleChannel", {
-                  platform: tSocial(platform),
-                  channel: tSocial(channel),
-                })}
-              </Label>
-              <Switch
-                id={channelSwitchId}
-                size="sm"
-                checked={isPostingChannelEnabled}
-                disabled={
-                  !automation ||
-                  !isGloballyEnabled ||
-                  isSavingGlobalStatus ||
-                  isAnyPostingChannelSaving
-                }
-                onCheckedChange={(checked) =>
-                  onPostingChannelChange(postingChannel, checked)
-                }
-                aria-label={tSocial("toggleChannel", {
-                  platform: tSocial(platform),
-                  channel: tSocial(channel),
-                })}
-              />
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 type AutomationTypeCardProps = {
   automationType: AutomationTypeSlug;
@@ -280,13 +178,26 @@ export function AutomationTypeCard({
 
           {/* Right: social platforms */}
           <div className="flex w-full shrink-0 flex-col gap-5 border-t border-border p-4 md:w-[31%] md:justify-center md:border-t-0 md:border-l md:p-3">
-            {PLATFORMS.map((platform) => (
-              <PlatformBlock
+            {POSTING_CHANNEL_PLATFORMS.map((platform) => (
+              <PostingChannelBlock
                 key={platform}
                 platform={platform}
-                automationType={automationType}
-                automation={automation}
-                isSavingGlobalStatus={isSavingGlobalStatus}
+                idPrefix={automationType}
+                postingChannels={
+                  automation?.postingChannels ?? {
+                    facebookPagePost: true,
+                    facebookPageStory: true,
+                    instagramProfilePost: true,
+                    instagramProfileStory: true,
+                  }
+                }
+                disabled={
+                  !automation ||
+                  !isGloballyEnabled ||
+                  isSavingGlobalStatus ||
+                  isAnyPostingChannelSaving
+                }
+                muted={!isGloballyEnabled}
                 savingPostingChannel={savingPostingChannel}
                 onPostingChannelChange={(postingChannel, checked) =>
                   void handlePostingChannelChange(postingChannel, checked)

@@ -1,7 +1,7 @@
 # Veo (app.veo.co) API — research & reference
 
 > **Status:** Research complete (undocumented internal web API)  
-> **Implementation plan:** [../plan/veo-posts.md](../plan/veo-posts.md)  
+> **Feature documentation:** [goal-highlights.md](./goal-highlights.md)  
 > **Example match (public):** [KSVA Seniors A vs Berchem](https://app.veo.co/matches/20260321-match-ksva-seniors-a-vee5ec95/)  
 > **Last verified:** 2026-06-17
 
@@ -195,7 +195,7 @@ Example match: **23** highlights total.
 | `goal` | Goal | **3** |
 | `shot-on-goal` | Shot on goal | 20 |
 
-**Filter for goals:** include tags where `slug === "goal"` or `slug` ends with `-goal`, but **never** `shot-on-goal`. See [plan/veo-posts.md §2](../plan/veo-posts.md#2-confirmed-product-decisions).
+**Filter for goals:** include tags where `slug === "goal"` or `slug` ends with `-goal`, but **never** `shot-on-goal`. See [goal-highlights.md § Goal selection rules](./goal-highlights.md#goal-selection-rules).
 
 Other slugs (`penalty-goal`, `own-goal`, …) were **not seen** in this match but may exist elsewhere.
 
@@ -415,4 +415,4 @@ export function filterGoalHighlights(highlights: VeoHighlight[]): VeoHighlight[]
 |----------|-----|
 | Veo marketing | https://www.veo.com/ |
 | Veo app (example) | https://app.veo.co/matches/20260321-match-ksva-seniors-a-vee5ec95/ |
-| Implementation plan | [../plan/veo-posts.md](../plan/veo-posts.md) |
+| Goal highlights feature | [goal-highlights.md](./goal-highlights.md) |
