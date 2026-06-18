@@ -2,6 +2,8 @@ import { ConvexError, v } from "convex/values";
 import { internalMutation } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { DEFAULT_POSTING_CHANNEL_STATUSES } from "../automations/constants";
+import { listVeoPostJobsBySlug } from "./access";
+import { resolveExistingJob } from "./helpers";
 import { VGF_JOB_RETENTION_MS } from "./vgfHelpers";
 
 const insertProcessingJobArgsValidator = v.object({
@@ -40,9 +42,32 @@ async function getJobOrThrow(
 
 export const insertProcessingJob = internalMutation({
   args: insertProcessingJobArgsValidator,
-  returns: v.id("veoPostJobs"),
+  returns: v.object({
+    jobId: v.id("veoPostJobs"),
+    created: v.boolean(),
+  }),
   handler: async (ctx, args) => {
-    return await ctx.db.insert("veoPostJobs", {
+    const existingJobs = await listVeoPostJobsBySlug(
+      ctx,
+      args.organizationId,
+      args.veoMatchSlug,
+    );
+    const dedupe = resolveExistingJob(
+      existingJobs.map((job) => ({
+        _id: job._id,
+        status: job.status,
+        outputStorageId: job.outputStorageId,
+        expiresAt: job.expiresAt,
+        createdAt: job.createdAt,
+      })),
+      Date.now(),
+    );
+
+    if (dedupe.action === "open") {
+      return { jobId: dedupe.jobId, created: false };
+    }
+
+    const jobId = await ctx.db.insert("veoPostJobs", {
       organizationId: args.organizationId,
       createdByUserId: args.createdByUserId,
       veoMatchSlug: args.veoMatchSlug,
@@ -60,6 +85,7 @@ export const insertProcessingJob = internalMutation({
       status: "processing",
       createdAt: Date.now(),
     });
+    return { jobId, created: true };
   },
 });
 
@@ -165,6 +191,7 @@ export const resetJobForRegeneration = internalMutation({
           job.outputStorageId,
           error,
         );
+        throw error;
       }
     }
 
@@ -213,6 +240,13 @@ export const expireStoredVideos = internalMutation({
 
       try {
         await ctx.storage.delete(job.outputStorageId);
+        await ctx.db.patch(job._id, {
+          outputStorageId: undefined,
+          outputByteSize: undefined,
+          outputDurationSeconds: undefined,
+          expiresAt: undefined,
+        });
+        clearedCount += 1;
       } catch (error) {
         console.warn(
           "Failed to delete expired goal highlight video blob",
@@ -221,13 +255,6 @@ export const expireStoredVideos = internalMutation({
           error,
         );
       }
-
-      await ctx.db.patch(job._id, {
-        outputStorageId: undefined,
-        outputByteSize: undefined,
-        outputDurationSeconds: undefined,
-      });
-      clearedCount += 1;
     }
 
     return { clearedCount };

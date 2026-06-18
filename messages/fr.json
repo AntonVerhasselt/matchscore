@@ -346,6 +346,7 @@
       "composeSaved": "Enregistré",
       "composeUnsaved": "Modifications non enregistrées",
       "composeSaveFailed": "Impossible d'enregistrer la légende. Veuillez réessayer.",
+      "channelToggleSuccess": "Canal de publication mis à jour.",
       "channelToggleFailed": "Impossible de mettre à jour le canal de publication. Veuillez réessayer.",
       "socialChannelsTitle": "Canaux sociaux",
       "postToSocial": "Publier sur les réseaux",

@@ -15,6 +15,8 @@ const NON_GOAL_SLUGS = new Set(["shot-on-goal"]);
 
 const VEO_API = "https://app.veo.co/api/app/matches";
 
+const VEO_FETCH_TIMEOUT_MS = 30_000;
+
 const veoHeaders = {
   accept: "*/*",
   "veo-agent": "veo:svc:web-app",
@@ -262,10 +264,27 @@ function mapVeoHttpError(status: number): VeoApiError {
   );
 }
 
+async function fetchVeo(url: string): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), VEO_FETCH_TIMEOUT_MS);
+
+  try {
+    return await fetch(url, {
+      headers: veoHeaders,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new VeoApiError("Veo request timed out", "fetch_failed");
+    }
+    throw new VeoApiError("Couldn't reach Veo", "fetch_failed");
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 export async function fetchVeoMatch(slug: string): Promise<VeoMatchSummary> {
-  const response = await fetch(`${VEO_API}/${slug}/`, {
-    headers: veoHeaders,
-  });
+  const response = await fetchVeo(`${VEO_API}/${slug}/`);
 
   if (!response.ok) {
     throw mapVeoHttpError(response.status);
@@ -300,9 +319,8 @@ export async function fetchVeoHighlights(slug: string): Promise<VeoHighlight[]> 
   }
   params.set("include_ai", "true");
 
-  const response = await fetch(
+  const response = await fetchVeo(
     `${VEO_API}/${slug}/highlights/?${params.toString()}`,
-    { headers: veoHeaders },
   );
 
   if (!response.ok) {

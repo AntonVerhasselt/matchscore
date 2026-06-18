@@ -346,6 +346,7 @@
       "composeSaved": "Opgeslagen",
       "composeUnsaved": "Niet-opgeslagen wijzigingen",
       "composeSaveFailed": "Bijschrift kon niet worden opgeslagen. Probeer het opnieuw.",
+      "channelToggleSuccess": "Postkanaal bijgewerkt.",
       "channelToggleFailed": "Postkanaal kon niet worden bijgewerkt. Probeer het opnieuw.",
       "socialChannelsTitle": "Social kanalen",
       "postToSocial": "Posten op social",

@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Doc } from "@/convex/_generated/dataModel";
+import { showErrorToast } from "@/lib/user-feedback";
 
 type JobStatus = Doc<"veoPostJobs">["status"];
 
@@ -81,7 +82,6 @@ export function JobVideoArea({
   videoTitle,
 }: JobVideoAreaProps) {
   const [isDownloading, setIsDownloading] = useState(false);
-  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const handleDownload = async () => {
     if (!outputVideoUrl || isDownloading) {
@@ -89,7 +89,6 @@ export function JobVideoArea({
     }
 
     setIsDownloading(true);
-    setDownloadError(null);
 
     try {
       await downloadVideoFile(
@@ -97,7 +96,7 @@ export function JobVideoArea({
         sanitizeDownloadFilename(videoTitle),
       );
     } catch {
-      setDownloadError(downloadFailedLabel);
+      showErrorToast(downloadFailedLabel);
     } finally {
       setIsDownloading(false);
     }
@@ -144,9 +143,6 @@ export function JobVideoArea({
           >
             {isDownloading ? downloadingLabel : downloadLabel}
           </Button>
-          {downloadError ? (
-            <p className="text-sm text-destructive">{downloadError}</p>
-          ) : null}
         </div>
       </div>
     );

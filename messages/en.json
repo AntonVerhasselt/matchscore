@@ -346,6 +346,7 @@
       "composeSaved": "Saved",
       "composeUnsaved": "Unsaved changes",
       "composeSaveFailed": "Couldn't save caption. Please try again.",
+      "channelToggleSuccess": "Posting channel updated.",
       "channelToggleFailed": "Couldn't update posting channel. Please try again.",
       "socialChannelsTitle": "Social channels",
       "postToSocial": "Post to social",

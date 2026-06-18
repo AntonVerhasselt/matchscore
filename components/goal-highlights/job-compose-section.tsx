@@ -94,6 +94,7 @@ export function JobComposeSection({
         postingChannel,
         isEnabled,
       });
+      showSuccessToast(t("channelToggleSuccess"));
     } catch {
       showErrorToast(t("channelToggleFailed"));
     } finally {

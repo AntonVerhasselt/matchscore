@@ -346,6 +346,7 @@
       "composeSaved": "Gespeichert",
       "composeUnsaved": "Ungespeicherte Änderungen",
       "composeSaveFailed": "Bildunterschrift konnte nicht gespeichert werden. Bitte erneut versuchen.",
+      "channelToggleSuccess": "Posting-Kanal aktualisiert.",
       "channelToggleFailed": "Postkanal konnte nicht aktualisiert werden. Bitte erneut versuchen.",
       "socialChannelsTitle": "Social-Kanäle",
       "postToSocial": "Auf Social posten",

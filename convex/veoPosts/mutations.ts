@@ -65,6 +65,7 @@ export const deleteJob = mutation({
           job.outputStorageId,
           error,
         );
+        throw error;
       }
     }
 

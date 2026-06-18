@@ -23,12 +23,25 @@ async function startVgfPipeline(
   jobId: Id<"veoPostJobs">,
   goals: Pick<VeoHighlight, "videos">[],
 ): Promise<void> {
+  let vgffmpegJobId: string;
   try {
-    const vgffmpegJobId = await submitGoalCompilationJob({
+    vgffmpegJobId = await submitGoalCompilationJob({
       goals,
       veoPostJobId: jobId,
     });
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : "Video compilation could not be started";
+    await ctx.runMutation(internal.veoPosts.internalMutations.markFailed, {
+      jobId,
+      errorMessage,
+    });
+    return;
+  }
 
+  try {
     await ctx.runMutation(internal.veoPosts.internalMutations.attachVgfJobId, {
       jobId,
       vgffmpegJobId,
@@ -40,14 +53,12 @@ async function startVgfPipeline(
       { jobId },
     );
   } catch (error) {
-    const errorMessage =
-      error instanceof Error
-        ? error.message
-        : "Video compilation could not be started";
-    await ctx.runMutation(internal.veoPosts.internalMutations.markFailed, {
+    console.error(
+      "Goal highlight post-submission bookkeeping failed",
       jobId,
-      errorMessage,
-    });
+      vgffmpegJobId,
+      error,
+    );
   }
 }
 
@@ -78,7 +89,7 @@ export const createOrOpenJob = action({
 
     const { match, goals, warningMessage } = validated;
 
-    const jobId = await ctx.runMutation(
+    const { jobId, created } = await ctx.runMutation(
       internal.veoPosts.internalMutations.insertProcessingJob,
       {
         organizationId: plan.organizationId,
@@ -97,9 +108,11 @@ export const createOrOpenJob = action({
       },
     );
 
-    await startVgfPipeline(ctx, jobId, goals);
+    if (created) {
+      await startVgfPipeline(ctx, jobId, goals);
+    }
 
-    return { jobId, reopened: false };
+    return { jobId, reopened: !created };
   },
 });
 

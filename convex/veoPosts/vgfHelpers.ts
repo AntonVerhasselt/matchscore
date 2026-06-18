@@ -38,9 +38,10 @@ export function buildVgfFfmpegCommand(
   }
 
   if (count === 1) {
+    const [inputName] = entries[0]!;
     return {
       ffmpegCommands: [
-        `-i {{goal1.mp4}} -c:v libx264 -crf 23 -preset fast -c:a aac {{${VGF_OUTPUT_FILENAME}}}`,
+        `-i {{${inputName}}} -c:v libx264 -crf 23 -preset fast -c:a aac {{${VGF_OUTPUT_FILENAME}}}`,
       ],
       outputFiles: [VGF_OUTPUT_FILENAME],
     };

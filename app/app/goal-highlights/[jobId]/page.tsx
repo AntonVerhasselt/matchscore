@@ -79,7 +79,6 @@ export default function GoalHighlightJobPage() {
     setIsDeleting(true);
     try {
       await deleteJob({ jobId });
-      showSuccessToast(t("deleteSuccess"));
       router.replace("/app/goal-highlights");
     } catch {
       showErrorToast(t("deleteFailed"));
@@ -177,7 +176,11 @@ export default function GoalHighlightJobPage() {
           ) : null}
           {job.videoExpired ? (
             <>
-              {(scoreLine || job.goalCount !== null) ? <span> · </span> : null}
+              {(scoreLine ||
+                job.goalCount !== null ||
+                (job.hasVideo && job.expiresAt !== null)) ? (
+                <span> · </span>
+              ) : null}
               <span>{t("videoExpired")}</span>
             </>
           ) : null}

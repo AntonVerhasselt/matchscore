@@ -62,6 +62,10 @@ export default function GoalHighlightsPage() {
     });
 
   const handleGenerate = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
     const trimmedUrl = veoMatchUrl.trim();
     if (!trimmedUrl) {
       showErrorToast(t("errors.invalidUrl"));
@@ -113,6 +117,7 @@ export default function GoalHighlightsPage() {
               inputMode="url"
               placeholder={t("urlPlaceholder")}
               value={veoMatchUrl}
+              disabled={isSubmitting}
               onChange={(event) => setVeoMatchUrl(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {

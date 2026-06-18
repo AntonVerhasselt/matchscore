@@ -81,7 +81,7 @@ Re-submitting the same URL never creates duplicate rows when a reusable job alre
 
 ## Architecture
 
-```
+```text
 ┌──────────┐    ┌─────────────────────────┐    ┌──────────────────┐
 │ Next.js  │───▶│ createOrOpenJob         │───▶│ Veo web API      │
 │ UI       │    │ regenerateJob (actions) │    │ (public match)   │
@@ -362,7 +362,7 @@ Covers URL parsing, goal tag filter, dedupe logic, score-mismatch warning, and V
 
 ## Job lifecycle
 
-```
+```text
                     createOrOpenJob / regenerateJob
                               │
                               ▼
