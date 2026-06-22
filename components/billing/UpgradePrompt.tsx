@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { Lock } from "lucide-react";
 import { useTranslations } from "next-intl";
 
@@ -8,6 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { SubscriptionStatus } from "@/convex/billing/types";
 import type { FeatureBlockReason } from "@/lib/goal-highlights/errors";
+import { useBillingPortal } from "@/lib/billing/use-billing-portal";
 import { cn } from "@/lib/utils";
 
 type UpgradePromptProps = {
@@ -39,18 +39,22 @@ export function UpgradePrompt({
   compact = false,
 }: UpgradePromptProps) {
   const t = useTranslations("app.billing.upgrade");
+  const { openBillingPortal, isOpeningPortal, isBillingReady } =
+    useBillingPortal();
   const descriptionKey = getDescriptionKey(blockReason, subscriptionStatus);
 
   if (compact) {
     return (
       <p className={cn("text-sm text-muted-foreground", className)}>
         {t(descriptionKey)}{" "}
-        <Link
-          href="/app/settings"
-          className="font-medium text-foreground underline-offset-4 hover:underline"
+        <button
+          type="button"
+          className="font-medium text-foreground underline-offset-4 hover:underline disabled:opacity-50"
+          disabled={!isBillingReady || isOpeningPortal}
+          onClick={() => void openBillingPortal()}
         >
-          {t("viewBilling")}
-        </Link>
+          {isOpeningPortal ? t("openingPortal") : t("managePlan")}
+        </button>
       </p>
     );
   }
@@ -61,8 +65,14 @@ export function UpgradePrompt({
       <AlertTitle>{t("goalHighlightsTitle")}</AlertTitle>
       <AlertDescription className="space-y-3">
         <p>{t(descriptionKey)}</p>
-        <Button asChild variant="outline" size="sm">
-          <Link href="/app/settings">{t("viewBilling")}</Link>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={!isBillingReady || isOpeningPortal}
+          onClick={() => void openBillingPortal()}
+        >
+          {isOpeningPortal ? t("openingPortal") : t("managePlan")}
         </Button>
       </AlertDescription>
     </Alert>

@@ -104,50 +104,65 @@
     "pricing": {
       "badge": "Tarifs",
       "title": "Abordable pour chaque club amateur",
-      "description": "Tous les forfaits incluent toutes les fonctionnalités. Pas de limites cachées, pas de frais par publication.",
+      "description": "Choisissez l'offre adaptée à votre club. Publications automatisées à chaque niveau ; buts en vidéo sur Elite et Lifetime.",
       "vatNote": "Tous les prix sont hors TVA. Les abonnements sont facturés annuellement.",
       "perMonth": "/mois",
       "oneTime": "paiement unique",
       "cta": "Commencer",
-      "starter": {
-        "title": "Starter",
-        "description": "Accès complet avec un petit filigrane Matchscore.",
+      "minimum": {
+        "title": "Minimum",
+        "description": "Publications automatisées avec un petit filigrane Matchscore.",
         "price": "€2",
         "billingNote": "€24 facturé annuellement",
         "features": [
-          "Toutes les fonctionnalités incluses",
-          "Publications automatisées illimitées",
-          "Petit filigrane Matchscore sur les publications"
+          "Publications de match automatisées",
+          "Modèles illimités",
+          "Petit filigrane Matchscore"
         ],
         "compactFeatures": [
-          "Toutes les fonctionnalités, publications illimitées",
-          "Petit filigrane Matchscore sur les publications"
+          "Publications automatisées",
+          "Filigrane Matchscore"
         ]
       },
       "pro": {
         "title": "Pro",
-        "description": "Accès complet, sans filigrane.",
-        "price": "€5",
-        "billingNote": "€60 facturé annuellement",
+        "description": "Publications automatisées sans filigrane.",
+        "price": "€9",
+        "billingNote": "€108 facturé annuellement",
         "features": [
-          "Toutes les fonctionnalités incluses",
-          "Publications automatisées illimitées",
+          "Publications de match automatisées",
+          "Modèles illimités",
           "Sans filigrane"
         ],
         "compactFeatures": [
-          "Toutes les fonctionnalités, publications illimitées",
+          "Publications automatisées",
           "Sans filigrane"
+        ]
+      },
+      "elite": {
+        "title": "Elite",
+        "description": "Tout Pro, plus les buts en vidéo.",
+        "price": "€12",
+        "billingNote": "€144 facturé annuellement",
+        "features": [
+          "Tout Pro",
+          "Vidéos highlights de buts",
+          "Sans filigrane"
+        ],
+        "compactFeatures": [
+          "Tout Pro",
+          "Buts en vidéo"
         ]
       },
       "lifetime": {
         "badge": "Meilleure offre",
         "headline": "Payez une fois. Postez pour toujours.",
         "title": "À vie",
-        "description": "Payez une fois, utilisez pour toujours.",
-        "price": "€150",
+        "description": "Payez une fois, utilisez pour toujours — buts en vidéo inclus.",
+        "price": "€250",
         "note": "Paiement unique, sans renouvellement",
         "features": [
-          "Toutes les fonctionnalités incluses",
+          "Tout Elite",
           "Publications automatisées illimitées",
           "Sans filigrane — pour toujours",
           "Utilisez-le pour toujours"
@@ -189,7 +204,11 @@
         },
         {
           "question": "Le prix est-il par club ou par équipe ?",
-          "answer": "Le tarif est par club. Un abonnement couvre les automatisations de votre club pour l'équipe première. Toutes les fonctionnalités sont incluses dans chaque forfait — la seule différence est le filigrane sur le forfait Starter."
+          "answer": "Le tarif est par club. Un abonnement couvre les automatisations de votre club pour l'équipe première. Les offres diffèrent par filigrane (Minimum), publications sans filigrane (Pro) et buts en vidéo (Elite ou Lifetime)."
+        },
+        {
+          "question": "Quelle offre inclut les buts en vidéo ?",
+          "answer": "Les buts en vidéo — compiler des clips de buts Veo en vidéos highlights — sont inclus dans l'abonnement Elite et l'offre Lifetime en paiement unique."
         },
         {
           "question": "Que se passe-t-il après la fin de mon abonnement annuel ?",
@@ -253,7 +272,8 @@
         "upgradeRequiredDescription": "Compilez les clips de buts Veo en vidéos highlights avec l'offre Elite ou Lifetime.",
         "subscriptionPastDueDescription": "L'abonnement de votre club a un paiement en retard. Réactivez la facturation pour utiliser à nouveau les buts en vidéo.",
         "subscriptionCanceledDescription": "L'abonnement de votre club n'est plus actif. Renouvelez la facturation pour utiliser à nouveau les buts en vidéo.",
-        "viewBilling": "Voir la facturation"
+        "managePlan": "Gérer le plan",
+        "openingPortal": "Ouverture du portail de facturation…"
       }
     },
     "shell": {
@@ -689,19 +709,22 @@
       "subscriptionStatus": "Statut de l'abonnement",
       "stripeCatalogMode": "Mode Stripe",
       "billingSyncedAt": "Dernière synchro billing",
-      "featuresTitle": "Accès aux fonctionnalités",
-      "featureAutomationsEdit": "Modifier les automatisations",
-      "featureAutomationsPost": "Publier les automatisations",
-      "featureGoalHighlights": "Highlights de buts",
-      "featureWatermark": "Filigrane sur les publications",
-      "enabled": "Activé",
-      "disabled": "Désactivé",
-      "debugTitle": "Debug Stripe",
+      "stripeInfoTitle": "Infos Stripe",
       "stripeCustomerId": "ID client",
       "stripeSubscriptionId": "ID abonnement",
       "stripePriceId": "ID prix",
       "currentPeriodEnd": "Fin de la période en cours",
-      "subscribeComingSoon": "S'abonner (phase 2)"
+      "upgrade": "Upgrade",
+      "openingPortal": "Ouverture du portail de facturation…",
+      "portalFailed": "Impossible d'ouvrir le portail de facturation. Veuillez réessayer.",
+      "syncing": "Synchronisation de la facturation avec Stripe…",
+      "status": {
+        "active": "Actif",
+        "pastDue": "En retard",
+        "canceled": "Annulé",
+        "none": "Aucun",
+        "canceling": "Annulation en cours"
+      }
     }
   },
   "acceptInvitation": {

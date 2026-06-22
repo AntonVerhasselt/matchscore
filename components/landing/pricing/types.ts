@@ -10,8 +10,9 @@ export type PricingPlan = {
 
 export type PricingPlans = {
   cta: string;
-  starter: PricingPlan;
+  minimum: PricingPlan;
   pro: PricingPlan;
+  elite: PricingPlan;
   lifetime: PricingPlan & {
     headline: string;
   };

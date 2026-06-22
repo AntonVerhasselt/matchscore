@@ -15,6 +15,11 @@ function SubscriptionColumn({ plan, cta }: { plan: PricingPlan; cta: string }) {
   return (
     <div className="flex h-full flex-col border border-border bg-card p-4 sm:p-5">
       <p className="font-heading text-lg uppercase sm:text-xl">{plan.title}</p>
+      {plan.description ? (
+        <p className="mt-1 text-xs text-muted-foreground sm:text-sm">
+          {plan.description}
+        </p>
+      ) : null}
       <div className="mt-3 grid gap-4 sm:grid-cols-[minmax(0,7.5rem)_1fr] sm:items-center sm:gap-5">
         <div className="shrink-0">
           <div className="flex items-baseline gap-1">
@@ -47,14 +52,15 @@ function SubscriptionColumn({ plan, cta }: { plan: PricingPlan; cta: string }) {
 }
 
 export function PricingAnchorSplitLayout({ plans }: PricingAnchorSplitLayoutProps) {
-  const { lifetime, starter, pro, cta } = plans;
+  const { lifetime, minimum, pro, elite, cta } = plans;
 
   return (
     <div className="space-y-3 sm:space-y-4">
       <LifetimeBanner lifetime={lifetime} cta={cta} />
-      <div className="grid gap-3 sm:grid-cols-2 sm:gap-4">
-        <SubscriptionColumn plan={starter} cta={cta} />
+      <div className="grid gap-3 sm:grid-cols-3 sm:gap-4">
+        <SubscriptionColumn plan={minimum} cta={cta} />
         <SubscriptionColumn plan={pro} cta={cta} />
+        <SubscriptionColumn plan={elite} cta={cta} />
       </div>
     </div>
   );

@@ -51,6 +51,7 @@ export const getOrgBillingState = query({
       organizationId: v.id("organizations"),
       plan: v.union(planTierValidator, v.literal("none")),
       subscriptionStatus: subscriptionStatusValidator,
+      subscriptionCancelAtPeriodEnd: v.boolean(),
       stripeCustomerId: v.union(v.string(), v.null()),
       billingSyncedAt: v.union(v.number(), v.null()),
       billingOnboardingCompletedAt: v.union(v.number(), v.null()),
@@ -86,6 +87,9 @@ export const getOrgBillingState = query({
       organizationId: organization._id,
       plan,
       subscriptionStatus: organization.subscriptionStatus ?? "none",
+      subscriptionCancelAtPeriodEnd:
+        (organization.subscriptionCancelAtPeriodEnd ?? false) ||
+        (stripeSubscription?.cancelAtPeriodEnd ?? false),
       stripeCustomerId: organization.stripeCustomerId ?? null,
       billingSyncedAt: organization.billingSyncedAt ?? null,
       billingOnboardingCompletedAt:
@@ -167,6 +171,19 @@ export const needsBillingOnboarding = query({
     }
 
     return organization.billingOnboardingCompletedAt == null;
+  },
+});
+
+export const needsPlanSelection = query({
+  args: {},
+  returns: v.boolean(),
+  handler: async (ctx) => {
+    const loaded = await loadOrgBillingFieldsForCurrentUser(ctx);
+    if (!loaded) {
+      return false;
+    }
+
+    return loaded.plan === "none";
   },
 });
 

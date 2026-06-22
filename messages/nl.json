@@ -104,50 +104,65 @@
     "pricing": {
       "badge": "Prijzen",
       "title": "Betaalbaar voor elke amateurclub",
-      "description": "Alle plannen bevatten alle functies. Geen verborgen limieten, geen kosten per post.",
+      "description": "Kies het plan dat bij je club past. Geautomatiseerd posten op elk niveau; doelpunt highlights op Elite en Lifetime.",
       "vatNote": "Alle prijzen zijn exclusief btw. Abonnementen worden jaarlijks gefactureerd.",
       "perMonth": "/maand",
       "oneTime": "eenmalig",
       "cta": "Aan de slag",
-      "starter": {
-        "title": "Starter",
-        "description": "Volledige toegang met een klein Matchscore-watermerk.",
+      "minimum": {
+        "title": "Minimum",
+        "description": "Geautomatiseerd posten met een klein Matchscore-watermerk.",
         "price": "€2",
         "billingNote": "€24 jaarlijks gefactureerd",
         "features": [
-          "Alle functies inbegrepen",
-          "Onbeperkt geautomatiseerde posts",
-          "Klein Matchscore-watermerk op posts"
+          "Geautomatiseerde wedstrijdposts",
+          "Onbeperkt templates",
+          "Klein Matchscore-watermerk"
         ],
         "compactFeatures": [
-          "Alle functies, onbeperkt posten",
-          "Klein Matchscore-watermerk op posts"
+          "Geautomatiseerde posts",
+          "Matchscore-watermerk"
         ]
       },
       "pro": {
         "title": "Pro",
-        "description": "Volledige toegang, zonder watermerk.",
-        "price": "€5",
-        "billingNote": "€60 jaarlijks gefactureerd",
+        "description": "Geautomatiseerd posten zonder watermerk.",
+        "price": "€9",
+        "billingNote": "€108 jaarlijks gefactureerd",
         "features": [
-          "Alle functies inbegrepen",
-          "Onbeperkt geautomatiseerde posts",
+          "Geautomatiseerde wedstrijdposts",
+          "Onbeperkt templates",
           "Geen watermerk"
         ],
         "compactFeatures": [
-          "Alle functies, onbeperkt posten",
+          "Geautomatiseerde posts",
           "Geen watermerk"
+        ]
+      },
+      "elite": {
+        "title": "Elite",
+        "description": "Alles in Pro, plus doelpunt highlights.",
+        "price": "€12",
+        "billingNote": "€144 jaarlijks gefactureerd",
+        "features": [
+          "Alles in Pro",
+          "Doelpunt highlightvideo's",
+          "Geen watermerk"
+        ],
+        "compactFeatures": [
+          "Alles in Pro",
+          "Doelpunt highlights"
         ]
       },
       "lifetime": {
         "badge": "Beste deal",
         "headline": "Eén keer betalen. Voor altijd posten.",
         "title": "Lifetime",
-        "description": "Eén keer betalen, voor altijd gebruiken.",
-        "price": "€150",
+        "description": "Eén keer betalen, voor altijd gebruiken — inclusief doelpunt highlights.",
+        "price": "€250",
         "note": "Eenmalige betaling, geen verlenging",
         "features": [
-          "Alle functies inbegrepen",
+          "Alles in Elite",
           "Onbeperkt geautomatiseerde posts",
           "Geen watermerk — voor altijd",
           "Blijf het voor altijd gebruiken"
@@ -189,7 +204,11 @@
         },
         {
           "question": "Is de prijs per club of per team?",
-          "answer": "De prijs is per club. Eén abonnement dekt de automatiseringen van je club voor het eerste elftal. Alle functies zijn inbegrepen in elk plan — het enige verschil is het watermerk op het Starter-plan."
+          "answer": "De prijs is per club. Eén abonnement dekt de automatiseringen van je club voor het eerste elftal. Plannen verschillen door watermerk (Minimum), posten zonder watermerk (Pro) en doelpunt highlights (Elite of Lifetime)."
+        },
+        {
+          "question": "Welk plan bevat doelpunt highlights?",
+          "answer": "Doelpunt highlights — Veo-doelpuntclips samenstellen tot highlightvideo's — zijn inbegrepen in het Elite-abonnement en het Lifetime eenmalige plan."
         },
         {
           "question": "Wat gebeurt er na afloop van mijn jaarabonnement?",
@@ -253,7 +272,8 @@
         "upgradeRequiredDescription": "Stel Veo-doelpuntclips samen tot highlightvideo's met het Elite- of Lifetime-abonnement.",
         "subscriptionPastDueDescription": "Het abonnement van je club heeft een achterstallige betaling. Herstel je facturatie om doelpunt highlights opnieuw te gebruiken.",
         "subscriptionCanceledDescription": "Het abonnement van je club is niet meer actief. Vernieuw je facturatie om doelpunt highlights opnieuw te gebruiken.",
-        "viewBilling": "Facturatie bekijken"
+        "managePlan": "Plan beheren",
+        "openingPortal": "Facturatieportal openen…"
       }
     },
     "shell": {
@@ -689,19 +709,22 @@
       "subscriptionStatus": "Abonnementsstatus",
       "stripeCatalogMode": "Stripe-modus",
       "billingSyncedAt": "Laatste billing-sync",
-      "featuresTitle": "Feature-toegang",
-      "featureAutomationsEdit": "Automatiseringen bewerken",
-      "featureAutomationsPost": "Automatiseringen posten",
-      "featureGoalHighlights": "Goal highlights",
-      "featureWatermark": "Watermerk op posts",
-      "enabled": "Ingeschakeld",
-      "disabled": "Uitgeschakeld",
-      "debugTitle": "Stripe debug",
+      "stripeInfoTitle": "Stripe info",
       "stripeCustomerId": "Customer ID",
       "stripeSubscriptionId": "Subscription ID",
       "stripePriceId": "Price ID",
       "currentPeriodEnd": "Einde huidige periode",
-      "subscribeComingSoon": "Abonneren (fase 2)"
+      "upgrade": "Upgrade",
+      "openingPortal": "Facturatieportal openen…",
+      "portalFailed": "Facturatieportal kon niet worden geopend. Probeer het opnieuw.",
+      "syncing": "Facturatie synchroniseren met Stripe…",
+      "status": {
+        "active": "Actief",
+        "pastDue": "Achterstallig",
+        "canceled": "Geannuleerd",
+        "none": "Geen",
+        "canceling": "Wordt geannuleerd"
+      }
     }
   },
   "acceptInvitation": {

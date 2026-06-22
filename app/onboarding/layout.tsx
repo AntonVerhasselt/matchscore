@@ -18,11 +18,11 @@ export default async function OnboardingLayout({
     {},
   );
   if (hasOrganization) {
-    const needsBillingOnboarding = await fetchAuthQuery(
-      api.billing.queries.needsBillingOnboarding,
-      {},
-    );
-    if (!needsBillingOnboarding) {
+    const [needsBillingOnboarding, needsPlanSelection] = await Promise.all([
+      fetchAuthQuery(api.billing.queries.needsBillingOnboarding, {}),
+      fetchAuthQuery(api.billing.queries.needsPlanSelection, {}),
+    ]);
+    if (!needsBillingOnboarding && !needsPlanSelection) {
       redirect("/app");
     }
   }

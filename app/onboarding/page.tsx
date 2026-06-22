@@ -60,6 +60,7 @@ export default function OnboardingPage() {
   const needsBillingOnboarding = useQuery(
     api.billing.queries.needsBillingOnboarding,
   );
+  const needsPlanSelection = useQuery(api.billing.queries.needsPlanSelection);
   const createOrganization = useMutation(
     api.organizations.mutations.createOrganization,
   );
@@ -79,7 +80,8 @@ export default function OnboardingPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const showPlanStep = needsBillingOnboarding === true;
+  const showPlanStep =
+    needsBillingOnboarding === true || needsPlanSelection === true;
 
   const shouldResolveStoredTeam =
     !showPlanStep && storedTeamId !== null && !isChangingTeam;
@@ -169,7 +171,7 @@ export default function OnboardingPage() {
     }
   };
 
-  if (needsBillingOnboarding === undefined) {
+  if (needsBillingOnboarding === undefined || needsPlanSelection === undefined) {
     return (
       <main className="flex flex-1 flex-col items-center justify-center p-6 sm:p-10">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">

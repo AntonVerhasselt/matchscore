@@ -32,6 +32,7 @@ export const syncOrganizationBilling = internalMutation({
     organizationId: v.id("organizations"),
     plan: v.optional(planTierValidator),
     subscriptionStatus: subscriptionStatusValidator,
+    subscriptionCancelAtPeriodEnd: v.optional(v.boolean()),
     stripeCustomerId: v.optional(v.string()),
     markOnboardingComplete: v.optional(v.boolean()),
   },
@@ -46,12 +47,17 @@ export const syncOrganizationBilling = internalMutation({
       subscriptionStatus: SubscriptionStatus;
       billingSyncedAt: number;
       plan?: PaidPlanTier;
+      subscriptionCancelAtPeriodEnd?: boolean;
       stripeCustomerId?: string;
       billingOnboardingCompletedAt?: number;
     } = {
       subscriptionStatus: args.subscriptionStatus,
       billingSyncedAt: Date.now(),
     };
+
+    if (args.subscriptionCancelAtPeriodEnd !== undefined) {
+      patch.subscriptionCancelAtPeriodEnd = args.subscriptionCancelAtPeriodEnd;
+    }
 
     if (args.plan !== undefined) {
       patch.plan = args.plan;

@@ -43,7 +43,10 @@ export const getCheckoutContext = internalQuery({
     }
 
     if (organization.billingOnboardingCompletedAt != null) {
-      throw new ConvexError("Billing onboarding is already complete");
+      const plan = organization.plan ?? "none";
+      if (plan !== "none") {
+        throw new ConvexError("Billing onboarding is already complete");
+      }
     }
 
     if (args.subscriptionTier) {
@@ -62,6 +65,54 @@ export const getCheckoutContext = internalQuery({
       stripeCustomerId: organization.stripeCustomerId ?? null,
       plan,
       subscriptionStatus: organization.subscriptionStatus ?? "none",
+      userEmail: user.email,
+      userName: user.name ?? null,
+    };
+  },
+});
+
+export const getOrganizationIdByStripeCustomerId = internalQuery({
+  args: {
+    stripeCustomerId: v.string(),
+  },
+  returns: v.union(v.id("organizations"), v.null()),
+  handler: async (ctx, args) => {
+    const organization = await ctx.db
+      .query("organizations")
+      .withIndex("by_stripeCustomerId", (q) =>
+        q.eq("stripeCustomerId", args.stripeCustomerId),
+      )
+      .unique();
+
+    return organization?._id ?? null;
+  },
+});
+
+export const getPortalContext = internalQuery({
+  args: {},
+  returns: v.object({
+    organizationId: v.id("organizations"),
+    organizationName: v.string(),
+    stripeCustomerId: v.union(v.string(), v.null()),
+    userEmail: v.string(),
+    userName: v.union(v.string(), v.null()),
+  }),
+  handler: async (ctx) => {
+    const { user, membership } = await requireCurrentMembership(ctx);
+    const organization = await ctx.db.get(membership.organizationId);
+
+    if (!organization) {
+      throw new ConvexError("Organization not found");
+    }
+
+    if (organization.billingOnboardingCompletedAt == null) {
+      throw new ConvexError("Complete onboarding before managing billing");
+    }
+
+    return {
+      organizationId: organization._id,
+      organizationName: organization.name,
+      stripeCustomerId: organization.stripeCustomerId ?? null,
       userEmail: user.email,
       userName: user.name ?? null,
     };

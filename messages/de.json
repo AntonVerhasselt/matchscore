@@ -104,50 +104,65 @@
     "pricing": {
       "badge": "Preise",
       "title": "Erschwinglich für jeden Amateurverein",
-      "description": "Alle Pläne beinhalten alle Funktionen. Keine versteckten Limits, keine Gebühren pro Post.",
+      "description": "Wähle den Tarif, der zu deinem Verein passt. Automatisiertes Posten auf jeder Stufe; Tor-Highlights bei Elite und Lifetime.",
       "vatNote": "Alle Preise zzgl. MwSt. Abonnements werden jährlich abgerechnet.",
       "perMonth": "/Monat",
       "oneTime": "einmalig",
       "cta": "Loslegen",
-      "starter": {
-        "title": "Starter",
-        "description": "Voller Zugang mit kleinem Matchscore-Wasserzeichen.",
+      "minimum": {
+        "title": "Minimum",
+        "description": "Automatisiertes Posten mit kleinem Matchscore-Wasserzeichen.",
         "price": "€2",
         "billingNote": "€24 jährlich abgerechnet",
         "features": [
-          "Alle Funktionen inklusive",
-          "Unbegrenzte automatisierte Posts",
-          "Kleines Matchscore-Wasserzeichen auf Posts"
+          "Automatisierte Spielposts",
+          "Unbegrenzte Vorlagen",
+          "Kleines Matchscore-Wasserzeichen"
         ],
         "compactFeatures": [
-          "Alle Funktionen, unbegrenzte Posts",
-          "Kleines Matchscore-Wasserzeichen auf Posts"
+          "Automatisierte Posts",
+          "Matchscore-Wasserzeichen"
         ]
       },
       "pro": {
         "title": "Pro",
-        "description": "Voller Zugang, ohne Wasserzeichen.",
-        "price": "€5",
-        "billingNote": "€60 jährlich abgerechnet",
+        "description": "Automatisiertes Posten ohne Wasserzeichen.",
+        "price": "€9",
+        "billingNote": "€108 jährlich abgerechnet",
         "features": [
-          "Alle Funktionen inklusive",
-          "Unbegrenzte automatisierte Posts",
+          "Automatisierte Spielposts",
+          "Unbegrenzte Vorlagen",
           "Kein Wasserzeichen"
         ],
         "compactFeatures": [
-          "Alle Funktionen, unbegrenzte Posts",
+          "Automatisierte Posts",
           "Kein Wasserzeichen"
+        ]
+      },
+      "elite": {
+        "title": "Elite",
+        "description": "Alles in Pro, plus Tor-Highlights.",
+        "price": "€12",
+        "billingNote": "€144 jährlich abgerechnet",
+        "features": [
+          "Alles in Pro",
+          "Tor-Highlight-Videos",
+          "Kein Wasserzeichen"
+        ],
+        "compactFeatures": [
+          "Alles in Pro",
+          "Tor-Highlights"
         ]
       },
       "lifetime": {
         "badge": "Bestes Angebot",
         "headline": "Einmal zahlen. Für immer posten.",
         "title": "Lifetime",
-        "description": "Einmal zahlen, für immer nutzen.",
-        "price": "€150",
+        "description": "Einmal zahlen, für immer nutzen — inklusive Tor-Highlights.",
+        "price": "€250",
         "note": "Einmalige Zahlung, keine Verlängerung",
         "features": [
-          "Alle Funktionen inklusive",
+          "Alles in Elite",
           "Unbegrenzte automatisierte Posts",
           "Kein Wasserzeichen — für immer",
           "Für immer weiter nutzen"
@@ -189,7 +204,11 @@
         },
         {
           "question": "Ist der Preis pro Verein oder pro Team?",
-          "answer": "Der Preis gilt pro Verein. Ein Abonnement deckt die Automatisierungen deines Vereins für die erste Mannschaft ab. Alle Funktionen sind in jedem Plan enthalten — der einzige Unterschied ist das Wasserzeichen beim Starter-Plan."
+          "answer": "Der Preis gilt pro Verein. Ein Abonnement deckt die Automatisierungen deines Vereins für die erste Mannschaft ab. Die Pläne unterscheiden sich durch Wasserzeichen (Minimum), Posten ohne Wasserzeichen (Pro) und Tor-Highlights (Elite oder Lifetime)."
+        },
+        {
+          "question": "Welcher Plan enthält Tor-Highlights?",
+          "answer": "Tor-Highlights — Veo-Torclips zu Highlight-Videos zusammenstellen — sind im Elite-Abonnement und im Lifetime-Einmalplan enthalten."
         },
         {
           "question": "Was passiert nach Ablauf meines Jahresabonnements?",
@@ -253,7 +272,8 @@
         "upgradeRequiredDescription": "Erstelle Tor-Highlight-Videos aus Veo-Clips mit dem Elite- oder Lifetime-Tarif.",
         "subscriptionPastDueDescription": "Das Abonnement deines Vereins hat eine überfällige Zahlung. Stelle die Abrechnung wieder her, um Tor-Highlights erneut zu nutzen.",
         "subscriptionCanceledDescription": "Das Abonnement deines Vereins ist nicht mehr aktiv. Erneuere die Abrechnung, um Tor-Highlights wieder zu nutzen.",
-        "viewBilling": "Abrechnung anzeigen"
+        "managePlan": "Plan verwalten",
+        "openingPortal": "Abrechnungsportal wird geöffnet…"
       }
     },
     "shell": {
@@ -689,19 +709,22 @@
       "subscriptionStatus": "Abonnementstatus",
       "stripeCatalogMode": "Stripe-Modus",
       "billingSyncedAt": "Letzte Billing-Synchronisation",
-      "featuresTitle": "Feature-Zugang",
-      "featureAutomationsEdit": "Automationen bearbeiten",
-      "featureAutomationsPost": "Automationen posten",
-      "featureGoalHighlights": "Tor-Highlights",
-      "featureWatermark": "Wasserzeichen auf Posts",
-      "enabled": "Aktiv",
-      "disabled": "Inaktiv",
-      "debugTitle": "Stripe-Debug",
+      "stripeInfoTitle": "Stripe-Info",
       "stripeCustomerId": "Kunden-ID",
       "stripeSubscriptionId": "Abonnement-ID",
       "stripePriceId": "Preis-ID",
       "currentPeriodEnd": "Ende der aktuellen Periode",
-      "subscribeComingSoon": "Abonnieren (Phase 2)"
+      "upgrade": "Upgrade",
+      "openingPortal": "Abrechnungsportal wird geöffnet…",
+      "portalFailed": "Abrechnungsportal konnte nicht geöffnet werden. Bitte erneut versuchen.",
+      "syncing": "Abrechnung wird mit Stripe synchronisiert…",
+      "status": {
+        "active": "Aktiv",
+        "pastDue": "Überfällig",
+        "canceled": "Gekündigt",
+        "none": "Keine",
+        "canceling": "Wird gekündigt"
+      }
     }
   },
   "acceptInvitation": {

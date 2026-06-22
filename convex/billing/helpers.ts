@@ -34,6 +34,21 @@ export function hasActivePaidSubscription(org: {
   return status === "active";
 }
 
+/** Active or past_due subscription — use Customer Portal, not new Checkout. */
+export function hasManageableSubscription(org: {
+  plan?: PlanTier;
+  subscriptionStatus?: SubscriptionStatus;
+}): boolean {
+  const plan = org.plan ?? "none";
+  const status = org.subscriptionStatus ?? "none";
+
+  if (plan === "none" || plan === "lifetime") {
+    return false;
+  }
+
+  return status === "active" || status === "past_due";
+}
+
 export function shouldApplyBelgianVat(billingCountry: string): boolean {
   return billingCountry.trim().toUpperCase() === "BE";
 }

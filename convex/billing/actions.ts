@@ -8,8 +8,10 @@ import type { Id } from "../_generated/dataModel";
 import {
   getCheckoutTaxRateIds,
   hasActivePaidSubscription,
+  mapStripeSubscriptionStatus,
 } from "./helpers";
 import {
+  priceIdToTier,
   tierToPriceId,
   type PaidPlanTier,
   type SubscriptionPlanTier,
@@ -200,5 +202,99 @@ export const createOrgLifetimeCheckout = action({
       billingCountry: args.billingCountry,
       mode: "payment",
     });
+  },
+});
+
+async function syncOrgBillingFromStripeCustomer(
+  ctx: ActionCtx,
+  args: {
+    organizationId: Id<"organizations">;
+    stripeCustomerId: string;
+  },
+): Promise<void> {
+  const stripe = createStripeClient();
+  const subscriptions = await stripe.subscriptions.list({
+    customer: args.stripeCustomerId,
+    limit: 10,
+  });
+
+  const subscription =
+    subscriptions.data.find((item) =>
+      ["active", "trialing", "past_due"].includes(item.status),
+    ) ?? subscriptions.data[0];
+
+  if (!subscription) {
+    await ctx.runMutation(internal.billing.internalMutations.syncOrganizationBilling, {
+      organizationId: args.organizationId,
+      subscriptionStatus: "canceled",
+      subscriptionCancelAtPeriodEnd: false,
+      stripeCustomerId: args.stripeCustomerId,
+    });
+    return;
+  }
+
+  const priceId = subscription.items.data[0]?.price?.id;
+  const tier = priceId ? priceIdToTier(priceId) : null;
+
+  await ctx.runMutation(internal.billing.internalMutations.syncOrganizationBilling, {
+    organizationId: args.organizationId,
+    ...(tier && tier !== "lifetime" ? { plan: tier } : {}),
+    subscriptionStatus: mapStripeSubscriptionStatus(subscription.status),
+    subscriptionCancelAtPeriodEnd: subscription.cancel_at_period_end,
+    stripeCustomerId: args.stripeCustomerId,
+  });
+}
+
+export const syncCurrentOrgBillingFromStripe = action({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const portalContext = await ctx.runQuery(
+      internal.billing.internalQueries.getPortalContext,
+      {},
+    );
+
+    const customerId = await getOrCreateOrgStripeCustomer(ctx, {
+      organizationId: portalContext.organizationId,
+      organizationName: portalContext.organizationName,
+      existingCustomerId: portalContext.stripeCustomerId,
+      userEmail: portalContext.userEmail,
+      userName: portalContext.userName,
+    });
+
+    await syncOrgBillingFromStripeCustomer(ctx, {
+      organizationId: portalContext.organizationId,
+      stripeCustomerId: customerId,
+    });
+
+    return null;
+  },
+});
+
+export const createCustomerPortalSession = action({
+  args: {},
+  returns: checkoutSessionResultValidator,
+  handler: async (ctx) => {
+    const portalContext = await ctx.runQuery(
+      internal.billing.internalQueries.getPortalContext,
+      {},
+    );
+
+    const customerId = await getOrCreateOrgStripeCustomer(ctx, {
+      organizationId: portalContext.organizationId,
+      organizationName: portalContext.organizationName,
+      existingCustomerId: portalContext.stripeCustomerId,
+      userEmail: portalContext.userEmail,
+      userName: portalContext.userName,
+    });
+
+    const siteUrl = getSiteUrl();
+    const stripe = createStripeClient();
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${siteUrl}/app/settings?billing=sync`,
+    });
+
+    return { url: session.url };
   },
 });

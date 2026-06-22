@@ -8,7 +8,7 @@ import {
 } from "./helpers";
 import { priceIdToTier } from "./stripeCatalog";
 
-type BillingWebhookCtx = Pick<ActionCtx, "runMutation">;
+type BillingWebhookCtx = Pick<ActionCtx, "runMutation" | "runQuery">;
 
 function readOrgIdFromMetadata(
   metadata: Stripe.Metadata | null | undefined,
@@ -18,6 +18,35 @@ function readOrgIdFromMetadata(
     return null;
   }
   return orgId as Id<"organizations">;
+}
+
+async function resolveOrganizationIdForSubscription(
+  ctx: BillingWebhookCtx,
+  subscription: Stripe.Subscription,
+): Promise<Id<"organizations"> | null> {
+  const fromMetadata = readOrgIdFromMetadata(subscription.metadata);
+  if (fromMetadata) {
+    return fromMetadata;
+  }
+
+  const customerId =
+    typeof subscription.customer === "string"
+      ? subscription.customer
+      : subscription.customer?.id;
+  if (!customerId) {
+    return null;
+  }
+
+  return await ctx.runQuery(
+    internal.billing.internalQueries.getOrganizationIdByStripeCustomerId,
+    { stripeCustomerId: customerId },
+  );
+}
+
+function readStripeCustomerId(
+  customer: Stripe.Subscription["customer"],
+): string | undefined {
+  return typeof customer === "string" ? customer : customer?.id;
 }
 
 export async function handleCheckoutSessionCompletedWebhook(
@@ -50,6 +79,7 @@ export async function handleCheckoutSessionCompletedWebhook(
       organizationId,
       plan: tier,
       subscriptionStatus: mapStripeSubscriptionStatus(subscription.status),
+      subscriptionCancelAtPeriodEnd: subscription.cancel_at_period_end,
       stripeCustomerId,
       markOnboardingComplete: true,
     });
@@ -66,6 +96,7 @@ export async function handleCheckoutSessionCompletedWebhook(
       organizationId,
       plan: "lifetime",
       subscriptionStatus: "none",
+      subscriptionCancelAtPeriodEnd: false,
       stripeCustomerId,
       markOnboardingComplete: true,
     });
@@ -77,7 +108,10 @@ export async function handleSubscriptionUpdatedWebhook(
   event: Stripe.CustomerSubscriptionUpdatedEvent,
 ): Promise<void> {
   const subscription = event.data.object;
-  const organizationId = readOrgIdFromMetadata(subscription.metadata);
+  const organizationId = await resolveOrganizationIdForSubscription(
+    ctx,
+    subscription,
+  );
   if (!organizationId) {
     return;
   }
@@ -89,10 +123,8 @@ export async function handleSubscriptionUpdatedWebhook(
     organizationId,
     ...(tier && tier !== "lifetime" ? { plan: tier } : {}),
     subscriptionStatus: mapStripeSubscriptionStatus(subscription.status),
-    stripeCustomerId:
-      typeof subscription.customer === "string"
-        ? subscription.customer
-        : undefined,
+    subscriptionCancelAtPeriodEnd: subscription.cancel_at_period_end,
+    stripeCustomerId: readStripeCustomerId(subscription.customer),
   });
 }
 
@@ -101,7 +133,10 @@ export async function handleSubscriptionDeletedWebhook(
   event: Stripe.CustomerSubscriptionDeletedEvent,
 ): Promise<void> {
   const subscription = event.data.object;
-  const organizationId = readOrgIdFromMetadata(subscription.metadata);
+  const organizationId = await resolveOrganizationIdForSubscription(
+    ctx,
+    subscription,
+  );
   if (!organizationId) {
     return;
   }
@@ -109,10 +144,8 @@ export async function handleSubscriptionDeletedWebhook(
   await ctx.runMutation(internal.billing.internalMutations.syncOrganizationBilling, {
     organizationId,
     subscriptionStatus: "canceled",
-    stripeCustomerId:
-      typeof subscription.customer === "string"
-        ? subscription.customer
-        : undefined,
+    subscriptionCancelAtPeriodEnd: false,
+    stripeCustomerId: readStripeCustomerId(subscription.customer),
   });
 }
 
@@ -132,6 +165,7 @@ export async function handlePaymentIntentSucceededWebhook(
     organizationId,
     plan: "lifetime",
     subscriptionStatus: "none",
+    subscriptionCancelAtPeriodEnd: false,
     stripeCustomerId:
       typeof paymentIntent.customer === "string"
         ? paymentIntent.customer
