@@ -1,6 +1,7 @@
 import { AppShell } from "@/components/app-shell";
 import { api } from "@/convex/_generated/api";
 import { fetchAuthQuery, isAuthenticated } from "@/lib/auth-server";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 export default async function AppLayout({
@@ -18,6 +19,17 @@ export default async function AppLayout({
     {},
   );
   if (!hasOrganization) {
+    redirect("/onboarding");
+  }
+
+  const needsBillingOnboarding = await fetchAuthQuery(
+    api.billing.queries.needsBillingOnboarding,
+    {},
+  );
+  const headerList = await headers();
+  const isCheckoutSuccessReturn =
+    headerList.get("x-matchscore-checkout-success") === "1";
+  if (needsBillingOnboarding && !isCheckoutSuccessReturn) {
     redirect("/onboarding");
   }
 

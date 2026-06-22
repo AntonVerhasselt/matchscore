@@ -28,6 +28,7 @@ export function CalendarPageContent() {
 
   const isLoading =
     accessStatus === undefined ||
+    accessStatus === null ||
     matches === undefined ||
     automations === undefined;
 
@@ -40,8 +41,9 @@ export function CalendarPageContent() {
     );
 
     return {
-      matchAnnouncementEnabled: announcement?.isGloballyEnabled ?? false,
-      matchResultEnabled: result?.isGloballyEnabled ?? false,
+      matchAnnouncementEnabled:
+        announcement?.effectiveIsGloballyEnabled ?? false,
+      matchResultEnabled: result?.effectiveIsGloballyEnabled ?? false,
     };
   }, [automations]);
 

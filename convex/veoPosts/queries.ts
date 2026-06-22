@@ -9,7 +9,7 @@ import {
   veoPostJobDetailValidator,
   veoPostJobSummaryValidator,
 } from "./validators";
-import { requireCurrentMembership } from "../automations/helpers";
+import { getCurrentMembershipOrNull } from "../automations/helpers";
 
 function jobHasStoredVideo(job: { outputR2Key?: string }): boolean {
   return job.outputR2Key !== undefined;
@@ -81,7 +81,11 @@ export const listJobs = query({
   args: {},
   returns: v.array(veoPostJobSummaryValidator),
   handler: async (ctx) => {
-    const { membership } = await requireCurrentMembership(ctx);
+    const membershipCtx = await getCurrentMembershipOrNull(ctx);
+    if (!membershipCtx) {
+      return [];
+    }
+    const { membership } = membershipCtx;
     const jobs = await listVeoPostJobsForOrganization(
       ctx,
       membership.organizationId,
@@ -96,7 +100,11 @@ export const getJob = query({
   },
   returns: v.union(veoPostJobDetailValidator, v.null()),
   handler: async (ctx, args) => {
-    const { membership } = await requireCurrentMembership(ctx);
+    const membershipCtx = await getCurrentMembershipOrNull(ctx);
+    if (!membershipCtx) {
+      return null;
+    }
+    const { membership } = membershipCtx;
     const job = await ctx.db.get("veoPostJobs", args.jobId);
 
     if (!job || job.organizationId !== membership.organizationId) {

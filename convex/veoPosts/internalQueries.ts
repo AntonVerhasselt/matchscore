@@ -1,6 +1,8 @@
 import { ConvexError, v } from "convex/values";
 import { internalQuery } from "../_generated/server";
 import { requireCurrentMembership } from "../automations/helpers";
+import { requireOrgFeature } from "../billing/access";
+import { Feature } from "../lib/features";
 import { listVeoPostJobsBySlug } from "./access";
 import { parseVeoMatchSlug, resolveExistingJob, veoPostErrorData } from "./helpers";
 
@@ -54,6 +56,12 @@ export const getCreateOrOpenPlan = internalQuery({
         reopenCached: dedupe.reopenCached,
       };
     }
+
+    await requireOrgFeature(
+      ctx,
+      membership.organizationId,
+      Feature.GoalHighlightsGenerate,
+    );
 
     return {
       action: "create" as const,

@@ -1,6 +1,6 @@
 "use client";
 
-import { Bot, Calendar, Share2, Video } from "lucide-react";
+import { Bot, Calendar, Lock, Share2, Video } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -22,6 +22,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useOrgFeatures } from "@/lib/billing/use-org-features";
 import { cn } from "@/lib/utils";
 
 type NavItem = {
@@ -62,6 +63,7 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
   const t = useTranslations("app.shell.nav");
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
+  const { hasGoalHighlights, isLoading: isBillingLoading } = useOrgFeatures();
 
   const closeMobileSidebar = () => {
     if (isMobile) {
@@ -90,6 +92,9 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
               {navItems.map((item) => {
                 const label = t(item.labelKey);
                 const active = item.isActive(pathname);
+                const isGoalHighlights = item.labelKey === "goalHighlights";
+                const showLock =
+                  isGoalHighlights && !isBillingLoading && !hasGoalHighlights;
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton
@@ -107,7 +112,15 @@ export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
                         onClick={closeMobileSidebar}
                       >
                         <item.icon />
-                        <span>{label}</span>
+                        <span className="flex flex-1 items-center gap-2">
+                          <span>{label}</span>
+                          {showLock ? (
+                            <Lock
+                              className="size-3.5 shrink-0 text-muted-foreground"
+                              aria-label={t("goalHighlightsLocked")}
+                            />
+                          ) : null}
+                        </span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

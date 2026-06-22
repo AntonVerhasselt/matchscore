@@ -92,6 +92,9 @@ export async function renderTemplateSceneToPngBuffer(
   );
   const loaders = await loadRenderAssetLoaders(ctx, source.organizationId);
 
+  // Future: when automations posting ships, overlay a watermark here when the org
+  // has Feature.ApplyWatermark (Minimum tier). See convex/lib/features.ts.
+
   return await renderTemplateToPng({
     sceneDocument,
     automationType: source.automationType,

@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 
 import { query } from "../_generated/server";
-import { requireCurrentMembership } from "../automations/helpers";
+import { getCurrentMembershipOrNull } from "../automations/helpers";
 import { assertTemplateAssetReferencesBelongToOrganization } from "./helpers";
 import { TEMPLATE_ASSET_LIST_LIMIT } from "./helpers";
 import { templateAssetValidator } from "./validators";
@@ -10,7 +10,11 @@ export const listTemplateAssets = query({
   args: {},
   returns: v.array(templateAssetValidator),
   handler: async (ctx) => {
-    const { membership } = await requireCurrentMembership(ctx);
+    const membershipCtx = await getCurrentMembershipOrNull(ctx);
+    if (!membershipCtx) {
+      return [];
+    }
+    const { membership } = membershipCtx;
     const assets = await ctx.db
       .query("templateAssets")
       .withIndex("by_organizationId", (q) =>
@@ -42,7 +46,11 @@ export const assertSceneDocumentAssetReferences = query({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
-    const { membership } = await requireCurrentMembership(ctx);
+    const membershipCtx = await getCurrentMembershipOrNull(ctx);
+    if (!membershipCtx) {
+      return null;
+    }
+    const { membership } = membershipCtx;
     await assertTemplateAssetReferencesBelongToOrganization(
       ctx,
       args.sceneDocument,

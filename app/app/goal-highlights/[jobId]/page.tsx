@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
 
 import { AppPageBackLink } from "@/components/app-page";
+import { UpgradePrompt } from "@/components/billing/UpgradePrompt";
 import { DeleteJobDialog } from "@/components/goal-highlights/delete-job-dialog";
 import { JobComposeSection } from "@/components/goal-highlights/job-compose-section";
 import { JobStatusBadge } from "@/components/goal-highlights/job-status-badge";
@@ -16,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useOrgFeatures } from "@/lib/billing/use-org-features";
 import { getGoalHighlightsErrorMessage } from "@/lib/goal-highlights/get-error-message";
 import { showErrorToast, showSuccessToast } from "@/lib/user-feedback";
 
@@ -25,6 +27,8 @@ export default function GoalHighlightJobPage() {
   const params = useParams<{ jobId: string }>();
   const jobId = params.jobId as Id<"veoPostJobs">;
   const job = useQuery(api.veoPosts.queries.getJob, { jobId });
+  const { context: billingContext, hasGoalHighlights, goalHighlightsBlockReason } =
+    useOrgFeatures();
   const deleteJob = useMutation(api.veoPosts.mutations.deleteJob);
   const regenerateJob = useAction(api.veoPosts.actions.regenerateJob);
   const shownFailureRef = useRef<string | null>(null);
@@ -103,6 +107,9 @@ export default function GoalHighlightJobPage() {
   const showRegenerate =
     job.status === "failed" ||
     (job.status === "ready" && job.videoExpired);
+  const canRegenerate = showRegenerate && hasGoalHighlights;
+  const regenerateBlocked =
+    showRegenerate && !hasGoalHighlights && goalHighlightsBlockReason !== null;
 
   return (
     <div className="space-y-6">
@@ -144,7 +151,7 @@ export default function GoalHighlightJobPage() {
           isRegenerating ? t("regenerating") : t("regenerateVideo")
         }
         isRegenerating={isRegenerating}
-        onRegenerate={showRegenerate ? () => void handleRegenerate() : undefined}
+        onRegenerate={canRegenerate ? () => void handleRegenerate() : undefined}
         errorMessage={job.errorMessage}
         outputVideoUrl={job.outputVideoUrl}
         hasVideo={job.hasVideo}
@@ -154,6 +161,14 @@ export default function GoalHighlightJobPage() {
         downloadFailedLabel={t("videoArea.downloadFailed")}
         videoTitle={title}
       />
+
+      {regenerateBlocked && billingContext ? (
+        <UpgradePrompt
+          blockReason={goalHighlightsBlockReason!}
+          subscriptionStatus={billingContext.subscriptionStatus}
+          compact
+        />
+      ) : null}
 
       {(scoreLine || job.goalCount !== null || job.expiresAt !== null) && (
         <div className="text-sm text-muted-foreground">

@@ -104,50 +104,65 @@
     "pricing": {
       "badge": "Pricing",
       "title": "Affordable for every amateur club",
-      "description": "All plans include every feature. No hidden limits, no per-post fees.",
+      "description": "Pick the plan that fits your club. Automated posting on every tier; goal highlights on Elite and Lifetime.",
       "vatNote": "All prices exclude VAT. Subscriptions are billed annually.",
       "perMonth": "/month",
       "oneTime": "one-time",
       "cta": "Get started",
-      "starter": {
-        "title": "Starter",
-        "description": "Full access with a small Matchscore watermark.",
+      "minimum": {
+        "title": "Minimum",
+        "description": "Automated posting with a small Matchscore watermark.",
         "price": "€2",
         "billingNote": "€24 billed yearly",
         "features": [
-          "All features included",
-          "Unlimited automated posts",
-          "Small Matchscore watermark on posts"
+          "Automated match posts",
+          "Unlimited templates",
+          "Small Matchscore watermark"
         ],
         "compactFeatures": [
-          "All features, unlimited posts",
-          "Small Matchscore watermark on posts"
+          "Automated posts",
+          "Matchscore watermark"
         ]
       },
       "pro": {
         "title": "Pro",
-        "description": "Full access, no watermark.",
-        "price": "€5",
-        "billingNote": "€60 billed yearly",
+        "description": "Automated posting without a watermark.",
+        "price": "€9",
+        "billingNote": "€108 billed yearly",
         "features": [
-          "All features included",
-          "Unlimited automated posts",
+          "Automated match posts",
+          "Unlimited templates",
           "No watermark"
         ],
         "compactFeatures": [
-          "All features, unlimited posts",
+          "Automated posts",
           "No watermark"
+        ]
+      },
+      "elite": {
+        "title": "Elite",
+        "description": "Everything in Pro, plus goal highlights.",
+        "price": "€12",
+        "billingNote": "€144 billed yearly",
+        "features": [
+          "Everything in Pro",
+          "Goal highlight videos",
+          "No watermark"
+        ],
+        "compactFeatures": [
+          "Everything in Pro",
+          "Goal highlights"
         ]
       },
       "lifetime": {
         "badge": "Best value",
         "headline": "Pay once. Post forever.",
         "title": "Lifetime",
-        "description": "Pay once, use forever.",
-        "price": "€150",
+        "description": "Pay once, use forever — including goal highlights.",
+        "price": "€250",
         "note": "One-time payment, no renewal",
         "features": [
-          "All features included",
+          "Everything in Elite",
           "Unlimited automated posts",
           "No watermark — forever",
           "Keep using it forever"
@@ -189,7 +204,11 @@
         },
         {
           "question": "Is the price per club or per team?",
-          "answer": "Pricing is per club. One subscription covers your club's automations for the first team. All features are included in every plan — the only difference is the watermark on the Starter plan."
+          "answer": "Pricing is per club. One subscription covers your club's automations for the first team. Plans differ by watermark (Minimum), posting without watermark (Pro), and goal highlights (Elite or Lifetime)."
+        },
+        {
+          "question": "Which plan includes goal highlights?",
+          "answer": "Goal highlights — compiling Veo goal clips into highlight videos — are included on the Elite subscription and the Lifetime one-time plan."
         },
         {
           "question": "What happens after my yearly subscription ends?",
@@ -243,11 +262,42 @@
     "signedInAs": "Signed in as",
     "accountLoadFailed": "We couldn't load your account. Please try again.",
     "retry": "Try again",
+    "checkout": {
+      "success": "Your plan is active. Welcome to Matchscore!",
+      "completeFailed": "Payment succeeded but setup could not be finished. Please refresh or contact support."
+    },
+    "billing": {
+      "subscriptionBanner": {
+        "upgradeRequired": "Subscribe to activate your automations and start posting to social media.",
+        "subscriptionPastDue": "Your subscription has an overdue payment. Reactivate billing to resume automations.",
+        "subscriptionInactive": "Your subscription is no longer active. Renew billing to resume automations.",
+        "choosePlan": "Choose a plan",
+        "manageSubscription": "Manage subscription",
+        "openingPortal": "Opening billing portal…"
+      },
+      "automationsUpgrade": {
+        "title": "Subscription required",
+        "upgradeRequiredDescription": "Choose a plan to activate automations and publish posts automatically.",
+        "subscriptionPastDueDescription": "Your club subscription has an overdue payment. Restore billing to activate automations again.",
+        "subscriptionCanceledDescription": "Your club subscription is no longer active. Renew billing to activate automations again.",
+        "manageSubscription": "Manage subscription",
+        "openingPortal": "Opening billing portal…"
+      },
+      "upgrade": {
+        "goalHighlightsTitle": "Goal highlights require Elite",
+        "upgradeRequiredDescription": "Compile Veo goal clips into highlight videos with the Elite or Lifetime plan.",
+        "subscriptionPastDueDescription": "Your club subscription has an overdue payment. Restore billing to use goal highlights again.",
+        "subscriptionCanceledDescription": "Your club subscription is no longer active. Renew billing to use goal highlights again.",
+        "managePlan": "Manage plan",
+        "openingPortal": "Opening billing portal…"
+      }
+    },
     "shell": {
       "nav": {
         "calendar": "Calendar",
         "automations": "Automations",
         "goalHighlights": "Goal highlights",
+        "goalHighlightsLocked": "Requires Elite plan",
         "socials": "Connected socials"
       },
       "user": {
@@ -311,7 +361,9 @@
         "tooManyGoals": "Too many goals (max {max})",
         "clipNotReady": "A goal clip is not ready yet",
         "fetchFailed": "Couldn't load this match from Veo. Please try again.",
-        "unexpected": "Something went wrong while validating this match"
+        "unexpected": "Something went wrong while validating this match",
+        "featureLockedUpgrade": "Goal highlights require the Elite or Lifetime plan.",
+        "featureLockedInactive": "Your club subscription is not active. Check billing to restore goal highlights."
       },
       "historyTitle": "Recent compilations",
       "historyEmpty": "No goal highlight compilations yet.",
@@ -663,6 +715,33 @@
       "cancelInviteSuccess": "Invitation cancelled.",
       "cancelFailed": "Could not cancel invitation. Please try again.",
       "joinedOn": "Joined {date}"
+    },
+    "billing": {
+      "title": "Billing",
+      "description": "Your club subscription and feature access.",
+      "loading": "Loading billing…",
+      "unavailable": "Billing details are unavailable.",
+      "plan": "Plan",
+      "subscriptionStatus": "Subscription status",
+      "stripeCatalogMode": "Stripe mode",
+      "billingSyncedAt": "Last billing sync",
+      "stripeInfoTitle": "Stripe info",
+      "stripeCustomerId": "Customer ID",
+      "stripeSubscriptionId": "Subscription ID",
+      "stripePriceId": "Price ID",
+      "currentPeriodEnd": "Current period end",
+      "upgrade": "Upgrade",
+      "openingPortal": "Opening billing portal…",
+      "portalFailed": "Could not open billing portal. Please try again.",
+      "syncing": "Syncing billing from Stripe…",
+      "syncFailed": "Could not sync billing from Stripe. Please try again.",
+      "status": {
+        "active": "Active",
+        "pastDue": "Past due",
+        "canceled": "Canceled",
+        "none": "None",
+        "canceling": "Canceling"
+      }
     }
   },
   "acceptInvitation": {
@@ -701,7 +780,49 @@
     "teamRequired": "Select a team to continue.",
     "submit": "Continue",
     "pleaseWait": "Please wait...",
-    "createFailed": "Could not create your club. Please try again."
+    "createFailed": "Could not create your club. Please try again.",
+    "createSuccess": "Your club was created.",
+    "planStep": {
+      "title": "Choose your plan",
+      "description": "Pick a plan for your club, or continue with limited access.",
+      "countryLabel": "Billing country",
+      "vatNote": "Prices exclude VAT. Belgian clubs pay 21% VAT at checkout.",
+      "loading": "Loading plans…",
+      "perMonth": "/month",
+      "yearlyPrice": "{price} billed yearly",
+      "oneTime": "one-time",
+      "choosePlan": "Choose plan",
+      "skip": "Continue with limited access",
+      "pleaseWait": "Please wait...",
+      "checkoutFailed": "Could not start checkout. Please try again.",
+      "checkoutCanceled": "Checkout was canceled.",
+      "skipFailed": "Could not continue. Please try again.",
+      "countries": {
+        "BE": "Belgium",
+        "NL": "Netherlands",
+        "FR": "France",
+        "DE": "Germany",
+        "OTHER": "Other"
+      },
+      "plans": {
+        "minimum": {
+          "title": "Minimum",
+          "description": "Automated posting with a Matchscore watermark."
+        },
+        "pro": {
+          "title": "Pro",
+          "description": "Automated posting without a watermark."
+        },
+        "elite": {
+          "title": "Elite",
+          "description": "Everything in Pro, plus goal highlights."
+        },
+        "lifetime": {
+          "title": "Lifetime",
+          "description": "Pay once. Keep posting forever, including goal highlights."
+        }
+      }
+    }
   },
   "footballSearch": {
     "placeholder": "Search your club",

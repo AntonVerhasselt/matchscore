@@ -8,14 +8,14 @@ async function getPricingPlans(): Promise<PricingPlans> {
 
   return {
     cta: t("pricing.cta"),
-    starter: {
-      title: t("pricing.starter.title"),
-      description: t("pricing.starter.description"),
-      price: t("pricing.starter.price"),
+    minimum: {
+      title: t("pricing.minimum.title"),
+      description: t("pricing.minimum.description"),
+      price: t("pricing.minimum.price"),
       priceSuffix: t("pricing.perMonth"),
-      priceNote: t("pricing.starter.billingNote"),
-      features: t.raw("pricing.starter.features") as string[],
-      compactFeatures: t.raw("pricing.starter.compactFeatures") as string[],
+      priceNote: t("pricing.minimum.billingNote"),
+      features: t.raw("pricing.minimum.features") as string[],
+      compactFeatures: t.raw("pricing.minimum.compactFeatures") as string[],
     },
     pro: {
       title: t("pricing.pro.title"),
@@ -25,6 +25,15 @@ async function getPricingPlans(): Promise<PricingPlans> {
       priceNote: t("pricing.pro.billingNote"),
       features: t.raw("pricing.pro.features") as string[],
       compactFeatures: t.raw("pricing.pro.compactFeatures") as string[],
+    },
+    elite: {
+      title: t("pricing.elite.title"),
+      description: t("pricing.elite.description"),
+      price: t("pricing.elite.price"),
+      priceSuffix: t("pricing.perMonth"),
+      priceNote: t("pricing.elite.billingNote"),
+      features: t.raw("pricing.elite.features") as string[],
+      compactFeatures: t.raw("pricing.elite.compactFeatures") as string[],
     },
     lifetime: {
       title: t("pricing.lifetime.title"),

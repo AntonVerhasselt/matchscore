@@ -6,7 +6,7 @@ import { query } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { automationTypeValidator } from "../automations/validators";
-import { requireCurrentMembership } from "../automations/helpers";
+import { getCurrentMembershipOrNull } from "../automations/helpers";
 import {
   calendarAccessStatusValidator,
   competitionStandingRowValidator,
@@ -118,7 +118,10 @@ export const getFootballTeam = query({
   },
   returns: v.union(footballTeamDetailValidator, v.null()),
   handler: async (ctx, args) => {
-    await requireCurrentMembership(ctx);
+    const membershipCtx = await getCurrentMembershipOrNull(ctx);
+    if (!membershipCtx) {
+      return null;
+    }
 
     const team = await ctx.db.get(args.footballTeamId);
     if (!team) {
@@ -149,7 +152,11 @@ export const listTeamMatches = query({
   },
   returns: v.array(teamMatchSummaryValidator),
   handler: async (ctx, args) => {
-    const { membership } = await requireCurrentMembership(ctx);
+    const membershipCtx = await getCurrentMembershipOrNull(ctx);
+    if (!membershipCtx) {
+      return [];
+    }
+    const { membership } = membershipCtx;
     const organization = await ctx.db.get(membership.organizationId);
     if (!organization) {
       throw new ConvexError("Organisation not found");
@@ -250,7 +257,11 @@ export const getCompetitionStandings = query({
   args: {},
   returns: v.array(competitionStandingRowValidator),
   handler: async (ctx) => {
-    const { membership } = await requireCurrentMembership(ctx);
+    const membershipCtx = await getCurrentMembershipOrNull(ctx);
+    if (!membershipCtx) {
+      return [];
+    }
+    const { membership } = membershipCtx;
     const organization = await ctx.db.get(membership.organizationId);
     if (!organization) {
       throw new ConvexError("Organisation not found");
@@ -307,9 +318,13 @@ export const getCompetitionStandings = query({
 
 export const getCalendarAccessStatus = query({
   args: {},
-  returns: calendarAccessStatusValidator,
+  returns: v.union(calendarAccessStatusValidator, v.null()),
   handler: async (ctx) => {
-    const { membership } = await requireCurrentMembership(ctx);
+    const membershipCtx = await getCurrentMembershipOrNull(ctx);
+    if (!membershipCtx) {
+      return null;
+    }
+    const { membership } = membershipCtx;
     const organization = await ctx.db.get(membership.organizationId);
     if (!organization) {
       throw new ConvexError("Organisation not found");
@@ -378,7 +393,11 @@ export const getTemplateRenderMatchData = query({
   },
   returns: v.union(templateRenderMatchValidator, v.null()),
   handler: async (ctx, args) => {
-    const { membership } = await requireCurrentMembership(ctx);
+    const membershipCtx = await getCurrentMembershipOrNull(ctx);
+    if (!membershipCtx) {
+      return null;
+    }
+    const { membership } = membershipCtx;
     const organization = await ctx.db.get(membership.organizationId);
     if (!organization) {
       throw new ConvexError("Organisation not found");

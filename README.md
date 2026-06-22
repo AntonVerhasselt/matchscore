@@ -132,5 +132,17 @@ See [`.env.example`](.env.example) for a copy-paste template.
 | `RESEND_TEST_MODE` | No | Set to `false` to send to real addresses (default: test mode) |
 | `AUTH_FROM_EMAIL` | No | Sender address for transactional email |
 | `VOETBALINBELGIE_API_KEY` | For football sync/import | VoetbalInBelgië competition API key — required for import validation and sync |
+| `VGFFMPEG_API_KEY` | For goal highlights | Very Good FFmpeg — see [Documentation/goal-highlights.md](Documentation/goal-highlights.md) |
+| `R2_BUCKET`, `R2_ENDPOINT`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | For goal highlights | Cloudflare R2 — see [Documentation/goal-highlights-r2-storage.md](Documentation/goal-highlights-r2-storage.md) |
 
 See [Documentation/football-season-import.md](Documentation/football-season-import.md) for the seasonal club import runbook.
+
+### Feature documentation
+
+| Topic | Doc |
+| --- | --- |
+| Goal highlights | [Documentation/goal-highlights.md](Documentation/goal-highlights.md) |
+| Goal highlight video storage (R2) | [Documentation/goal-highlights-r2-storage.md](Documentation/goal-highlights-r2-storage.md) |
+| Stripe billing | [Documentation/stripe-billing.md](Documentation/stripe-billing.md) |
+| Organisations | [Documentation/organisations.md](Documentation/organisations.md) |
+| Convex layout | [Documentation/convex-structure.md](Documentation/convex-structure.md) |

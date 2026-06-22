@@ -45,6 +45,7 @@ export type AutomationSummary = {
   _id: Id<"organizationAutomations">;
   automationType: AutomationTypeBackend;
   isGloballyEnabled: boolean;
+  effectiveIsGloballyEnabled: boolean;
   postingChannels: PostingChannelStatuses;
   effectivePostingChannels: PostingChannelStatuses;
   updatedAt: number;

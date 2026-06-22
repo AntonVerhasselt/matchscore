@@ -61,8 +61,23 @@ convex/
 │   ├── access.ts              # Org-scoped job access
 │   └── validators.ts
 │
+├── billing/
+│   ├── queries.ts             # getOrgBillingState, getOrgBillingContext, needsPlanSelection
+│   ├── mutations.ts           # skipBillingOnboarding
+│   ├── actions.ts             # "use node" — Checkout, Customer Portal, Stripe sync
+│   ├── internalQueries.ts     # Checkout/portal context, org lookup by customer ID
+│   ├── internalMutations.ts   # syncOrganizationBilling
+│   ├── webhookHandlers.ts     # Stripe event → org billing patch
+│   ├── access.ts              # requireOrgFeature
+│   ├── stripeCatalog.ts       # Price and tax rate IDs (test/live)
+│   ├── helpers.ts             # VAT, subscription status mapping
+│   ├── types.ts
+│   └── validators.ts
+│
 └── lib/                       # Pure TypeScript helpers (no Convex exports)
     ├── email.ts
+    ├── features.ts            # Plan → feature matrix (billing gating)
+    ├── features.test.ts
     └── slugify.ts
 ```
 
@@ -70,14 +85,18 @@ convex/
 
 Convex maps file paths to API references:
 
-| File | Example API path |
-|------|------------------|
-| `users/settings.ts` | `api.users.settings.getUserLocale` |
-| `auth/queries.ts` | `api.auth.queries.getCurrentUser` |
+| File                         | Example API path                                 |
+| ---------------------------- | ------------------------------------------------ |
+| `users/settings.ts`          | `api.users.settings.getUserLocale`               |
+| `auth/queries.ts`            | `api.auth.queries.getCurrentUser`                |
 | `organizations/mutations.ts` | `api.organizations.mutations.createOrganization` |
-| `emails/actions.ts` | `internal.emails.actions.sendOtpEmail` |
-| `veoPosts/queries.ts` | `api.veoPosts.queries.listJobs` |
-| `veoPosts/actions.ts` | `api.veoPosts.actions.createOrOpenJob` |
+| `emails/actions.ts`          | `internal.emails.actions.sendOtpEmail`           |
+| `veoPosts/queries.ts`        | `api.veoPosts.queries.listJobs`                  |
+| `veoPosts/actions.ts`        | `api.veoPosts.actions.createOrOpenJob`           |
+| `billing/queries.ts`         | `api.billing.queries.getOrgBillingContext`       |
+| `billing/actions.ts`         | `api.billing.actions.createCustomerPortalSession` |
+
+See [stripe-billing.md](./stripe-billing.md) for billing architecture and flows.
 
 ## Conventions
 

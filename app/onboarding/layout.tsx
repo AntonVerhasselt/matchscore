@@ -18,7 +18,13 @@ export default async function OnboardingLayout({
     {},
   );
   if (hasOrganization) {
-    redirect("/app");
+    const [needsBillingOnboarding, needsPlanSelection] = await Promise.all([
+      fetchAuthQuery(api.billing.queries.needsBillingOnboarding, {}),
+      fetchAuthQuery(api.billing.queries.needsPlanSelection, {}),
+    ]);
+    if (!needsBillingOnboarding && !needsPlanSelection) {
+      redirect("/app");
+    }
   }
 
   return <div className="flex min-h-svh flex-col">{children}</div>;

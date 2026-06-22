@@ -2,6 +2,7 @@
 
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { AppPageHeader } from "@/components/app-page";
+import { BillingSettings } from "@/components/settings/BillingSettings";
 import { LinkedTeamSettings } from "@/components/settings/LinkedTeamSettings";
 import { OrganizationMembers } from "@/components/settings/OrganizationMembers";
 import {
@@ -24,6 +25,8 @@ export default function SettingsPage() {
         <LinkedTeamSettings />
 
         <OrganizationMembers />
+
+        <BillingSettings />
 
         <Card>
           <CardHeader>

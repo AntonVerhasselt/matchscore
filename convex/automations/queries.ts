@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
+import { getOrgFeatureAccess } from "../lib/features";
 import {
   AUTOMATION_TYPES,
   getEffectivePostingChannelStatuses,
@@ -8,7 +9,7 @@ import {
 } from "./constants";
 import {
   getPrimaryOrganizationAutomation,
-  requireCurrentMembership,
+  getCurrentMembershipOrNull,
 } from "./helpers";
 import {
   automationTemplateDetailValidator,
@@ -21,6 +22,7 @@ const automationSummaryValidator = v.object({
   _id: v.id("organizationAutomations"),
   automationType: automationTypeValidator,
   isGloballyEnabled: v.boolean(),
+  effectiveIsGloballyEnabled: v.boolean(),
   postingChannels: postingChannelStatusesValidator,
   effectivePostingChannels: postingChannelStatusesValidator,
   updatedAt: v.number(),
@@ -38,7 +40,17 @@ export const listAutomations = query({
   args: {},
   returns: v.array(automationSummaryValidator),
   handler: async (ctx) => {
-    const { membership } = await requireCurrentMembership(ctx);
+    const membershipCtx = await getCurrentMembershipOrNull(ctx);
+    if (!membershipCtx) {
+      return [];
+    }
+    const { membership } = membershipCtx;
+
+    const organization = await ctx.db.get(membership.organizationId);
+    const { automationsPost } = getOrgFeatureAccess({
+      plan: organization?.plan,
+      subscriptionStatus: organization?.subscriptionStatus,
+    });
 
     const results = [];
     for (const automationType of AUTOMATION_TYPES) {
@@ -67,13 +79,17 @@ export const listAutomations = query({
         )
         .collect();
 
+      const effectiveIsGloballyEnabled =
+        isGloballyEnabled && automationsPost;
+
       results.push({
         _id: automation._id,
         automationType: automation.automationType,
         isGloballyEnabled,
+        effectiveIsGloballyEnabled,
         postingChannels,
         effectivePostingChannels: getEffectivePostingChannelStatuses(
-          isGloballyEnabled,
+          effectiveIsGloballyEnabled,
           postingChannels,
         ),
         updatedAt: automation.updatedAt,
@@ -92,7 +108,11 @@ export const listTemplates = query({
   },
   returns: v.array(automationTemplateSummaryValidator),
   handler: async (ctx, args) => {
-    const { membership } = await requireCurrentMembership(ctx);
+    const membershipCtx = await getCurrentMembershipOrNull(ctx);
+    if (!membershipCtx) {
+      return [];
+    }
+    const { membership } = membershipCtx;
     const automationType = args.automationType;
 
     const templates = automationType
@@ -135,7 +155,11 @@ export const getTemplate = query({
   },
   returns: v.union(automationTemplateDetailValidator, v.null()),
   handler: async (ctx, args) => {
-    const { membership } = await requireCurrentMembership(ctx);
+    const membershipCtx = await getCurrentMembershipOrNull(ctx);
+    if (!membershipCtx) {
+      return null;
+    }
+    const { membership } = membershipCtx;
     const template = await ctx.db.get(args.templateId);
 
     if (!template || template.organizationId !== membership.organizationId) {

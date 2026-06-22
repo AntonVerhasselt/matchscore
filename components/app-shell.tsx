@@ -1,11 +1,13 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 
 import { AppUserMenu } from "@/components/app-nav-user";
 import { AppSidebar } from "@/components/app-sidebar";
+import { CheckoutFeedback } from "@/components/billing/CheckoutFeedback";
+import { SubscriptionBanner } from "@/components/billing/SubscriptionBanner";
 import {
   SidebarInset,
   SidebarProvider,
@@ -49,6 +51,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <SidebarTrigger className="size-9 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
             <AppUserMenu variant="header" />
           </header>
+          <SubscriptionBanner />
           <main
             className={cn(
               "flex flex-1 flex-col",
@@ -61,6 +64,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                 isEditor ? "max-w-none" : "max-w-4xl",
               )}
             >
+              <Suspense fallback={null}>
+                <CheckoutFeedback />
+              </Suspense>
               {children}
             </div>
           </main>

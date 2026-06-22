@@ -44,8 +44,8 @@ Better Auth continues to own identity (`user`, `session`, OTP). App tables refer
 2. User signs in via email OTP.
 3. Post-sign-in logic checks organisation membership.
 4. If none → redirect to `/onboarding`.
-5. User confirms or selects a team → `createOrganization({ footballTeamId })`.
-6. Org name = team name; forced competition sync scheduled if team is on API allowlist.
+5. User confirms or selects a team → `createOrganization({ footballTeamId })` (org name = team name; competition sync scheduled if allowlisted).
+6. **Billing plan step** — subscribe via Stripe Checkout or skip (setup-only). See [stripe-billing.md](./stripe-billing.md).
 7. Redirect to `/app`.
 
 ### Invitation
@@ -82,6 +82,7 @@ Football team search and calendar: [`convex/football/queries.ts`](../convex/foot
 
 ## Related docs
 
+- [Stripe billing](stripe-billing.md)
 - [User management](user-management.md)
 - [Authentication](authentication.md)
 - [Convex structure](convex-structure.md)

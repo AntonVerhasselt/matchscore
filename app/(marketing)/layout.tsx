@@ -1,4 +1,7 @@
+import { Suspense } from "react";
+
 import PublicHeader from "@/components/PublicHeader";
+import { PublicNavbar } from "@/components/PublicNavbar";
 
 export default function MarketingLayout({
   children,
@@ -7,7 +10,11 @@ export default function MarketingLayout({
 }) {
   return (
     <div className="flex min-h-svh flex-col overflow-x-hidden">
-      <PublicHeader theme="brand" />
+      <Suspense
+        fallback={<PublicNavbar authenticated={false} theme="brand" />}
+      >
+        <PublicHeader theme="brand" />
+      </Suspense>
       {children}
     </div>
   );

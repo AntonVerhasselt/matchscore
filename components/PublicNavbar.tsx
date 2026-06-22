@@ -13,13 +13,16 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/convex/_generated/api";
+import { authClient } from "@/lib/auth-client";
+import { SIGN_OUT_QUERY_PARAM } from "@/lib/auth/sign-out";
 import { getUserInitials } from "@/lib/user-display";
 import { useQuery } from "convex/react";
 import { cn } from "@/lib/utils";
 import { Menu } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 type PublicNavbarProps = {
   authenticated: boolean;
@@ -39,7 +42,15 @@ function PublicNavbarDashboardLink() {
     );
   }
 
-  const initials = user ? getUserInitials(user) : "?";
+  if (!user) {
+    return (
+      <Button asChild className="h-auto px-4 py-2.5">
+        <Link href="/sign-in">{t("cta")}</Link>
+      </Button>
+    );
+  }
+
+  const initials = getUserInitials(user);
 
   return (
     <Button asChild className="h-auto gap-2.5 px-4 py-2.5">
@@ -56,12 +67,41 @@ function PublicNavbarDashboardLink() {
 }
 
 export function PublicNavbar({
-  authenticated,
+  authenticated: serverAuthenticated,
   theme = "default",
 }: PublicNavbarProps) {
   const t = useTranslations("common.nav");
   const [menuOpen, setMenuOpen] = useState(false);
+  const searchParams = useSearchParams();
+  const { data: session, isPending: isSessionPending } = authClient.useSession();
   const isBrand = theme === "brand";
+  const isSignOutRedirect = searchParams.get(SIGN_OUT_QUERY_PARAM) === "true";
+  const signOutRequested = useRef(false);
+
+  useEffect(() => {
+    if (!isSignOutRedirect || signOutRequested.current) {
+      return;
+    }
+
+    signOutRequested.current = true;
+    void authClient.signOut().catch((error) => {
+      console.error("Sign out failed:", error);
+    });
+  }, [isSignOutRedirect]);
+
+  useEffect(() => {
+    if (!isSignOutRedirect || isSessionPending || session?.session) {
+      return;
+    }
+
+    window.history.replaceState(null, "", "/");
+  }, [isSignOutRedirect, isSessionPending, session]);
+
+  const authenticated = isSignOutRedirect
+    ? false
+    : isSessionPending
+      ? serverAuthenticated
+      : Boolean(session?.session);
 
   const closeMenu = () => setMenuOpen(false);
 

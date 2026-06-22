@@ -27,6 +27,17 @@ import type * as automations_render_run_template_render from "../automations/ren
 import type * as automations_scenes from "../automations/scenes.js";
 import type * as automations_thumbnailConstants from "../automations/thumbnailConstants.js";
 import type * as automations_validators from "../automations/validators.js";
+import type * as billing_access from "../billing/access.js";
+import type * as billing_actions from "../billing/actions.js";
+import type * as billing_helpers from "../billing/helpers.js";
+import type * as billing_internalMutations from "../billing/internalMutations.js";
+import type * as billing_internalQueries from "../billing/internalQueries.js";
+import type * as billing_mutations from "../billing/mutations.js";
+import type * as billing_queries from "../billing/queries.js";
+import type * as billing_stripeCatalog from "../billing/stripeCatalog.js";
+import type * as billing_types from "../billing/types.js";
+import type * as billing_validators from "../billing/validators.js";
+import type * as billing_webhookHandlers from "../billing/webhookHandlers.js";
 import type * as crons from "../crons.js";
 import type * as dev_clearDatabase from "../dev/clearDatabase.js";
 import type * as dev_deploymentGuard from "../dev/deploymentGuard.js";
@@ -46,6 +57,7 @@ import type * as football_templateRenderMatchHelpers from "../football/templateR
 import type * as football_validators from "../football/validators.js";
 import type * as http from "../http.js";
 import type * as lib_email from "../lib/email.js";
+import type * as lib_features from "../lib/features.js";
 import type * as lib_slugify from "../lib/slugify.js";
 import type * as lib_voetbalinbelgie_allowlist from "../lib/voetbalinbelgie/allowlist.js";
 import type * as lib_voetbalinbelgie_disambiguateTeamNames from "../lib/voetbalinbelgie/disambiguateTeamNames.js";
@@ -112,6 +124,17 @@ declare const fullApi: ApiFromModules<{
   "automations/scenes": typeof automations_scenes;
   "automations/thumbnailConstants": typeof automations_thumbnailConstants;
   "automations/validators": typeof automations_validators;
+  "billing/access": typeof billing_access;
+  "billing/actions": typeof billing_actions;
+  "billing/helpers": typeof billing_helpers;
+  "billing/internalMutations": typeof billing_internalMutations;
+  "billing/internalQueries": typeof billing_internalQueries;
+  "billing/mutations": typeof billing_mutations;
+  "billing/queries": typeof billing_queries;
+  "billing/stripeCatalog": typeof billing_stripeCatalog;
+  "billing/types": typeof billing_types;
+  "billing/validators": typeof billing_validators;
+  "billing/webhookHandlers": typeof billing_webhookHandlers;
   crons: typeof crons;
   "dev/clearDatabase": typeof dev_clearDatabase;
   "dev/deploymentGuard": typeof dev_deploymentGuard;
@@ -131,6 +154,7 @@ declare const fullApi: ApiFromModules<{
   "football/validators": typeof football_validators;
   http: typeof http;
   "lib/email": typeof lib_email;
+  "lib/features": typeof lib_features;
   "lib/slugify": typeof lib_slugify;
   "lib/voetbalinbelgie/allowlist": typeof lib_voetbalinbelgie_allowlist;
   "lib/voetbalinbelgie/disambiguateTeamNames": typeof lib_voetbalinbelgie_disambiguateTeamNames;
@@ -202,4 +226,5 @@ export declare const components: {
   betterAuth: import("@convex-dev/better-auth/_generated/component.js").ComponentApi<"betterAuth">;
   resend: import("@convex-dev/resend/_generated/component.js").ComponentApi<"resend">;
   r2: import("@convex-dev/r2/_generated/component.js").ComponentApi<"r2">;
+  stripe: import("@convex-dev/stripe/_generated/component.js").ComponentApi<"stripe">;
 };

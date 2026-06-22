@@ -104,50 +104,65 @@
     "pricing": {
       "badge": "Preise",
       "title": "Erschwinglich für jeden Amateurverein",
-      "description": "Alle Pläne beinhalten alle Funktionen. Keine versteckten Limits, keine Gebühren pro Post.",
+      "description": "Wähle den Tarif, der zu deinem Verein passt. Automatisiertes Posten auf jeder Stufe; Tor-Highlights bei Elite und Lifetime.",
       "vatNote": "Alle Preise zzgl. MwSt. Abonnements werden jährlich abgerechnet.",
       "perMonth": "/Monat",
       "oneTime": "einmalig",
       "cta": "Loslegen",
-      "starter": {
-        "title": "Starter",
-        "description": "Voller Zugang mit kleinem Matchscore-Wasserzeichen.",
+      "minimum": {
+        "title": "Minimum",
+        "description": "Automatisiertes Posten mit kleinem Matchscore-Wasserzeichen.",
         "price": "€2",
         "billingNote": "€24 jährlich abgerechnet",
         "features": [
-          "Alle Funktionen inklusive",
-          "Unbegrenzte automatisierte Posts",
-          "Kleines Matchscore-Wasserzeichen auf Posts"
+          "Automatisierte Spielposts",
+          "Unbegrenzte Vorlagen",
+          "Kleines Matchscore-Wasserzeichen"
         ],
         "compactFeatures": [
-          "Alle Funktionen, unbegrenzte Posts",
-          "Kleines Matchscore-Wasserzeichen auf Posts"
+          "Automatisierte Posts",
+          "Matchscore-Wasserzeichen"
         ]
       },
       "pro": {
         "title": "Pro",
-        "description": "Voller Zugang, ohne Wasserzeichen.",
-        "price": "€5",
-        "billingNote": "€60 jährlich abgerechnet",
+        "description": "Automatisiertes Posten ohne Wasserzeichen.",
+        "price": "€9",
+        "billingNote": "€108 jährlich abgerechnet",
         "features": [
-          "Alle Funktionen inklusive",
-          "Unbegrenzte automatisierte Posts",
+          "Automatisierte Spielposts",
+          "Unbegrenzte Vorlagen",
           "Kein Wasserzeichen"
         ],
         "compactFeatures": [
-          "Alle Funktionen, unbegrenzte Posts",
+          "Automatisierte Posts",
           "Kein Wasserzeichen"
+        ]
+      },
+      "elite": {
+        "title": "Elite",
+        "description": "Alles in Pro, plus Tor-Highlights.",
+        "price": "€12",
+        "billingNote": "€144 jährlich abgerechnet",
+        "features": [
+          "Alles in Pro",
+          "Tor-Highlight-Videos",
+          "Kein Wasserzeichen"
+        ],
+        "compactFeatures": [
+          "Alles in Pro",
+          "Tor-Highlights"
         ]
       },
       "lifetime": {
         "badge": "Bestes Angebot",
         "headline": "Einmal zahlen. Für immer posten.",
         "title": "Lifetime",
-        "description": "Einmal zahlen, für immer nutzen.",
-        "price": "€150",
+        "description": "Einmal zahlen, für immer nutzen — inklusive Tor-Highlights.",
+        "price": "€250",
         "note": "Einmalige Zahlung, keine Verlängerung",
         "features": [
-          "Alle Funktionen inklusive",
+          "Alles in Elite",
           "Unbegrenzte automatisierte Posts",
           "Kein Wasserzeichen — für immer",
           "Für immer weiter nutzen"
@@ -189,7 +204,11 @@
         },
         {
           "question": "Ist der Preis pro Verein oder pro Team?",
-          "answer": "Der Preis gilt pro Verein. Ein Abonnement deckt die Automatisierungen deines Vereins für die erste Mannschaft ab. Alle Funktionen sind in jedem Plan enthalten — der einzige Unterschied ist das Wasserzeichen beim Starter-Plan."
+          "answer": "Der Preis gilt pro Verein. Ein Abonnement deckt die Automatisierungen deines Vereins für die erste Mannschaft ab. Die Pläne unterscheiden sich durch Wasserzeichen (Minimum), Posten ohne Wasserzeichen (Pro) und Tor-Highlights (Elite oder Lifetime)."
+        },
+        {
+          "question": "Welcher Plan enthält Tor-Highlights?",
+          "answer": "Tor-Highlights — Veo-Torclips zu Highlight-Videos zusammenstellen — sind im Elite-Abonnement und im Lifetime-Einmalplan enthalten."
         },
         {
           "question": "Was passiert nach Ablauf meines Jahresabonnements?",
@@ -243,11 +262,42 @@
     "signedInAs": "Angemeldet als",
     "accountLoadFailed": "Dein Konto konnte nicht geladen werden. Bitte versuche es erneut.",
     "retry": "Erneut versuchen",
+    "checkout": {
+      "success": "Abonnement aktiviert. Willkommen bei Matchscore!",
+      "completeFailed": "Zahlung erfolgreich, aber Setup konnte nicht abgeschlossen werden. Bitte Seite neu laden."
+    },
+    "billing": {
+      "subscriptionBanner": {
+        "upgradeRequired": "Abonniere, um deine Automatisierungen zu aktivieren und in Social Media zu posten.",
+        "subscriptionPastDue": "Dein Abonnement hat eine überfällige Zahlung. Stelle die Abrechnung wieder her, um Automatisierungen fortzusetzen.",
+        "subscriptionInactive": "Dein Abonnement ist nicht mehr aktiv. Erneuere die Abrechnung, um Automatisierungen fortzusetzen.",
+        "choosePlan": "Plan wählen",
+        "manageSubscription": "Abonnement verwalten",
+        "openingPortal": "Abrechnungsportal wird geöffnet…"
+      },
+      "automationsUpgrade": {
+        "title": "Abonnement erforderlich",
+        "upgradeRequiredDescription": "Wähle einen Plan, um Automatisierungen zu aktivieren und automatisch zu posten.",
+        "subscriptionPastDueDescription": "Das Abonnement deines Vereins hat eine überfällige Zahlung. Stelle die Abrechnung wieder her, um Automatisierungen erneut zu aktivieren.",
+        "subscriptionCanceledDescription": "Das Abonnement deines Vereins ist nicht mehr aktiv. Erneuere die Abrechnung, um Automatisierungen erneut zu aktivieren.",
+        "manageSubscription": "Abonnement verwalten",
+        "openingPortal": "Abrechnungsportal wird geöffnet…"
+      },
+      "upgrade": {
+        "goalHighlightsTitle": "Tor-Highlights erfordern Elite",
+        "upgradeRequiredDescription": "Erstelle Tor-Highlight-Videos aus Veo-Clips mit dem Elite- oder Lifetime-Tarif.",
+        "subscriptionPastDueDescription": "Das Abonnement deines Vereins hat eine überfällige Zahlung. Stelle die Abrechnung wieder her, um Tor-Highlights erneut zu nutzen.",
+        "subscriptionCanceledDescription": "Das Abonnement deines Vereins ist nicht mehr aktiv. Erneuere die Abrechnung, um Tor-Highlights wieder zu nutzen.",
+        "managePlan": "Plan verwalten",
+        "openingPortal": "Abrechnungsportal wird geöffnet…"
+      }
+    },
     "shell": {
       "nav": {
         "calendar": "Kalender",
         "automations": "Automatisierungen",
         "goalHighlights": "Tor-Highlights",
+        "goalHighlightsLocked": "Elite-Tarif erforderlich",
         "socials": "Verbundene Socials"
       },
       "user": {
@@ -311,7 +361,9 @@
         "tooManyGoals": "Zu viele Tore (max {max})",
         "clipNotReady": "Ein Tor-Clip ist noch nicht bereit",
         "fetchFailed": "Dieses Spiel konnte nicht von Veo geladen werden. Bitte erneut versuchen.",
-        "unexpected": "Beim Prüfen dieses Spiels ist ein Fehler aufgetreten"
+        "unexpected": "Beim Prüfen dieses Spiels ist ein Fehler aufgetreten",
+        "featureLockedUpgrade": "Tor-Highlights erfordern den Elite- oder Lifetime-Tarif.",
+        "featureLockedInactive": "Das Abonnement deines Vereins ist nicht aktiv. Prüfe die Abrechnung, um Tor-Highlights wiederherzustellen."
       },
       "historyTitle": "Letzte Zusammenstellungen",
       "historyEmpty": "Noch keine Tor-Highlights.",
@@ -663,6 +715,33 @@
       "cancelInviteSuccess": "Einladung abgebrochen.",
       "cancelFailed": "Einladung konnte nicht abgebrochen werden. Bitte versuche es erneut.",
       "joinedOn": "Beigetreten am {date}"
+    },
+    "billing": {
+      "title": "Abrechnung",
+      "description": "Das Abonnement und der Feature-Zugang deines Vereins.",
+      "loading": "Abrechnung wird geladen…",
+      "unavailable": "Abrechnungsdetails sind nicht verfügbar.",
+      "plan": "Plan",
+      "subscriptionStatus": "Abonnementstatus",
+      "stripeCatalogMode": "Stripe-Modus",
+      "billingSyncedAt": "Letzte Billing-Synchronisation",
+      "stripeInfoTitle": "Stripe-Info",
+      "stripeCustomerId": "Kunden-ID",
+      "stripeSubscriptionId": "Abonnement-ID",
+      "stripePriceId": "Preis-ID",
+      "currentPeriodEnd": "Ende der aktuellen Periode",
+      "upgrade": "Upgrade",
+      "openingPortal": "Abrechnungsportal wird geöffnet…",
+      "portalFailed": "Abrechnungsportal konnte nicht geöffnet werden. Bitte erneut versuchen.",
+      "syncing": "Abrechnung wird mit Stripe synchronisiert…",
+      "syncFailed": "Abrechnung konnte nicht mit Stripe synchronisiert werden. Bitte versuche es erneut.",
+      "status": {
+        "active": "Aktiv",
+        "pastDue": "Überfällig",
+        "canceled": "Gekündigt",
+        "none": "Keine",
+        "canceling": "Wird gekündigt"
+      }
     }
   },
   "acceptInvitation": {
@@ -701,7 +780,49 @@
     "teamRequired": "Wähle ein Team, um fortzufahren.",
     "submit": "Weiter",
     "pleaseWait": "Bitte warten...",
-    "createFailed": "Dein Club konnte nicht erstellt werden. Bitte versuche es erneut."
+    "createFailed": "Dein Club konnte nicht erstellt werden. Bitte versuche es erneut.",
+    "createSuccess": "Dein Club wurde erstellt.",
+    "planStep": {
+      "title": "Wähle deinen Plan",
+      "description": "Wähle einen Plan für deinen Club oder fahre mit eingeschränktem Zugang fort.",
+      "countryLabel": "Rechnungsland",
+      "vatNote": "Preise zzgl. MwSt. Belgische Clubs zahlen 21 % MwSt. beim Checkout.",
+      "loading": "Pläne werden geladen…",
+      "perMonth": "/Monat",
+      "yearlyPrice": "{price} jährlich abgerechnet",
+      "oneTime": "einmalig",
+      "choosePlan": "Plan wählen",
+      "skip": "Mit eingeschränktem Zugang fortfahren",
+      "pleaseWait": "Bitte warten...",
+      "checkoutFailed": "Checkout konnte nicht gestartet werden. Bitte versuche es erneut.",
+      "checkoutCanceled": "Checkout wurde abgebrochen.",
+      "skipFailed": "Fortfahren fehlgeschlagen. Bitte versuche es erneut.",
+      "countries": {
+        "BE": "Belgien",
+        "NL": "Niederlande",
+        "FR": "Frankreich",
+        "DE": "Deutschland",
+        "OTHER": "Andere"
+      },
+      "plans": {
+        "minimum": {
+          "title": "Minimum",
+          "description": "Automatisches Posten mit Matchscore-Wasserzeichen."
+        },
+        "pro": {
+          "title": "Pro",
+          "description": "Automatisches Posten ohne Wasserzeichen."
+        },
+        "elite": {
+          "title": "Elite",
+          "description": "Alles in Pro, plus Tor-Highlights."
+        },
+        "lifetime": {
+          "title": "Lifetime",
+          "description": "Einmal zahlen. Für immer posten, inklusive Tor-Highlights."
+        }
+      }
+    }
   },
   "footballSearch": {
     "placeholder": "Suche deinen Verein",

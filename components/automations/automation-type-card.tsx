@@ -21,6 +21,7 @@ import {
   type AutomationTypeSlug,
   type PostingChannel,
 } from "@/lib/automations/types";
+import { useOrgFeatures } from "@/lib/billing/use-org-features";
 import { showErrorToast, showSuccessToast } from "@/lib/user-feedback";
 import { useMutation } from "convex/react";
 
@@ -35,14 +36,17 @@ const TYPE_ICONS: Record<
 type AutomationTypeCardProps = {
   automationType: AutomationTypeSlug;
   automation?: AutomationSummary;
+  onEnableBlocked?: () => void;
 };
 
 export function AutomationTypeCard({
   automationType,
   automation,
+  onEnableBlocked,
 }: AutomationTypeCardProps) {
   const t = useTranslations("app.automations");
   const Icon = TYPE_ICONS[automationType];
+  const { hasAutomationsPost, automationsPostBlockReason } = useOrgFeatures();
   const setAutomationGlobalEnabled = useMutation(
     api.automations.mutations.setAutomationGlobalEnabled,
   );
@@ -53,15 +57,26 @@ export function AutomationTypeCard({
   const [savingPostingChannel, setSavingPostingChannel] =
     useState<PostingChannel | null>(null);
 
-  const isGloballyEnabled = automation?.isGloballyEnabled ?? true;
+  const isGloballyEnabled = automation?.effectiveIsGloballyEnabled ?? false;
   const templateCount = automation?.templateCount ?? 0;
   const isAnyPostingChannelSaving = savingPostingChannel !== null;
   const templateCountLabel = t("templates.shortCount", { count: templateCount });
   const showNoTemplatesHint =
     isGloballyEnabled && templateCount === 0 && automation !== undefined;
 
+  const handleEnableBlocked = () => {
+    if (automationsPostBlockReason) {
+      onEnableBlocked?.();
+    }
+  };
+
   const handleGlobalStatusChange = async (checked: boolean) => {
     if (!automation || isSavingGlobalStatus || isAnyPostingChannelSaving) {
+      return;
+    }
+
+    if (checked && !hasAutomationsPost) {
+      handleEnableBlocked();
       return;
     }
 
@@ -90,6 +105,11 @@ export function AutomationTypeCard({
       isSavingGlobalStatus ||
       isAnyPostingChannelSaving
     ) {
+      return;
+    }
+
+    if (checked && !hasAutomationsPost) {
+      handleEnableBlocked();
       return;
     }
 

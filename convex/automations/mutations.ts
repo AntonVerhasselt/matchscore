@@ -2,6 +2,8 @@ import { ConvexError, v } from "convex/values";
 import { mutation, type MutationCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
+import { requireOrgFeature } from "../billing/access";
+import { Feature } from "../lib/features";
 import {
   ensureOrganizationAutomations,
   getPrimaryOrganizationAutomation,
@@ -64,6 +66,14 @@ export const setAutomationGlobalEnabled = mutation({
       throw new ConvexError("Automation not found");
     }
 
+    if (args.isGloballyEnabled) {
+      await requireOrgFeature(
+        ctx,
+        membership.organizationId,
+        Feature.AutomationsPost,
+      );
+    }
+
     await ctx.db.patch(automation._id, {
       isGloballyEnabled: args.isGloballyEnabled,
       postingChannels: normalizePostingChannelStatuses(automation.postingChannels),
@@ -94,6 +104,14 @@ export const setAutomationPostingChannelEnabled = mutation({
 
     if (!automation) {
       throw new ConvexError("Automation not found");
+    }
+
+    if (args.isEnabled) {
+      await requireOrgFeature(
+        ctx,
+        membership.organizationId,
+        Feature.AutomationsPost,
+      );
     }
 
     await ctx.db.patch(automation._id, {

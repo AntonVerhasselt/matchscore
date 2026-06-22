@@ -24,10 +24,9 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
-import { authClient } from "@/lib/auth-client";
+import { signOutAndRedirectHome } from "@/lib/auth/sign-out";
 import { showErrorToast, showSuccessToast } from "@/lib/user-feedback";
 
 type PendingDelete = {
@@ -47,7 +46,6 @@ function formatJoinedDate(timestamp: number, locale: string): string {
 export function OrganizationMembers() {
   const t = useTranslations("settings.members");
   const locale = useLocale();
-  const router = useRouter();
   const membership = useQuery(api.organizations.queries.getCurrentMembership);
   const pendingInvitations = useQuery(
     api.organizations.queries.listPendingInvitations,
@@ -97,20 +95,8 @@ export function OrganizationMembers() {
       await deleteMember({ memberId });
 
       if (isCurrentUser) {
-        try {
-          const result = await authClient.signOut();
-          if (result.error) {
-            showErrorToast(t("signOutFailed"));
-            return;
-          }
-        } catch {
-          showErrorToast(t("signOutFailed"));
-          return;
-        }
-
         setPendingDelete(null);
-        router.push("/");
-        router.refresh();
+        signOutAndRedirectHome();
         return;
       }
 
@@ -155,7 +141,10 @@ export function OrganizationMembers() {
         <CardDescription>{t("description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <form onSubmit={(event) => void handleInvite(event)} className="space-y-3">
+        <form
+          onSubmit={(event) => void handleInvite(event)}
+          className="space-y-3"
+        >
           <div className="space-y-2">
             <Label htmlFor="invite-email">{t("inviteEmail")}</Label>
             <Input

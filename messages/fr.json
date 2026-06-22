@@ -104,50 +104,65 @@
     "pricing": {
       "badge": "Tarifs",
       "title": "Abordable pour chaque club amateur",
-      "description": "Tous les forfaits incluent toutes les fonctionnalités. Pas de limites cachées, pas de frais par publication.",
+      "description": "Choisissez l'offre adaptée à votre club. Publications automatisées à chaque niveau ; buts en vidéo sur Elite et Lifetime.",
       "vatNote": "Tous les prix sont hors TVA. Les abonnements sont facturés annuellement.",
       "perMonth": "/mois",
       "oneTime": "paiement unique",
       "cta": "Commencer",
-      "starter": {
-        "title": "Starter",
-        "description": "Accès complet avec un petit filigrane Matchscore.",
+      "minimum": {
+        "title": "Minimum",
+        "description": "Publications automatisées avec un petit filigrane Matchscore.",
         "price": "€2",
         "billingNote": "€24 facturé annuellement",
         "features": [
-          "Toutes les fonctionnalités incluses",
-          "Publications automatisées illimitées",
-          "Petit filigrane Matchscore sur les publications"
+          "Publications de match automatisées",
+          "Modèles illimités",
+          "Petit filigrane Matchscore"
         ],
         "compactFeatures": [
-          "Toutes les fonctionnalités, publications illimitées",
-          "Petit filigrane Matchscore sur les publications"
+          "Publications automatisées",
+          "Filigrane Matchscore"
         ]
       },
       "pro": {
         "title": "Pro",
-        "description": "Accès complet, sans filigrane.",
-        "price": "€5",
-        "billingNote": "€60 facturé annuellement",
+        "description": "Publications automatisées sans filigrane.",
+        "price": "€9",
+        "billingNote": "€108 facturé annuellement",
         "features": [
-          "Toutes les fonctionnalités incluses",
-          "Publications automatisées illimitées",
+          "Publications de match automatisées",
+          "Modèles illimités",
           "Sans filigrane"
         ],
         "compactFeatures": [
-          "Toutes les fonctionnalités, publications illimitées",
+          "Publications automatisées",
           "Sans filigrane"
+        ]
+      },
+      "elite": {
+        "title": "Elite",
+        "description": "Tout Pro, plus les buts en vidéo.",
+        "price": "€12",
+        "billingNote": "€144 facturé annuellement",
+        "features": [
+          "Tout Pro",
+          "Vidéos highlights de buts",
+          "Sans filigrane"
+        ],
+        "compactFeatures": [
+          "Tout Pro",
+          "Buts en vidéo"
         ]
       },
       "lifetime": {
         "badge": "Meilleure offre",
         "headline": "Payez une fois. Postez pour toujours.",
         "title": "À vie",
-        "description": "Payez une fois, utilisez pour toujours.",
-        "price": "€150",
+        "description": "Payez une fois, utilisez pour toujours — buts en vidéo inclus.",
+        "price": "€250",
         "note": "Paiement unique, sans renouvellement",
         "features": [
-          "Toutes les fonctionnalités incluses",
+          "Tout Elite",
           "Publications automatisées illimitées",
           "Sans filigrane — pour toujours",
           "Utilisez-le pour toujours"
@@ -189,7 +204,11 @@
         },
         {
           "question": "Le prix est-il par club ou par équipe ?",
-          "answer": "Le tarif est par club. Un abonnement couvre les automatisations de votre club pour l'équipe première. Toutes les fonctionnalités sont incluses dans chaque forfait — la seule différence est le filigrane sur le forfait Starter."
+          "answer": "Le tarif est par club. Un abonnement couvre les automatisations de votre club pour l'équipe première. Les offres diffèrent par filigrane (Minimum), publications sans filigrane (Pro) et buts en vidéo (Elite ou Lifetime)."
+        },
+        {
+          "question": "Quelle offre inclut les buts en vidéo ?",
+          "answer": "Les buts en vidéo — compiler des clips de buts Veo en vidéos highlights — sont inclus dans l'abonnement Elite et l'offre Lifetime en paiement unique."
         },
         {
           "question": "Que se passe-t-il après la fin de mon abonnement annuel ?",
@@ -243,11 +262,42 @@
     "signedInAs": "Connecté en tant que",
     "accountLoadFailed": "Impossible de charger votre compte. Veuillez réessayer.",
     "retry": "Réessayer",
+    "checkout": {
+      "success": "Abonnement activé. Bienvenue sur Matchscore !",
+      "completeFailed": "Paiement réussi, mais la finalisation a échoué. Actualisez la page ou contactez le support."
+    },
+    "billing": {
+      "subscriptionBanner": {
+        "upgradeRequired": "Abonnez-vous pour activer vos automatisations et publier sur les réseaux sociaux.",
+        "subscriptionPastDue": "Votre abonnement a un paiement en retard. Réactivez la facturation pour reprendre les automatisations.",
+        "subscriptionInactive": "Votre abonnement n'est plus actif. Renouvelez la facturation pour reprendre les automatisations.",
+        "choosePlan": "Choisir un plan",
+        "manageSubscription": "Gérer l'abonnement",
+        "openingPortal": "Ouverture du portail de facturation…"
+      },
+      "automationsUpgrade": {
+        "title": "Abonnement requis",
+        "upgradeRequiredDescription": "Choisissez un plan pour activer les automatisations et publier automatiquement.",
+        "subscriptionPastDueDescription": "L'abonnement de votre club a un paiement en retard. Réactivez la facturation pour activer à nouveau les automatisations.",
+        "subscriptionCanceledDescription": "L'abonnement de votre club n'est plus actif. Renouvelez la facturation pour activer à nouveau les automatisations.",
+        "manageSubscription": "Gérer l'abonnement",
+        "openingPortal": "Ouverture du portail de facturation…"
+      },
+      "upgrade": {
+        "goalHighlightsTitle": "Les buts en vidéo nécessitent Elite",
+        "upgradeRequiredDescription": "Compilez les clips de buts Veo en vidéos highlights avec l'offre Elite ou Lifetime.",
+        "subscriptionPastDueDescription": "L'abonnement de votre club a un paiement en retard. Réactivez la facturation pour utiliser à nouveau les buts en vidéo.",
+        "subscriptionCanceledDescription": "L'abonnement de votre club n'est plus actif. Renouvelez la facturation pour utiliser à nouveau les buts en vidéo.",
+        "managePlan": "Gérer le plan",
+        "openingPortal": "Ouverture du portail de facturation…"
+      }
+    },
     "shell": {
       "nav": {
         "calendar": "Calendrier",
         "automations": "Automatisations",
         "goalHighlights": "Buts en vidéo",
+        "goalHighlightsLocked": "Offre Elite requise",
         "socials": "Réseaux connectés"
       },
       "user": {
@@ -311,7 +361,9 @@
         "tooManyGoals": "Trop de buts (max {max})",
         "clipNotReady": "Un clip de but n'est pas encore prêt",
         "fetchFailed": "Impossible de charger ce match depuis Veo. Veuillez réessayer.",
-        "unexpected": "Une erreur s'est produite lors de la validation de ce match"
+        "unexpected": "Une erreur s'est produite lors de la validation de ce match",
+        "featureLockedUpgrade": "Les buts en vidéo nécessitent l'offre Elite ou Lifetime.",
+        "featureLockedInactive": "L'abonnement de votre club n'est pas actif. Consultez la facturation pour réactiver les buts en vidéo."
       },
       "historyTitle": "Compilations récentes",
       "historyEmpty": "Aucune compilation de buts pour l'instant.",
@@ -663,6 +715,33 @@
       "cancelInviteSuccess": "Invitation annulée.",
       "cancelFailed": "Impossible d'annuler l'invitation. Veuillez réessayer.",
       "joinedOn": "Membre depuis le {date}"
+    },
+    "billing": {
+      "title": "Facturation",
+      "description": "L'abonnement et l'accès aux fonctionnalités de votre club.",
+      "loading": "Chargement de la facturation…",
+      "unavailable": "Les détails de facturation ne sont pas disponibles.",
+      "plan": "Forfait",
+      "subscriptionStatus": "Statut de l'abonnement",
+      "stripeCatalogMode": "Mode Stripe",
+      "billingSyncedAt": "Dernière synchro billing",
+      "stripeInfoTitle": "Infos Stripe",
+      "stripeCustomerId": "ID client",
+      "stripeSubscriptionId": "ID abonnement",
+      "stripePriceId": "ID prix",
+      "currentPeriodEnd": "Fin de la période en cours",
+      "upgrade": "Upgrade",
+      "openingPortal": "Ouverture du portail de facturation…",
+      "portalFailed": "Impossible d'ouvrir le portail de facturation. Veuillez réessayer.",
+      "syncing": "Synchronisation de la facturation avec Stripe…",
+      "syncFailed": "Impossible de synchroniser la facturation avec Stripe. Veuillez réessayer.",
+      "status": {
+        "active": "Actif",
+        "pastDue": "En retard",
+        "canceled": "Annulé",
+        "none": "Aucun",
+        "canceling": "Annulation en cours"
+      }
     }
   },
   "acceptInvitation": {
@@ -701,7 +780,49 @@
     "teamRequired": "Sélectionnez une équipe pour continuer.",
     "submit": "Continuer",
     "pleaseWait": "Veuillez patienter...",
-    "createFailed": "Impossible de créer votre club. Veuillez réessayer."
+    "createFailed": "Impossible de créer votre club. Veuillez réessayer.",
+    "createSuccess": "Votre club a été créé.",
+    "planStep": {
+      "title": "Choisissez votre formule",
+      "description": "Choisissez une formule pour votre club ou continuez avec un accès limité.",
+      "countryLabel": "Pays de facturation",
+      "vatNote": "Prix hors TVA. Les clubs belges paient 21 % de TVA au paiement.",
+      "loading": "Chargement des formules…",
+      "perMonth": "/mois",
+      "yearlyPrice": "{price} facturé par an",
+      "oneTime": "unique",
+      "choosePlan": "Choisir la formule",
+      "skip": "Continuer avec un accès limité",
+      "pleaseWait": "Veuillez patienter...",
+      "checkoutFailed": "Impossible de démarrer le paiement. Veuillez réessayer.",
+      "checkoutCanceled": "Le paiement a été annulé.",
+      "skipFailed": "Impossible de continuer. Veuillez réessayer.",
+      "countries": {
+        "BE": "Belgique",
+        "NL": "Pays-Bas",
+        "FR": "France",
+        "DE": "Allemagne",
+        "OTHER": "Autre"
+      },
+      "plans": {
+        "minimum": {
+          "title": "Minimum",
+          "description": "Publication automatique avec filigrane Matchscore."
+        },
+        "pro": {
+          "title": "Pro",
+          "description": "Publication automatique sans filigrane."
+        },
+        "elite": {
+          "title": "Elite",
+          "description": "Tout Pro, plus les buts en vidéo."
+        },
+        "lifetime": {
+          "title": "Lifetime",
+          "description": "Payez une fois. Publiez pour toujours, buts en vidéo inclus."
+        }
+      }
+    }
   },
   "footballSearch": {
     "placeholder": "Recherchez votre club",

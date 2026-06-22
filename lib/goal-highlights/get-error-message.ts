@@ -70,6 +70,11 @@ function translateVeoPostErrorData(
       return translate("errors.fetchFailed");
     case "unexpected":
       return translate("errors.unexpected");
+    case "feature_locked":
+      if (data.blockReason === "subscription_inactive") {
+        return translate("errors.featureLockedInactive");
+      }
+      return translate("errors.featureLockedUpgrade");
     default:
       return translate("generateFailed");
   }

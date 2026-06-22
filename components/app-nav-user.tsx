@@ -3,7 +3,7 @@
 import { useQuery } from "convex/react";
 import { ChevronsUpDown, LogOut, Settings } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 
 import { OrganizationAvatar } from "@/components/organization-avatar";
@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/convex/_generated/api";
-import { authClient } from "@/lib/auth-client";
+import { signOutAndRedirectHome } from "@/lib/auth/sign-out";
 import { cn } from "@/lib/utils";
 
 type AppUserMenuProps = {
@@ -35,23 +35,12 @@ type AppUserMenuProps = {
 export function AppUserMenu({ variant = "sidebar" }: AppUserMenuProps) {
   const t = useTranslations("app.shell.user");
   const membership = useQuery(api.organizations.queries.getCurrentMembership);
-  const router = useRouter();
   const pathname = usePathname();
   const { isMobile } = useSidebar();
   const isSettingsActive = pathname.startsWith("/app/settings");
 
-  const handleSignOut = async () => {
-    try {
-      const result = await authClient.signOut();
-      if (result.error) {
-        console.error("Sign out failed:", result.error);
-        return;
-      }
-      router.push("/");
-      router.refresh();
-    } catch (error) {
-      console.error("Sign out failed:", error);
-    }
+  const handleSignOut = () => {
+    signOutAndRedirectHome();
   };
 
   if (variant === "sidebar" && isMobile) {
