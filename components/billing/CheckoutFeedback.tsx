@@ -37,6 +37,7 @@ export function CheckoutFeedback() {
 
       const nextParams = new URLSearchParams(searchParams.toString());
       nextParams.delete("checkout");
+      nextParams.delete("session_id");
       const query = nextParams.toString();
       router.replace(query ? `/app?${query}` : "/app", { scroll: false });
     };

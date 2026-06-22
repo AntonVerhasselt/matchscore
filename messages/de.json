@@ -718,6 +718,7 @@
       "openingPortal": "Abrechnungsportal wird geöffnet…",
       "portalFailed": "Abrechnungsportal konnte nicht geöffnet werden. Bitte erneut versuchen.",
       "syncing": "Abrechnung wird mit Stripe synchronisiert…",
+      "syncFailed": "Abrechnung konnte nicht mit Stripe synchronisiert werden. Bitte versuche es erneut.",
       "status": {
         "active": "Aktiv",
         "pastDue": "Überfällig",
@@ -764,6 +765,7 @@
     "submit": "Weiter",
     "pleaseWait": "Bitte warten...",
     "createFailed": "Dein Club konnte nicht erstellt werden. Bitte versuche es erneut.",
+    "createSuccess": "Dein Club wurde erstellt.",
     "planStep": {
       "title": "Wähle deinen Plan",
       "description": "Wähle einen Plan für deinen Club oder fahre mit eingeschränktem Zugang fort.",
@@ -797,11 +799,11 @@
         },
         "elite": {
           "title": "Elite",
-          "description": "Alles in Pro, plus Goal Highlights."
+          "description": "Alles in Pro, plus Tor-Highlights."
         },
         "lifetime": {
           "title": "Lifetime",
-          "description": "Einmal zahlen. Für immer posten, inklusive Goal Highlights."
+          "description": "Einmal zahlen. Für immer posten, inklusive Tor-Highlights."
         }
       }
     }

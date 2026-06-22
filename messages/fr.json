@@ -718,6 +718,7 @@
       "openingPortal": "Ouverture du portail de facturation…",
       "portalFailed": "Impossible d'ouvrir le portail de facturation. Veuillez réessayer.",
       "syncing": "Synchronisation de la facturation avec Stripe…",
+      "syncFailed": "Impossible de synchroniser la facturation avec Stripe. Veuillez réessayer.",
       "status": {
         "active": "Actif",
         "pastDue": "En retard",
@@ -764,6 +765,7 @@
     "submit": "Continuer",
     "pleaseWait": "Veuillez patienter...",
     "createFailed": "Impossible de créer votre club. Veuillez réessayer.",
+    "createSuccess": "Votre club a été créé.",
     "planStep": {
       "title": "Choisissez votre formule",
       "description": "Choisissez une formule pour votre club ou continuez avec un accès limité.",
@@ -797,11 +799,11 @@
         },
         "elite": {
           "title": "Elite",
-          "description": "Tout Pro, plus les goal highlights."
+          "description": "Tout Pro, plus les buts en vidéo."
         },
         "lifetime": {
           "title": "Lifetime",
-          "description": "Payez une fois. Publiez pour toujours, goal highlights inclus."
+          "description": "Payez une fois. Publiez pour toujours, buts en vidéo inclus."
         }
       }
     }

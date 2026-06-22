@@ -1,11 +1,31 @@
 import { ConvexError, v } from "convex/values";
-import { internalMutation } from "../_generated/server";
+import { internalMutation, type MutationCtx } from "../_generated/server";
+import type { Id } from "../_generated/dataModel";
 import type { SubscriptionStatus } from "./types";
 import type { PaidPlanTier } from "./stripeCatalog";
 import {
   planTierValidator,
   subscriptionStatusValidator,
 } from "./validators";
+
+async function assertStripeCustomerIdAvailable(
+  ctx: MutationCtx,
+  organizationId: Id<"organizations">,
+  stripeCustomerId: string,
+): Promise<void> {
+  const existing = await ctx.db
+    .query("organizations")
+    .withIndex("by_stripeCustomerId", (q) =>
+      q.eq("stripeCustomerId", stripeCustomerId),
+    )
+    .unique();
+
+  if (existing && existing._id !== organizationId) {
+    throw new ConvexError(
+      "Stripe customer is already linked to another organization",
+    );
+  }
+}
 
 export const setStripeCustomerId = internalMutation({
   args: {
@@ -18,6 +38,12 @@ export const setStripeCustomerId = internalMutation({
     if (!organization) {
       throw new ConvexError("Organization not found");
     }
+
+    await assertStripeCustomerIdAvailable(
+      ctx,
+      args.organizationId,
+      args.stripeCustomerId,
+    );
 
     await ctx.db.patch(args.organizationId, {
       stripeCustomerId: args.stripeCustomerId,
@@ -64,6 +90,11 @@ export const syncOrganizationBilling = internalMutation({
     }
 
     if (args.stripeCustomerId) {
+      await assertStripeCustomerIdAvailable(
+        ctx,
+        args.organizationId,
+        args.stripeCustomerId,
+      );
       patch.stripeCustomerId = args.stripeCustomerId;
     }
 

@@ -87,6 +87,10 @@ export async function handleCheckoutSessionCompletedWebhook(
   }
 
   if (session.mode === "payment") {
+    if (session.payment_status !== "paid") {
+      return;
+    }
+
     const tier = session.metadata?.tier?.trim();
     if (tier !== "lifetime" || !isPaidPlanTier(tier)) {
       return;

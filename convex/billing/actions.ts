@@ -112,13 +112,15 @@ async function createOrgCheckoutSession(
 
   if (
     args.tier === "lifetime" &&
-    hasActivePaidSubscription({
+    (hasActivePaidSubscription({
       plan: checkoutContext.plan,
       subscriptionStatus: checkoutContext.subscriptionStatus,
-    })
+    }) ||
+      checkoutContext.plan === "lifetime" ||
+      checkoutContext.subscriptionStatus === "past_due")
   ) {
     throw new ConvexError(
-      "Lifetime checkout is not available while an active subscription exists",
+      "Lifetime checkout is not available for this organization",
     );
   }
 

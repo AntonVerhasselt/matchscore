@@ -13,6 +13,15 @@ describe("mapStripeSubscriptionStatus", () => {
   it("maps terminal states to canceled", () => {
     expect(mapStripeSubscriptionStatus("canceled")).toBe("canceled");
     expect(mapStripeSubscriptionStatus("unpaid")).toBe("canceled");
+    expect(mapStripeSubscriptionStatus("incomplete_expired")).toBe("canceled");
+  });
+
+  it("maps past_due to past_due", () => {
+    expect(mapStripeSubscriptionStatus("past_due")).toBe("past_due");
+  });
+
+  it("falls back to none for unmapped statuses", () => {
+    expect(mapStripeSubscriptionStatus("incomplete")).toBe("none");
   });
 });
 

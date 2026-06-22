@@ -30,5 +30,6 @@ describe("formatSubscriptionStatusLabel", () => {
     expect(formatSubscriptionStatusLabel("canceled", false, labels)).toBe(
       "Canceled",
     );
+    expect(formatSubscriptionStatusLabel("none", false, labels)).toBe("None");
   });
 });

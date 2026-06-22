@@ -718,6 +718,7 @@
       "openingPortal": "Opening billing portal…",
       "portalFailed": "Could not open billing portal. Please try again.",
       "syncing": "Syncing billing from Stripe…",
+      "syncFailed": "Could not sync billing from Stripe. Please try again.",
       "status": {
         "active": "Active",
         "pastDue": "Past due",
@@ -764,6 +765,7 @@
     "submit": "Continue",
     "pleaseWait": "Please wait...",
     "createFailed": "Could not create your club. Please try again.",
+    "createSuccess": "Your club was created.",
     "planStep": {
       "title": "Choose your plan",
       "description": "Pick a plan for your club, or continue with limited access.",

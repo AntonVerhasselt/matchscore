@@ -27,6 +27,7 @@ import {
   formatStripeUnixTimestamp,
 } from "@/lib/billing/format-timestamp";
 import { useBillingPortal } from "@/lib/billing/use-billing-portal";
+import { showErrorToast } from "@/lib/user-feedback";
 
 function StripeInfoRow({ label, value }: { label: string; value: string }) {
   return (
@@ -48,6 +49,7 @@ function BillingPortalReturnSync({
 }: {
   onSyncStateChange: (isSyncing: boolean) => void;
 }) {
+  const t = useTranslations("settings.billing");
   const router = useRouter();
   const searchParams = useSearchParams();
   const syncBilling = useAction(
@@ -66,12 +68,14 @@ function BillingPortalReturnSync({
     void (async () => {
       try {
         await syncBilling({});
+      } catch {
+        showErrorToast(t("syncFailed"));
       } finally {
         onSyncStateChange(false);
         router.replace("/app/settings", { scroll: false });
       }
     })();
-  }, [onSyncStateChange, router, searchParams, syncBilling]);
+  }, [onSyncStateChange, router, searchParams, syncBilling, t]);
 
   return null;
 }
@@ -101,8 +105,14 @@ function BillingSettingsContent() {
     }
 
     syncedOnMountRef.current = true;
-    void syncBilling({});
-  }, [billing, syncBilling]);
+    void (async () => {
+      try {
+        await syncBilling({});
+      } catch {
+        showErrorToast(t("syncFailed"));
+      }
+    })();
+  }, [billing, syncBilling, t]);
 
   const isLoading = billing === undefined || isSyncingFromPortal;
 

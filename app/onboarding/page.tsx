@@ -22,7 +22,7 @@ import {
   readSelectedFootballTeamId,
   storeSelectedFootballTeamId,
 } from "@/lib/football/selected-team-storage";
-import { showErrorToast } from "@/lib/user-feedback";
+import { showErrorToast, showSuccessToast } from "@/lib/user-feedback";
 import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { Loader2 } from "lucide-react";
@@ -155,6 +155,7 @@ export default function OnboardingPage() {
     try {
       clearSelectedFootballTeamId();
       await createOrganization({ footballTeamId: activeTeamId });
+      showSuccessToast(t("createSuccess"));
     } catch (err) {
       if (activeTeamId) {
         storeSelectedFootballTeamId(activeTeamId);
@@ -165,7 +166,7 @@ export default function OnboardingPage() {
           : typeof err === "string"
             ? err
             : t("createFailed");
-      setError(message || t("createFailed"));
+      showErrorToast(message || t("createFailed"));
     } finally {
       setLoading(false);
     }

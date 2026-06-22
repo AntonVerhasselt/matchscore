@@ -718,6 +718,7 @@
       "openingPortal": "Facturatieportal openen…",
       "portalFailed": "Facturatieportal kon niet worden geopend. Probeer het opnieuw.",
       "syncing": "Facturatie synchroniseren met Stripe…",
+      "syncFailed": "Facturatie kon niet worden gesynchroniseerd met Stripe. Probeer het opnieuw.",
       "status": {
         "active": "Actief",
         "pastDue": "Achterstallig",
@@ -764,6 +765,7 @@
     "submit": "Doorgaan",
     "pleaseWait": "Even geduld...",
     "createFailed": "Je club kon niet worden aangemaakt. Probeer het opnieuw.",
+    "createSuccess": "Je club is aangemaakt.",
     "planStep": {
       "title": "Kies je plan",
       "description": "Kies een plan voor je club, of ga verder met beperkte toegang.",
@@ -797,11 +799,11 @@
         },
         "elite": {
           "title": "Elite",
-          "description": "Alles in Pro, plus goal highlights."
+          "description": "Alles in Pro, plus doelpunt highlights."
         },
         "lifetime": {
           "title": "Lifetime",
-          "description": "Eén keer betalen. Voor altijd posten, inclusief goal highlights."
+          "description": "Eén keer betalen. Voor altijd posten, inclusief doelpunt highlights."
         }
       }
     }

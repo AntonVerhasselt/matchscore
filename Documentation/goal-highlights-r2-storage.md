@@ -180,7 +180,7 @@ Returns `{ deletedBlobCount }`. Legacy `outputStorageId` fields on old rows are 
 
 1. Generate a new highlight end-to-end.
 2. Confirm object in Cloudflare R2 dashboard at `goal-highlights/{jobId}.mp4`.
-3. Confirm video plays and downloads in the job workspace.
+3. Verify video plays and downloads in the job workspace.
 4. Confirm Convex **file storage** does not grow for new compiles.
 5. Re-play video several times — Convex **data egress** should stay flat.
 
