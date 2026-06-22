@@ -4,6 +4,7 @@ import { normalizePostingChannelStatuses } from "../automations/constants";
 import { postingChannelValidator } from "../automations/validators";
 import { MAX_DRAFT_CAPTION_LENGTH } from "../../lib/goal-highlights/constants";
 import { requireVeoPostJobForOrganization } from "./access";
+import { goalHighlightsR2 } from "./r2Client";
 
 export const updateDraftCaption = mutation({
   args: {
@@ -55,14 +56,14 @@ export const deleteJob = mutation({
   handler: async (ctx, args) => {
     const { job } = await requireVeoPostJobForOrganization(ctx, args.jobId);
 
-    if (job.outputStorageId) {
+    if (job.outputR2Key) {
       try {
-        await ctx.storage.delete(job.outputStorageId);
+        await goalHighlightsR2.deleteObject(ctx, job.outputR2Key);
       } catch (error) {
         console.warn(
-          "Failed to delete goal highlight video blob",
+          "Failed to delete goal highlight video from R2",
           job._id,
-          job.outputStorageId,
+          job.outputR2Key,
           error,
         );
         throw error;

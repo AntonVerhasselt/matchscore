@@ -2,6 +2,10 @@
 
 import type { ActionCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
+import {
+  goalHighlightObjectKey,
+  goalHighlightsR2,
+} from "./r2Client";
 
 /** Matches plan cap: ~200 MB compiled output for up to 15 goals. */
 export const MAX_VGF_OUTPUT_BYTES = 200 * 1024 * 1024;
@@ -9,12 +13,12 @@ export const MAX_VGF_OUTPUT_BYTES = 200 * 1024 * 1024;
 const DOWNLOAD_TIMEOUT_MS = 120_000;
 const UPLOAD_TIMEOUT_MS = 180_000;
 
-type DownloadVgfOutputResult = {
-  storageId: Id<"_storage">;
+export type DownloadVgfOutputToR2Result = {
+  r2Key: string;
   byteSize: number;
 };
 
-function parseContentLength(response: Response): number | null {
+export function parseContentLength(response: Response): number | null {
   const header = response.headers.get("content-length");
   if (!header) {
     return null;
@@ -28,42 +32,28 @@ function parseContentLength(response: Response): number | null {
   return byteSize;
 }
 
-function assertOutputSizeWithinLimit(byteSize: number | null): void {
+export function assertOutputSizeWithinLimit(byteSize: number | null): void {
   if (byteSize !== null && byteSize > MAX_VGF_OUTPUT_BYTES) {
     throw new Error("Compiled video exceeds the maximum allowed size");
   }
 }
 
-function parseUploadStorageId(payload: unknown): Id<"_storage"> {
-  if (
-    !payload ||
-    typeof payload !== "object" ||
-    !("storageId" in payload) ||
-    typeof (payload as { storageId: unknown }).storageId !== "string"
-  ) {
-    throw new Error("Convex storage upload returned an invalid response");
-  }
-
-  return (payload as { storageId: Id<"_storage"> }).storageId;
-}
-
 /**
- * Streams a remote MP4 into Convex file storage via a generated upload URL.
- * Avoids buffering the full file in action memory (required for ~45 MB+ outputs).
- *
- * @see https://docs.convex.dev/file-storage/upload-files
- * @see https://docs.convex.dev/functions/actions (Node.js actions: 512 MB memory)
+ * Streams a remote MP4 into R2 via a signed PUT URL.
+ * Avoids buffering the full file in action memory when streaming works.
  */
-async function streamRemoteFileToStorage(
+async function streamRemoteFileToR2(
   ctx: ActionCtx,
+  jobId: Id<"veoPostJobs">,
   sourceResponse: Response,
   byteSizeHint: number | null,
-): Promise<DownloadVgfOutputResult> {
+): Promise<DownloadVgfOutputToR2Result> {
   if (!sourceResponse.body) {
     throw new Error("Compiled video download returned an empty body");
   }
 
-  const uploadUrl = await ctx.storage.generateUploadUrl();
+  const r2Key = goalHighlightObjectKey(jobId);
+  const { url: uploadUrl } = await goalHighlightsR2.generateUploadUrl(r2Key);
   const contentType =
     sourceResponse.headers.get("content-type")?.trim() || "video/mp4";
 
@@ -75,7 +65,7 @@ async function streamRemoteFileToStorage(
   }
 
   const uploadInit: RequestInit & { duplex?: "half" } = {
-    method: "POST",
+    method: "PUT",
     headers: uploadHeaders,
     body: sourceResponse.body,
     duplex: "half",
@@ -92,12 +82,13 @@ async function streamRemoteFileToStorage(
   );
 
   if (!uploadResponse.ok) {
-    throw new Error(`Convex storage upload failed (${uploadResponse.status})`);
+    throw new Error(`R2 upload failed (${uploadResponse.status})`);
   }
 
-  const storageId = parseUploadStorageId(await uploadResponse.json());
+  await goalHighlightsR2.syncMetadata(ctx, r2Key);
+
   return {
-    storageId,
+    r2Key,
     byteSize: byteSizeHint ?? 0,
   };
 }
@@ -105,26 +96,33 @@ async function streamRemoteFileToStorage(
 /** Fallback when streaming upload is unavailable: store via blob in Node (512 MB limit). */
 async function storeRemoteFileViaBlob(
   ctx: ActionCtx,
+  jobId: Id<"veoPostJobs">,
   sourceResponse: Response,
   byteSizeHint: number | null,
-): Promise<DownloadVgfOutputResult> {
+): Promise<DownloadVgfOutputToR2Result> {
   const blob = await sourceResponse.blob();
   if (blob.size > MAX_VGF_OUTPUT_BYTES) {
     throw new Error("Compiled video exceeds the maximum allowed size");
   }
 
-  const storageId = await ctx.storage.store(blob);
+  const r2Key = await goalHighlightsR2.store(ctx, blob, {
+    key: goalHighlightObjectKey(jobId),
+    type: "video/mp4",
+    cacheControl: "private, max-age=31536000",
+  });
+
   return {
-    storageId,
+    r2Key,
     byteSize: byteSizeHint ?? blob.size,
   };
 }
 
-export async function downloadVgfOutputToStorage(
+export async function downloadVgfOutputToR2(
   ctx: ActionCtx,
+  jobId: Id<"veoPostJobs">,
   outputUrl: string,
   byteSizeHint: number | null = null,
-): Promise<DownloadVgfOutputResult> {
+): Promise<DownloadVgfOutputToR2Result> {
   const sourceResponse = await fetch(outputUrl, {
     signal: AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS),
   }).catch((error: unknown) => {
@@ -145,8 +143,9 @@ export async function downloadVgfOutputToStorage(
   const resolvedByteSize = byteSizeHint ?? contentLength;
 
   try {
-    return await streamRemoteFileToStorage(
+    return await streamRemoteFileToR2(
       ctx,
+      jobId,
       sourceResponse,
       resolvedByteSize,
     );
@@ -169,7 +168,12 @@ export async function downloadVgfOutputToStorage(
     assertOutputSizeWithinLimit(retryByteSize);
 
     try {
-      return await storeRemoteFileViaBlob(ctx, retryResponse, retryByteSize);
+      return await storeRemoteFileViaBlob(
+        ctx,
+        jobId,
+        retryResponse,
+        retryByteSize,
+      );
     } catch {
       throw streamError;
     }

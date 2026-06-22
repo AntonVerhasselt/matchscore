@@ -124,7 +124,7 @@ describe("resolveExistingJob", () => {
         {
           _id: "job_ready",
           status: "ready",
-          outputStorageId: "storage",
+          outputR2Key: "goal-highlights/job_ready.mp4",
           expiresAt: now + 1000,
           createdAt: now - 500,
         },

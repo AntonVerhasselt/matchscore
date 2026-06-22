@@ -11,7 +11,7 @@ import {
   VGF_OUTPUT_FILENAME,
 } from "./vgfHelpers";
 import { createVgfClient } from "./vgfClient";
-import { downloadVgfOutputToStorage } from "./downloadVgfOutput";
+import { downloadVgfOutputToR2 } from "./downloadVgfOutputToR2";
 
 async function processTerminalVgfJob(
   ctx: ActionCtx,
@@ -41,19 +41,21 @@ async function processTerminalVgfJob(
     return;
   }
 
-  let storageId: Id<"_storage">;
+  let r2Key: string;
   let byteSize: number;
 
   try {
-    ({ storageId, byteSize } = await downloadVgfOutputToStorage(
+    ({ r2Key, byteSize } = await downloadVgfOutputToR2(
       ctx,
+      jobId,
       outputUrl,
       vgfJob.totalOutputBytes,
     ));
   } catch (firstError) {
     try {
-      ({ storageId, byteSize } = await downloadVgfOutputToStorage(
+      ({ r2Key, byteSize } = await downloadVgfOutputToR2(
         ctx,
+        jobId,
         outputUrl,
         vgfJob.totalOutputBytes,
       ));
@@ -71,7 +73,7 @@ async function processTerminalVgfJob(
 
   await ctx.runMutation(internal.veoPosts.internalMutations.markReady, {
     jobId,
-    outputStorageId: storageId,
+    outputR2Key: r2Key,
     outputByteSize: byteSize > 0 ? byteSize : (vgfJob.totalOutputBytes ?? undefined),
   });
 }
@@ -97,7 +99,7 @@ export const handleVgfWebhook = internalAction({
       return null;
     }
 
-    if (job.status === "ready" && job.outputStorageId) {
+    if (job.status === "ready" && job.outputR2Key) {
       return null;
     }
 

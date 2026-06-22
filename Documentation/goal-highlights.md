@@ -51,7 +51,7 @@ Top to bottom:
 
 **Post to social:** enabled only when `status === "ready"` and a stored video exists. Click shows a “coming soon” toast.
 
-**Download:** fetches the Convex storage URL as a blob and triggers a same-origin object-URL download (required because cross-origin `download` attributes are ignored by browsers).
+**Download:** fetches the signed R2 URL as a blob and triggers a same-origin object-URL download (required because cross-origin `download` attributes are ignored by browsers).
 
 ### Dedupe (same Veo URL)
 
@@ -70,7 +70,7 @@ Re-submitting the same URL never creates duplicate rows when a reusable job alre
 ### Delete
 
 - **Job workspace** or **history list** (trash icon) → confirmation dialog.
-- Deletes the Convex storage blob (if any) and the `veoPostJobs` row.
+- Deletes the R2 object (if any) and the `veoPostJobs` row.
 
 ### Regenerate
 
@@ -114,7 +114,7 @@ Re-submitting the same URL never creates duplicate rows when a reusable job alre
 **Principles:**
 
 - Convex orchestrates only. Goal clip bytes never pass through mutations.
-- Individual goal clips are **never** stored in Convex — only the final compiled MP4.
+- Individual goal clips are **never** stored in Convex — only the final compiled MP4 (in Cloudflare R2).
 - VGF downloads goal clips directly from Veo CDN URLs supplied at submit time.
 - Webhook handler returns `200` immediately; heavy work runs in an internal action.
 
@@ -154,7 +154,7 @@ One row per compilation job, scoped to an organisation.
 | `goalCount`, `goalStartsSeconds`, `goalHighlightIds` | Audit of included goals |
 | `warningMessage` | Score mismatch warning text |
 | `vgffmpegJobId` | Correlation id for VGF webhook validation |
-| `outputStorageId`, `outputByteSize`, `outputDurationSeconds` | Compiled MP4 in Convex storage |
+| `outputR2Key`, `outputByteSize`, `outputDurationSeconds` | Compiled MP4 in Cloudflare R2 |
 | `errorMessage`, `failedAt` | Failure details |
 | `createdAt`, `completedAt`, `expiresAt` | Timestamps; `expiresAt = completedAt + 90 days` when ready |
 
@@ -166,8 +166,8 @@ One row per compilation job, scoped to an organisation.
 
 | Flag | Meaning |
 | --- | --- |
-| `hasVideo` | `outputStorageId` is set |
-| `videoExpired` | `status === "ready"`, `completedAt` set, but no `outputStorageId` (cron removed the blob) |
+| `hasVideo` | `outputR2Key` is set |
+| `videoExpired` | `status === "ready"`, `completedAt` set, but no `outputR2Key` (cron removed the object) |
 
 ---
 
@@ -177,7 +177,7 @@ One row per compilation job, scoped to an organisation.
 
 | Stored | Not stored |
 | --- | --- |
-| One compiled MP4 per successful job (`outputStorageId`) | Individual goal clip MP4s |
+| One compiled MP4 per successful job (`outputR2Key` in Cloudflare R2) | Individual goal clip MP4s |
 | Job metadata (~2 KB) | Raw Veo JSON, per-goal CDN URLs, webhook bodies |
 | | VGF intermediate files |
 
@@ -190,7 +190,7 @@ When a job reaches `ready`, `expiresAt` is set to 90 days after `completedAt`.
 Daily cron (`convex/crons.ts`, 03:00 UTC) runs `expireStoredVideos`:
 
 1. Query jobs where `expiresAt < now` (index `by_expiresAt`).
-2. If `outputStorageId` exists → delete blob, clear `outputStorageId` / size / duration fields.
+2. If `outputR2Key` exists → delete R2 object, clear `outputR2Key` / size / duration fields.
 3. **Keep the job row** (caption, channels, history metadata remain).
 
 Users can **Regenerate video** on expired jobs or delete the record manually.
@@ -216,10 +216,10 @@ Route: `POST /webhooks/vgffmpeg` in `convex/http.ts`.
 2. Schedule `internal.veoPosts.internalActions.handleVgfWebhook`.
 3. Validate `vgffmpegJobId` matches the stored job (when present).
 4. Idempotent: skip if already `ready` with a stored video.
-5. On success: stream-download output → Convex storage (with one retry) → `markReady`.
+5. On success: stream-download output → Cloudflare R2 (with one retry) → `markReady`.
 6. On failure: `markFailed`.
 
-VGF output URLs are signed and short-lived; we copy to Convex storage promptly and never link the UI to VGF URLs long-term.
+VGF output URLs are signed and short-lived; we copy to Cloudflare R2 promptly and never link the UI to VGF URLs long-term.
 
 ---
 
@@ -250,7 +250,8 @@ Folder: `convex/veoPosts/` — see [convex-structure.md](./convex-structure.md).
 | `internalMutations.attachVgfJobId` | Store VGF correlation id |
 | `internalMutations.markReady` / `markFailed` | Terminal pipeline states |
 | `internalMutations.resetJobForRegeneration` | Clear output + reset to processing |
-| `internalMutations.expireStoredVideos` | Cron: delete expired blobs |
+| `internalMutations.expireStoredVideos` | Cron: delete expired R2 objects |
+| `internalMutations.clearLegacyConvexHighlightVideos` | One-time: delete pre-R2 Convex storage blobs |
 | `internalActions.handleVgfWebhook` | Process VGF completion |
 | `internalActions.pollVgfJobIfPending` | Webhook fallback |
 
@@ -260,7 +261,8 @@ Folder: `convex/veoPosts/` — see [convex-structure.md](./convex-structure.md).
 | --- | --- |
 | `convex/veoPosts/helpers.ts` | Veo fetch, goal filter, validation, dedupe |
 | `convex/veoPosts/vgfHelpers.ts` | FFmpeg command builder, webhook URL, payload normalization |
-| `convex/veoPosts/downloadVgfOutput.ts` | Stream remote MP4 into Convex storage |
+| `convex/veoPosts/downloadVgfOutputToR2.ts` | Stream remote MP4 into Cloudflare R2 |
+| `convex/veoPosts/r2Client.ts` | `@convex-dev/r2` client + object key helpers |
 | `convex/veoPosts/access.ts` | Org-scoped job access |
 | `lib/goal-highlights/errors.ts` | Structured error codes for client toasts |
 | `lib/goal-highlights/get-error-message.ts` | Map codes → i18n |
@@ -312,6 +314,18 @@ Set on the **Convex deployment** (not Next.js public env):
 
 ```bash
 npx convex env set VGFFMPEG_API_KEY "..."
+npx convex env set R2_BUCKET "your-bucket-name"
+npx convex env set R2_ENDPOINT "https://<account_id>.r2.cloudflarestorage.com"
+npx convex env set R2_ACCESS_KEY_ID "..."
+npx convex env set R2_SECRET_ACCESS_KEY "..."
+```
+
+Configure R2 bucket CORS to allow `GET` and `HEAD` from `http://localhost:3000` and your production `SITE_URL`.
+
+One-time migration from Convex file storage:
+
+```bash
+npx convex run veoPosts/internalMutations:clearLegacyConvexHighlightVideos
 ```
 
 Webhook base URL is resolved automatically in `convex/veoPosts/convexSiteUrl.ts` from, in order:
@@ -378,7 +392,7 @@ Covers URL parsing, goal tag filter, dedupe logic, score-mismatch warning, and V
               │                               │
               ▼                               ▼
     ready + videoExpired                  (row deleted)
-    (no outputStorageId)
+    (no outputR2Key)
               │
               └── regenerate ──▶ processing
 ```

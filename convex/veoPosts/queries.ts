@@ -1,27 +1,29 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
+import { listVeoPostJobsForOrganization } from "./access";
 import {
-  listVeoPostJobsForOrganization,
-} from "./access";
+  GOAL_HIGHLIGHT_URL_EXPIRES_SECONDS,
+  goalHighlightsR2,
+} from "./r2Client";
 import {
   veoPostJobDetailValidator,
   veoPostJobSummaryValidator,
 } from "./validators";
 import { requireCurrentMembership } from "../automations/helpers";
 
-function jobHasStoredVideo(job: { outputStorageId?: string }): boolean {
-  return job.outputStorageId !== undefined;
+function jobHasStoredVideo(job: { outputR2Key?: string }): boolean {
+  return job.outputR2Key !== undefined;
 }
 
 function jobVideoExpired(job: {
   status: string;
-  outputStorageId?: string;
+  outputR2Key?: string;
   completedAt?: number;
 }): boolean {
   return (
     job.status === "ready" &&
     job.completedAt !== undefined &&
-    job.outputStorageId === undefined
+    job.outputR2Key === undefined
   );
 }
 
@@ -64,7 +66,7 @@ function toJobDetail(
     goalStartsSeconds: job.goalStartsSeconds ?? null,
     warningMessage: job.warningMessage ?? null,
     errorMessage: job.errorMessage ?? null,
-    outputStorageId: job.outputStorageId ?? null,
+    outputR2Key: job.outputR2Key ?? null,
     outputVideoUrl: hasVideo ? outputVideoUrl : null,
     hasVideo,
     videoExpired: jobVideoExpired(job),
@@ -102,8 +104,10 @@ export const getJob = query({
     }
 
     const outputVideoUrl =
-      job.outputStorageId && jobHasStoredVideo(job)
-        ? ((await ctx.storage.getUrl(job.outputStorageId)) ?? null)
+      job.outputR2Key && jobHasStoredVideo(job)
+        ? await goalHighlightsR2.getUrl(job.outputR2Key, {
+            expiresIn: GOAL_HIGHLIGHT_URL_EXPIRES_SECONDS,
+          })
         : null;
 
     return toJobDetail(job, outputVideoUrl);
