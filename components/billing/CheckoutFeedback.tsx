@@ -38,7 +38,7 @@ export function CheckoutFeedback() {
       const nextParams = new URLSearchParams(searchParams.toString());
       nextParams.delete("checkout");
       const query = nextParams.toString();
-      router.replace(query ? `?${query}` : ".", { scroll: false });
+      router.replace(query ? `/app?${query}` : "/app", { scroll: false });
     };
 
     void finishCheckoutReturn();

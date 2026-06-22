@@ -1,18 +1,48 @@
 import { v } from "convex/values";
-import { query } from "../_generated/server";
+import { query, type QueryCtx } from "../_generated/server";
 import { components } from "../_generated/api";
 import { authComponent } from "../auth/instance";
+import { getGoalHighlightsBlockReason } from "./access";
 import { getOrgFeatureAccess } from "../lib/features";
 import { getMembershipForUser } from "../organizations/helpers";
 import { getStripeCatalogMode } from "./stripeCatalog";
 import type { PlanTier } from "./types";
+import type { SubscriptionStatus } from "./types";
 import {
   featureAccessValidator,
+  orgBillingContextValidator,
   planTierValidator,
   stripeSubscriptionSnapshotValidator,
   subscriptionStatusValidator,
 } from "./validators";
 import { planDisplayPricing } from "./stripeCatalog";
+
+async function loadOrgBillingFieldsForCurrentUser(ctx: QueryCtx) {
+  const user = await authComponent.safeGetAuthUser(ctx);
+  if (!user) {
+    return null;
+  }
+
+  const membership = await getMembershipForUser(ctx, user._id);
+  if (!membership) {
+    return null;
+  }
+
+  const organization = await ctx.db.get(membership.organizationId);
+  if (!organization) {
+    return null;
+  }
+
+  const plan: PlanTier = organization.plan ?? "none";
+  const subscriptionStatus: SubscriptionStatus =
+    organization.subscriptionStatus ?? "none";
+
+  return {
+    organization,
+    plan,
+    subscriptionStatus,
+  };
+}
 
 export const getOrgBillingState = query({
   args: {},
@@ -75,28 +105,44 @@ export const getOrgBillingState = query({
   },
 });
 
+export const getOrgBillingContext = query({
+  args: {},
+  returns: v.union(orgBillingContextValidator, v.null()),
+  handler: async (ctx) => {
+    const billing = await loadOrgBillingFieldsForCurrentUser(ctx);
+    if (!billing) {
+      return null;
+    }
+
+    const features = getOrgFeatureAccess({
+      plan: billing.plan,
+      subscriptionStatus: billing.subscriptionStatus,
+    });
+
+    return {
+      plan: billing.plan,
+      subscriptionStatus: billing.subscriptionStatus,
+      features,
+      goalHighlightsBlockReason: getGoalHighlightsBlockReason({
+        plan: billing.plan,
+        subscriptionStatus: billing.subscriptionStatus,
+      }),
+    };
+  },
+});
+
 export const getOrgFeatures = query({
   args: {},
   returns: v.union(featureAccessValidator, v.null()),
   handler: async (ctx) => {
-    const user = await authComponent.safeGetAuthUser(ctx);
-    if (!user) {
-      return null;
-    }
-
-    const membership = await getMembershipForUser(ctx, user._id);
-    if (!membership) {
-      return null;
-    }
-
-    const organization = await ctx.db.get(membership.organizationId);
-    if (!organization) {
+    const context = await loadOrgBillingFieldsForCurrentUser(ctx);
+    if (!context) {
       return null;
     }
 
     return getOrgFeatureAccess({
-      plan: organization.plan ?? "none",
-      subscriptionStatus: organization.subscriptionStatus ?? "none",
+      plan: context.plan,
+      subscriptionStatus: context.subscriptionStatus,
     });
   },
 });

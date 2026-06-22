@@ -247,11 +247,21 @@
       "success": "Abonnement geactiveerd. Welkom bij Matchscore!",
       "completeFailed": "Betaling gelukt, maar afronden mislukt. Vernieuw de pagina of neem contact op."
     },
+    "billing": {
+      "upgrade": {
+        "goalHighlightsTitle": "Doelpunt highlights vereisen Elite",
+        "upgradeRequiredDescription": "Stel Veo-doelpuntclips samen tot highlightvideo's met het Elite- of Lifetime-abonnement.",
+        "subscriptionPastDueDescription": "Het abonnement van je club heeft een achterstallige betaling. Herstel je facturatie om doelpunt highlights opnieuw te gebruiken.",
+        "subscriptionCanceledDescription": "Het abonnement van je club is niet meer actief. Vernieuw je facturatie om doelpunt highlights opnieuw te gebruiken.",
+        "viewBilling": "Facturatie bekijken"
+      }
+    },
     "shell": {
       "nav": {
         "calendar": "Kalender",
         "automations": "Automatiseringen",
         "goalHighlights": "Doelpunt highlights",
+        "goalHighlightsLocked": "Vereist Elite-abonnement",
         "socials": "Gekoppelde socials"
       },
       "user": {
@@ -315,7 +325,9 @@
         "tooManyGoals": "Te veel doelpunten (max {max})",
         "clipNotReady": "Een doelpuntclip is nog niet klaar",
         "fetchFailed": "Deze wedstrijd kon niet van Veo worden geladen. Probeer het opnieuw.",
-        "unexpected": "Er ging iets mis bij het valideren van deze wedstrijd"
+        "unexpected": "Er ging iets mis bij het valideren van deze wedstrijd",
+        "featureLockedUpgrade": "Doelpunt highlights vereisen het Elite- of Lifetime-abonnement.",
+        "featureLockedInactive": "Het abonnement van je club is niet actief. Controleer je facturatie om doelpunt highlights te herstellen."
       },
       "historyTitle": "Recente compilaties",
       "historyEmpty": "Nog geen doelpuntcompilaties.",

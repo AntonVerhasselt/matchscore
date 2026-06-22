@@ -21,6 +21,10 @@ export type OrgBillingFields = {
   subscriptionStatus?: SubscriptionStatus;
 };
 
+export type FeatureBlockReason =
+  | "upgrade_required"
+  | "subscription_inactive";
+
 const ACTIVE_STATUSES: SubscriptionStatus[] = ["active"];
 
 function isBillingActive(
@@ -85,4 +89,26 @@ export function getOrgFeatureAccess(org: OrgBillingFields): FeatureAccess {
     ),
     automationsWatermark: hasFeature(tier, status, Feature.ApplyWatermark),
   };
+}
+
+export function getFeatureBlockReason(
+  org: OrgBillingFields,
+  feature: FeatureKey,
+): FeatureBlockReason | null {
+  const tier = resolvePlanTier(org);
+  const status = resolveSubscriptionStatus(org);
+
+  if (hasFeature(tier, status, feature)) {
+    return null;
+  }
+
+  if (
+    tier !== "none" &&
+    tier !== "lifetime" &&
+    (status === "past_due" || status === "canceled")
+  ) {
+    return "subscription_inactive";
+  }
+
+  return "upgrade_required";
 }

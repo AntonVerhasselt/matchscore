@@ -7,12 +7,12 @@ todos:
     status: completed
   - id: phase-2-checkout
     content: "Phase 2: Checkout actions + VAT + webhook org sync + onboarding paywall step 2"
-    status: pending
+    status: completed
   - id: phase-3-gating
-    content: "Phase 3: General feature registry + server guards + goal highlights upgrade UI"
-    status: pending
+    content: "Phase 3: Server guards + goal highlights upgrade UI + sidebar lock badge (informational CTA until Phase 4)"
+    status: completed
   - id: phase-4-portal-marketing
-    content: "Phase 4: Customer Portal, settings billing page, landing pricing (Elite), production cutover"
+    content: "Phase 4: Customer Portal, settings upgrade/manage billing, landing pricing (Elite), production cutover"
     status: pending
 isProject: false
 ---
@@ -120,6 +120,77 @@ if (!features?.[Feature.GoalHighlightsGenerate]) → show UpgradePrompt
 ```
 
 **Principle:** Stripe/component tables = billing source of truth. `organizations.plan` + `subscriptionStatus` = denormalized cache for fast gating (synced via webhooks). Feature matrix lives only in `convex/lib/features.ts` — add new features by extending the enum + matrix row, not by editing every gate site.
+
+### Routes (billing UI)
+
+| Route | Status | Purpose |
+| ----- | ------ | ------- |
+| `/app/settings` | **Exists (Phase 1)** | Account settings; includes read-only `BillingSettings` (plan, status, feature flags, Stripe debug) |
+| `/app/settings/plan` | **Phase 4** | In-app plan picker (same UX as onboarding plan step, inside app shell): current plan highlighted, upgrade CTAs, country/VAT, portal link for existing subscribers |
+| `/app/settings/billing` | **Does not exist** | Do not link here — was a plan doc mistake |
+
+**Phase 3 upgrade CTA** links to `/app/settings` (read-only billing summary) until `/app/settings/plan` ships in Phase 4.
+
+---
+
+## Feature access architecture (how gating works)
+
+### Two layers — never confuse them
+
+| Layer | Purpose | Data source | When it runs |
+| ----- | ------- | ----------- | ------------ |
+| **Client (UX)** | Hide/disable actions, show upgrade prompts, sidebar lock badges | Convex query → org billing fields | Page mount; stays subscribed |
+| **Server (security)** | Block mutations/actions that cost money or compute | `ctx.db.get(organization)` + `hasFeature()` | Every gated write |
+
+The client layer is for clarity; the server layer is authoritative. Never skip server guards because the UI looked disabled.
+
+### What happens on page load (goal highlights example)
+
+We do **not** call Stripe on every page load.
+
+1. `useQuery(api.billing.queries.getOrgBillingContext)` (Phase 3 — consolidates features + plan/status for UX) runs once per app shell subscription.
+2. Convex reads: auth user → membership (indexed) → organization document (by id).
+3. Pure function `getOrgFeatureAccess({ plan, subscriptionStatus })` derives all feature booleans in memory (matrix is static TypeScript — no extra DB).
+4. Result is **cached reactively**: Convex only re-runs the query when `organizations.plan` or `organizations.subscriptionStatus` change (webhook sync). Navigating between pages does not re-fetch from Stripe or re-scan tables if nothing changed.
+5. Multiple components (sidebar, goal highlights page, settings) sharing the same query = **one WebSocket subscription**, deduplicated by the Convex client.
+
+Typical cost: ~2 indexed DB reads + in-memory matrix lookup. Sub-millisecond at org scale.
+
+### What happens on generate (server)
+
+When `createOrOpenJob` runs:
+
+1. `getCreateOrOpenPlan` already resolves membership + org context.
+2. On the **create** branch only: `requireOrgFeature(org, Feature.GoalHighlightsGenerate)` — uses org fields already loaded or one `db.get`.
+3. No Stripe API call. Webhooks keep org fields fresh; guards trust the denormalized cache.
+
+`regenerateJob` is gated the same way. **Re-open existing jobs** and **view/download** stay allowed after downgrade.
+
+### Why denormalized org fields (not live Stripe)
+
+| Approach | Verdict |
+| -------- | ------- |
+| Stripe `subscriptions.retrieve` per action | Too slow, rate-limited, wrong tool for hot path |
+| JWT/session feature claims | Stale until re-login; misses Convex reactivity |
+| Component subscription table only | Extra join; org fields already synced by our webhooks |
+| **`organizations.plan` + `subscriptionStatus`** | Fast, reactive, webhook-synced — **use this** |
+
+Stripe remains source of truth for **billing**; org fields are a **cache** updated by webhooks (`syncOrganizationBilling`).
+
+### Future features — same pattern
+
+Adding a feature (e.g. `automations:post`):
+
+1. Add key to `Feature` enum + row in matrix (`convex/lib/features.ts`) + unit test.
+2. Add `requireOrgFeature(ctx, orgId, Feature.X)` at mutation/action entry points that perform the action.
+3. Client: read from existing `getOrgBillingContext` / `useOrgFeatures()` — **no new query per feature**.
+4. Optional: upgrade prompt component parameterized by `feature` + `blockReason`.
+
+Do **not** create per-feature Convex queries or per-page Stripe lookups.
+
+### Phase 3 query consolidation
+
+`BillingSettings` currently calls both `getOrgBillingState` and `getOrgFeatures` (duplicate org read). Phase 3 introduces **`getOrgBillingContext`** returning `{ plan, subscriptionStatus, features, blockReason? }` for UI, while keeping `getOrgBillingState` for the settings debug panel (Stripe component subscription snapshot). App shell / sidebar / gated pages use the consolidated query only.
 
 ---
 
@@ -302,9 +373,9 @@ Customers still receive Stripe email receipts; we just don't expose invoice list
 
 ### 7. Return URL
 
-Set default return URL to: `{SITE_URL}/app/settings/billing`
+Set default return URL to: `{SITE_URL}/app/settings/plan`
 
-Our code also passes `return_url` when creating portal sessions via `createCustomerPortalSession`.
+Our code also passes `return_url` when creating portal sessions via `createCustomerPortalSession` (Phase 4).
 
 ### 8. Lifetime customers
 
@@ -444,91 +515,161 @@ Update `[.env.example](.env.example)` documenting the 2 new Convex secrets only.
 - [x] Webhook test event → 200
 - [x] Settings page loads billing query reactively for current org
 
-**Not yet built (Phase 2+):** checkout actions, webhook → org sync, onboarding paywall, `requireOrgFeature`, Customer Portal action, landing pricing update.
+**Deferred to Phase 4:** `/app/settings/plan` upgrade page, Customer Portal, landing pricing update.
 
 ---
 
-### Phase 2 — Checkout + onboarding paywall
+### Phase 2 — Checkout + onboarding paywall ✅ Done
 
 **Goal:** User completes onboarding → pays → org plan updates → settings UI reflects tier.
 
-**Backend:**
+**Implemented (2026-06-22):**
 
-- [ ] `convex/billing/actions.ts`:
-  - `createOrgSubscriptionCheckout` (Minimum/Pro/Elite, `mode: "subscription"`, `orgId` metadata)
-  - `createOrgLifetimeCheckout` (`mode: "payment"`)
-  - VAT: apply catalog `taxRates.beVat` when `billingCountry === "BE"`, else no tax rate
-- [ ] `convex/billing/internalMutations.ts` + webhook handlers in `http.ts`:
-  - `checkout.session.completed` → sync `organizations.plan` + `subscriptionStatus`
-  - `customer.subscription.updated/deleted` → sync status + plan from `priceId`
-  - `payment_intent.succeeded` → Lifetime sync
-- [ ] `requireMembership` on all billing actions (any member)
+| Area | What shipped |
+| ---- | ------------ |
+| **Checkout actions** | `createOrgSubscriptionCheckout`, `createOrgLifetimeCheckout` in `convex/billing/actions.ts` |
+| **VAT** | BE → catalog `beVat` tax rate; other countries → no tax rate |
+| **Webhooks** | `checkout.session.completed`, `customer.subscription.updated/deleted`, `payment_intent.succeeded` → `syncOrganizationBilling` |
+| **Onboarding** | Two-step flow: club → `OnboardingPlanStep` (4 tiers, country selector, skip) |
+| **Success UX** | Redirect `/app?checkout=success` + `CheckoutFeedback` toast + `skipBillingOnboarding`; middleware redirects stray `/?checkout=success` → `/app` |
+| **Lifetime guard** | Blocks lifetime checkout while active subscription exists |
 
-**Frontend:**
+**Backend (done):**
 
-- [ ] Refactor `[app/onboarding/page.tsx](app/onboarding/page.tsx)` to multistep:
-  1. Club selection (existing)
-  2. Plan selection: 4 tiers, country selector (default BE), checkout CTAs, **"Continue with limited access"** skip
-- [ ] On checkout success redirect → `/app?checkout=success` + Sonner toast
-- [ ] Enable Subscribe buttons on settings billing page → call checkout actions
+- [x] `convex/billing/actions.ts` — subscription + lifetime checkout
+- [x] `convex/billing/internalMutations.ts` — `syncOrganizationBilling`, `setStripeCustomerId`
+- [x] `convex/billing/webhookHandlers.ts` + handlers in `convex/http.ts`
+- [x] `convex/billing/internalQueries.ts` — `getCheckoutContext` (onboarding-only; intentional)
+- [x] `convex/billing/mutations.ts` — `skipBillingOnboarding`
+- [x] Membership required on checkout via `requireCurrentMembership` in internal query
+
+**Frontend (done):**
+
+- [x] `app/onboarding/page.tsx` — plan step when `needsBillingOnboarding`
+- [x] `components/onboarding/OnboardingPlanStep.tsx`
+- [x] `components/billing/CheckoutFeedback.tsx` in app shell
+- [x] Checkout cancel toast on return to onboarding
+
+**Deferred to Phase 4 (by design):**
+
+- [ ] `/app/settings/plan` — in-app upgrade page (see Phase 4)
+- [ ] Post-onboarding checkout / Customer Portal for plan changes
 
 **Verify Phase 2:**
 
-- Sandbox checkout Minimum with test card `4242...`
-- Webhook fires → `organizations.plan = "minimum"`, settings UI updates live
-- BE checkout shows +21% VAT; non-BE shows base price only
-- Skip path → app works with `plan = none`, features = setup-only
+- [x] Sandbox checkout Minimum with test card `4242...`
+- [x] Webhook fires → `organizations.plan = "minimum"`, settings UI updates live
+- [x] BE checkout shows +21% VAT; non-BE shows base price only
+- [x] Skip path → app works with `plan = none`, features = setup-only
+- [x] After checkout, user lands on `/app` (not marketing homepage)
 
 ---
 
-### Phase 3 — Feature gating end-to-end
+### Phase 3 — Feature gating end-to-end ✅ Done
 
-**Goal:** Server enforces features; frontend shows upgrade prompts — testable without posting pipeline.
+**Goal:** Server enforces features; frontend shows clear upgrade prompts and sidebar lock state.
+
+**Implemented (2026-06-22):**
+
+| Area | What shipped |
+| ---- | ------------ |
+| **Server guard** | `requireOrgFeature` in `convex/billing/access.ts` |
+| **Billing context query** | `getOrgBillingContext` — plan, status, features, `goalHighlightsBlockReason` |
+| **Goal highlights gates** | Create blocked in `getCreateOrOpenPlan`; `regenerateJob` gated |
+| **Errors** | Structured `feature_locked` with `upgrade_required` / `subscription_inactive` |
+| **Hook** | `lib/billing/use-org-features.ts` |
+| **Upgrade UI** | `UpgradePrompt` on goal highlights list + job detail; sidebar lock icon |
+| **i18n** | Upgrade + error copy in en/nl/de/fr |
+| **Watermark** | Stub comment in automations render (no runtime behavior) |
+
+**Decisions (confirmed):**
+
+- Upgrade CTA in Phase 3 → `/app/settings` (read-only billing summary; **not** `/app/settings/billing`)
+- Full upgrade/plan picker → Phase 4 at `/app/settings/plan`
+- Gate `regenerateJob` same as new generation
+- After downgrade: view/download/re-open existing jobs OK; create + regenerate blocked
+- Sidebar lock badge on goal highlights nav
+- UX: distinguish **needs Elite** vs **subscription inactive** (`past_due`, `canceled`)
 
 **Backend:**
 
-- [ ] `requireOrgFeature(ctx, orgId, feature)` in `convex/lib/features.ts`
-- [ ] Gate `[convex/veoPosts/actions.ts](convex/veoPosts/actions.ts)` `createOrOpenJob` → `Feature.GoalHighlightsGenerate`
-- [ ] Export `getOrgFeatures` query used by frontend
-- [ ] Stub comment/hook in automations render for `Feature.ApplyWatermark` (implementation deferred)
+- [x] `requireOrgFeature` in `convex/billing/access.ts` (loads org, calls pure `hasFeature` from `convex/lib/features.ts`)
+- [x] `getOrgBillingContext` query — `{ plan, subscriptionStatus, features, blockReason }` for UI (avoids duplicate org reads)
+- [x] Gate `getCreateOrOpenPlan` **create branch** → `Feature.GoalHighlightsGenerate`
+- [x] Gate `regenerateJob` → same feature
+- [x] Structured error `feature_locked` (+ `blockReason`: `upgrade_required` | `subscription_inactive`) for goal highlights
+- [x] Stub comment in automations render for future `Feature.ApplyWatermark` (no runtime behavior)
 
 **Frontend:**
 
-- [ ] `lib/billing/use-org-features.ts` hook wrapping `getOrgFeatures`
-- [ ] `[app/app/goal-highlights/page.tsx](app/app/goal-highlights/page.tsx)` → upgrade prompt when feature missing (link to settings/billing or portal)
-- [ ] Optional: badge on sidebar nav items showing locked state
+- [x] `lib/billing/use-org-features.ts` — wraps `getOrgBillingContext`
+- [x] `components/billing/UpgradePrompt.tsx` — reusable; tier-aware copy; CTA → `/app/settings` (interim)
+- [x] `app/app/goal-highlights/page.tsx` — upgrade prompt replaces generate form when locked; history still visible
+- [x] `app/app/goal-highlights/[jobId]/page.tsx` — disable regenerate with inline explanation when locked
+- [x] `components/app-sidebar.tsx` — lock icon on goal highlights when feature missing
+- [x] i18n: upgrade copy + `feature_locked` error in en/nl/de/fr
 
 **Verify Phase 3:**
 
-- Setup-only org → goal highlights blocked server-side + upgrade UI
-- Elite/Lifetime org → goal highlights works
-- Minimum/Pro org → goal highlights blocked with upgrade message mentioning Elite
+- Setup-only org → generate/regenerate blocked server-side + upgrade UI (mentions Elite)
+- Minimum/Pro active → blocked with "Upgrade to Elite" messaging
+- `past_due` / `canceled` → blocked with subscription-status messaging (not just "buy Elite")
+- Elite/Lifetime → generate + regenerate work
+- Downgraded org → existing jobs viewable; generate/regenerate blocked
+- Sidebar shows lock when goal highlights unavailable
 
 ---
 
-### Phase 4 — Portal, polish, production prep
+### Phase 4 — Plan page, portal, polish, production prep
 
-**Goal:** Self-service plan changes + marketing alignment + production cutover checklist.
+**Goal:** Self-service plan changes via in-app plan page + Customer Portal; marketing alignment; production cutover.
 
 **Backend:**
 
-- [ ] `createCustomerPortalSession` action → portal URL with `return_url` to settings/billing
+- [ ] Relax `getCheckoutContext` (or add `getUpgradeCheckoutContext`) so checkout works **after** onboarding — for orgs upgrading from `/app/settings/plan`
+- [ ] `createCustomerPortalSession` action → portal URL with `return_url` to `/app/settings/plan`
 - [ ] Ensure `customer.subscription.updated` webhook updates `organizations.plan` when user switches Minimum ↔ Pro ↔ Elite in portal
 
-**Frontend:**
+**Frontend — `/app/settings/plan` (primary upgrade surface):**
 
-- [ ] Settings billing: "Manage billing" → portal; show renewal date, cancel-at-period-end state
+- [ ] New page at `[app/app/settings/plan/page.tsx](app/app/settings/plan/page.tsx)` inside app shell
+- [ ] Reuse/refactor `[components/onboarding/OnboardingPlanStep.tsx](components/onboarding/OnboardingPlanStep.tsx)` into a shared plan picker component
+- [ ] Show **current plan** clearly (badge/highlight on active tier)
+- [ ] Upgrade CTAs per tier (checkout for new subscribers; portal for existing subscription changes)
+- [ ] Country selector + VAT note (same as onboarding)
+- [ ] Link from `UpgradePrompt`, settings nav, and optionally settings index
+- [ ] Move upgrade CTA from `/app/settings` → `/app/settings/plan`
+
+**Frontend — settings & marketing:**
+
+- [ ] `/app/settings` — keep read-only `BillingSettings`; add link to **Manage plan** → `/app/settings/plan`
+- [ ] Portal **"Manage billing"** on plan page for payment method / cancel / switch (existing subscribers)
 - [ ] Update `[messages/en.json](messages/en.json)` + nl/de/fr: Minimum/Pro/**Elite**/Lifetime prices and FAQ (goal highlights = Elite/Lifetime only)
 - [ ] Update `[components/landing/pricing/](components/landing/pricing/)` for 4 tiers (add Elite column/banner layout)
 - [ ] Landing CTAs → `/sign-in`
 
 **Verify Phase 4:**
 
+- `/app/settings/plan` shows current plan; upgrade to Elite unlocks goal highlights
 - Portal: upgrade Minimum → Elite → webhook updates plan → goal highlights unlocks without re-checkout
 - Portal: cancel → `subscriptionStatus = canceled`, posting features blocked, editing still works
+- Upgrade CTAs on goal highlights point to `/app/settings/plan`
 - Rename production Gold → Elite in Stripe; add live `beVat` tax rate ID to catalog; configure live webhook + live secret key
 
 ---
+
+## What to test today (Phases 1–3)
+
+| Scenario | Expect |
+| -------- | ------ |
+| Onboarding skip | `/app` works; goal highlights locked |
+| Onboarding checkout | Lands on **`/app`** after payment (not `/` marketing page); success toast |
+| Elite/Lifetime org | Goal highlights generate + regenerate work; no sidebar lock |
+| none / Minimum / Pro | Generate blocked; upgrade prompt; sidebar lock; history still viewable |
+| `past_due` / `canceled` | “Restore billing” messaging (not just “buy Elite”) |
+| Upgrade CTA | Goes to **`/app/settings`** (billing summary) — plan picker is Phase 4 |
+| Settings | `/app/settings` shows plan, status, feature flags (read-only) |
+| **Not yet** | `/app/settings/plan`, portal, post-onboarding checkout, landing pricing |
 
 ## Manual tasks for you
 
@@ -568,12 +709,23 @@ Update `[.env.example](.env.example)` documenting the 2 new Convex secrets only.
 | `components/settings/BillingSettings.tsx` | 1 | Done | Settings debug UI |
 | `.env.example` | 1 | Done | Stripe secret env var docs |
 | `plans/stripe-plan.md` | — | Done | This plan |
-| `convex/billing/actions.ts` | 2 | Pending | Checkout + portal |
-| `convex/billing/internalMutations.ts` | 2 | Pending | Webhook → org sync |
-| `app/onboarding/page.tsx` | 2 | Pending | Two-step onboarding |
-| `convex/veoPosts/actions.ts` | 3 | Pending | Goal highlights gate |
+| `convex/billing/actions.ts` | 2 | Done | Checkout (portal action in Phase 4) |
+| `convex/billing/internalMutations.ts` | 2 | Done | Webhook → org sync |
+| `convex/billing/webhookHandlers.ts` | 2 | Done | Stripe event → org patch |
+| `app/onboarding/page.tsx` | 2 | Done | Two-step onboarding |
+| `components/onboarding/OnboardingPlanStep.tsx` | 2 | Done | Plan selection + checkout |
+| `components/billing/CheckoutFeedback.tsx` | 2 | Done | Post-checkout toast |
+| `convex/billing/access.ts` | 3 | Done | `requireOrgFeature` server guard |
+| `convex/billing/queries.ts` | 3 | Done | `getOrgBillingContext` |
+| `convex/veoPosts/internalQueries.ts` | 3 | Done | Create-branch feature gate |
+| `convex/veoPosts/actions.ts` | 3 | Done | Regenerate feature gate |
+| `components/billing/UpgradePrompt.tsx` | 3 | Done | CTA → `/app/settings` (→ `/app/settings/plan` in Phase 4) |
+| `lib/billing/use-org-features.ts` | 3 | Done | Client hook |
+| `components/app-sidebar.tsx` | 3 | Done | Lock badge |
+| `middleware.ts` | 2–3 | Done | Checkout success → `/app`; bypass onboarding redirect |
+| `app/app/settings/plan/page.tsx` | 4 | Pending | In-app plan picker + upgrade |
 | `components/landing/pricing/` | 4 | Pending | 4-tier marketing |
-| `messages/*.json` | 4 | Pending | Pricing copy + FAQ |
+| `messages/*.json` | 3 | Done | Phase 3 upgrade copy; Phase 4 pricing FAQ |
 
 
 ---

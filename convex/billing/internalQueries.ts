@@ -1,8 +1,12 @@
 import { ConvexError, v } from "convex/values";
 import { internalQuery } from "../_generated/server";
 import { requireCurrentMembership } from "../automations/helpers";
+import { requireOrgFeature } from "./access";
 import type { PlanTier } from "./types";
-import { subscriptionPlanTierValidator } from "./validators";
+import {
+  featureKeyValidator,
+  subscriptionPlanTierValidator,
+} from "./validators";
 
 const checkoutContextValidator = v.object({
   organizationId: v.id("organizations"),
@@ -61,5 +65,17 @@ export const getCheckoutContext = internalQuery({
       userEmail: user.email,
       userName: user.name ?? null,
     };
+  },
+});
+
+export const assertCurrentOrgFeature = internalQuery({
+  args: {
+    feature: featureKeyValidator,
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { membership } = await requireCurrentMembership(ctx);
+    await requireOrgFeature(ctx, membership.organizationId, args.feature);
+    return null;
   },
 });

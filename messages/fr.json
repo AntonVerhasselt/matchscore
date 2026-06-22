@@ -247,11 +247,21 @@
       "success": "Abonnement activé. Bienvenue sur Matchscore !",
       "completeFailed": "Paiement réussi, mais la finalisation a échoué. Actualisez la page ou contactez le support."
     },
+    "billing": {
+      "upgrade": {
+        "goalHighlightsTitle": "Les buts en vidéo nécessitent Elite",
+        "upgradeRequiredDescription": "Compilez les clips de buts Veo en vidéos highlights avec l'offre Elite ou Lifetime.",
+        "subscriptionPastDueDescription": "L'abonnement de votre club a un paiement en retard. Réactivez la facturation pour utiliser à nouveau les buts en vidéo.",
+        "subscriptionCanceledDescription": "L'abonnement de votre club n'est plus actif. Renouvelez la facturation pour utiliser à nouveau les buts en vidéo.",
+        "viewBilling": "Voir la facturation"
+      }
+    },
     "shell": {
       "nav": {
         "calendar": "Calendrier",
         "automations": "Automatisations",
         "goalHighlights": "Buts en vidéo",
+        "goalHighlightsLocked": "Offre Elite requise",
         "socials": "Réseaux connectés"
       },
       "user": {
@@ -315,7 +325,9 @@
         "tooManyGoals": "Trop de buts (max {max})",
         "clipNotReady": "Un clip de but n'est pas encore prêt",
         "fetchFailed": "Impossible de charger ce match depuis Veo. Veuillez réessayer.",
-        "unexpected": "Une erreur s'est produite lors de la validation de ce match"
+        "unexpected": "Une erreur s'est produite lors de la validation de ce match",
+        "featureLockedUpgrade": "Les buts en vidéo nécessitent l'offre Elite ou Lifetime.",
+        "featureLockedInactive": "L'abonnement de votre club n'est pas actif. Consultez la facturation pour réactiver les buts en vidéo."
       },
       "historyTitle": "Compilations récentes",
       "historyEmpty": "Aucune compilation de buts pour l'instant.",

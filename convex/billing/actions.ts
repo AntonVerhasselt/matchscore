@@ -147,7 +147,7 @@ async function createOrgCheckoutSession(
         ...(taxRateIds.length > 0 ? { tax_rates: taxRateIds } : {}),
       },
     ],
-    success_url: `${siteUrl}/app?checkout=success`,
+    success_url: `${siteUrl}/app?checkout=success&session_id={CHECKOUT_SESSION_ID}`,
     cancel_url: `${siteUrl}/onboarding?checkout=canceled`,
     metadata: orgMetadata,
     ...(args.mode === "subscription"

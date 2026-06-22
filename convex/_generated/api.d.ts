@@ -27,6 +27,7 @@ import type * as automations_render_run_template_render from "../automations/ren
 import type * as automations_scenes from "../automations/scenes.js";
 import type * as automations_thumbnailConstants from "../automations/thumbnailConstants.js";
 import type * as automations_validators from "../automations/validators.js";
+import type * as billing_access from "../billing/access.js";
 import type * as billing_actions from "../billing/actions.js";
 import type * as billing_helpers from "../billing/helpers.js";
 import type * as billing_internalMutations from "../billing/internalMutations.js";
@@ -123,6 +124,7 @@ declare const fullApi: ApiFromModules<{
   "automations/scenes": typeof automations_scenes;
   "automations/thumbnailConstants": typeof automations_thumbnailConstants;
   "automations/validators": typeof automations_validators;
+  "billing/access": typeof billing_access;
   "billing/actions": typeof billing_actions;
   "billing/helpers": typeof billing_helpers;
   "billing/internalMutations": typeof billing_internalMutations;

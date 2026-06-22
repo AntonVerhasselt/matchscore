@@ -122,6 +122,10 @@ export const regenerateJob = action({
   },
   returns: v.null(),
   handler: async (ctx, args) => {
+    await ctx.runQuery(internal.billing.internalQueries.assertCurrentOrgFeature, {
+      feature: "goal_highlights:generate",
+    });
+
     const job = await ctx.runQuery(
       internal.veoPosts.internalQueries.getJobForRegeneration,
       { jobId: args.jobId },

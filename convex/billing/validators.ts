@@ -35,3 +35,22 @@ export const featureAccessValidator = v.object({
   goalHighlightsGenerate: v.boolean(),
   automationsWatermark: v.boolean(),
 });
+
+export const featureBlockReasonValidator = v.union(
+  v.literal("upgrade_required"),
+  v.literal("subscription_inactive"),
+);
+
+export const featureKeyValidator = v.union(
+  v.literal("automations:edit"),
+  v.literal("automations:post"),
+  v.literal("goal_highlights:generate"),
+  v.literal("automations:watermark"),
+);
+
+export const orgBillingContextValidator = v.object({
+  plan: v.union(planTierValidator, v.literal("none")),
+  subscriptionStatus: subscriptionStatusValidator,
+  features: featureAccessValidator,
+  goalHighlightsBlockReason: v.union(featureBlockReasonValidator, v.null()),
+});

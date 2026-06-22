@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { AppPageHeader } from "@/components/app-page";
+import { UpgradePrompt } from "@/components/billing/UpgradePrompt";
 import { DeleteJobDialog } from "@/components/goal-highlights/delete-job-dialog";
 import { JobHistoryList } from "@/components/goal-highlights/job-history-list";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/convex/_generated/api";
 import type { Doc, Id } from "@/convex/_generated/dataModel";
+import { useOrgFeatures } from "@/lib/billing/use-org-features";
 import { getGoalHighlightsErrorMessage } from "@/lib/goal-highlights/get-error-message";
 import { showErrorToast, showSuccessToast } from "@/lib/user-feedback";
 
@@ -32,6 +34,8 @@ type JobSummary = {
 export default function GoalHighlightsPage() {
   const t = useTranslations("app.goalHighlights");
   const router = useRouter();
+  const { context: billingContext, isLoading: isBillingLoading, hasGoalHighlights, goalHighlightsBlockReason } =
+    useOrgFeatures();
   const jobs = useQuery(api.veoPosts.queries.listJobs);
   const createOrOpenJob = useAction(api.veoPosts.actions.createOrOpenJob);
   const deleteJob = useMutation(api.veoPosts.mutations.deleteJob);
@@ -109,31 +113,42 @@ export default function GoalHighlightsPage() {
 
       <div className="space-y-8">
         <section className="space-y-3 rounded-lg border p-4">
-          <div className="space-y-2">
-            <Label htmlFor="veo-match-url">{t("urlLabel")}</Label>
-            <Input
-              id="veo-match-url"
-              type="url"
-              inputMode="url"
-              placeholder={t("urlPlaceholder")}
-              value={veoMatchUrl}
-              disabled={isSubmitting}
-              onChange={(event) => setVeoMatchUrl(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  void handleGenerate();
-                }
-              }}
+          {isBillingLoading ? (
+            <Skeleton className="h-28 w-full" />
+          ) : !hasGoalHighlights && goalHighlightsBlockReason && billingContext ? (
+            <UpgradePrompt
+              blockReason={goalHighlightsBlockReason}
+              subscriptionStatus={billingContext.subscriptionStatus}
             />
-          </div>
-          <Button
-            type="button"
-            onClick={() => void handleGenerate()}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? t("generating") : t("generate")}
-          </Button>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="veo-match-url">{t("urlLabel")}</Label>
+                <Input
+                  id="veo-match-url"
+                  type="url"
+                  inputMode="url"
+                  placeholder={t("urlPlaceholder")}
+                  value={veoMatchUrl}
+                  disabled={isSubmitting}
+                  onChange={(event) => setVeoMatchUrl(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void handleGenerate();
+                    }
+                  }}
+                />
+              </div>
+              <Button
+                type="button"
+                onClick={() => void handleGenerate()}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? t("generating") : t("generate")}
+              </Button>
+            </>
+          )}
         </section>
 
         <section className="space-y-3">
