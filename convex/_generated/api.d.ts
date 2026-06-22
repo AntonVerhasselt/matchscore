@@ -72,13 +72,14 @@ import type * as users_settings from "../users/settings.js";
 import type * as veoPosts_access from "../veoPosts/access.js";
 import type * as veoPosts_actions from "../veoPosts/actions.js";
 import type * as veoPosts_convexSiteUrl from "../veoPosts/convexSiteUrl.js";
-import type * as veoPosts_downloadVgfOutput from "../veoPosts/downloadVgfOutput.js";
+import type * as veoPosts_downloadVgfOutputToR2 from "../veoPosts/downloadVgfOutputToR2.js";
 import type * as veoPosts_helpers from "../veoPosts/helpers.js";
 import type * as veoPosts_internalActions from "../veoPosts/internalActions.js";
 import type * as veoPosts_internalMutations from "../veoPosts/internalMutations.js";
 import type * as veoPosts_internalQueries from "../veoPosts/internalQueries.js";
 import type * as veoPosts_mutations from "../veoPosts/mutations.js";
 import type * as veoPosts_queries from "../veoPosts/queries.js";
+import type * as veoPosts_r2Client from "../veoPosts/r2Client.js";
 import type * as veoPosts_validators from "../veoPosts/validators.js";
 import type * as veoPosts_vgfClient from "../veoPosts/vgfClient.js";
 import type * as veoPosts_vgfHelpers from "../veoPosts/vgfHelpers.js";
@@ -156,13 +157,14 @@ declare const fullApi: ApiFromModules<{
   "veoPosts/access": typeof veoPosts_access;
   "veoPosts/actions": typeof veoPosts_actions;
   "veoPosts/convexSiteUrl": typeof veoPosts_convexSiteUrl;
-  "veoPosts/downloadVgfOutput": typeof veoPosts_downloadVgfOutput;
+  "veoPosts/downloadVgfOutputToR2": typeof veoPosts_downloadVgfOutputToR2;
   "veoPosts/helpers": typeof veoPosts_helpers;
   "veoPosts/internalActions": typeof veoPosts_internalActions;
   "veoPosts/internalMutations": typeof veoPosts_internalMutations;
   "veoPosts/internalQueries": typeof veoPosts_internalQueries;
   "veoPosts/mutations": typeof veoPosts_mutations;
   "veoPosts/queries": typeof veoPosts_queries;
+  "veoPosts/r2Client": typeof veoPosts_r2Client;
   "veoPosts/validators": typeof veoPosts_validators;
   "veoPosts/vgfClient": typeof veoPosts_vgfClient;
   "veoPosts/vgfHelpers": typeof veoPosts_vgfHelpers;
@@ -199,4 +201,5 @@ export declare const internal: FilterApi<
 export declare const components: {
   betterAuth: import("@convex-dev/better-auth/_generated/component.js").ComponentApi<"betterAuth">;
   resend: import("@convex-dev/resend/_generated/component.js").ComponentApi<"resend">;
+  r2: import("@convex-dev/r2/_generated/component.js").ComponentApi<"r2">;
 };

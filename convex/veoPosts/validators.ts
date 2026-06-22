@@ -39,7 +39,7 @@ export const veoPostJobDetailValidator = v.object({
   goalStartsSeconds: v.union(v.array(v.number()), v.null()),
   warningMessage: v.union(v.string(), v.null()),
   errorMessage: v.union(v.string(), v.null()),
-  outputStorageId: v.union(v.id("_storage"), v.null()),
+  outputR2Key: v.union(v.string(), v.null()),
   outputVideoUrl: v.union(v.string(), v.null()),
   hasVideo: v.boolean(),
   videoExpired: v.boolean(),

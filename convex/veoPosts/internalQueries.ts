@@ -40,7 +40,7 @@ export const getCreateOrOpenPlan = internalQuery({
       existingJobs.map((job) => ({
         _id: job._id,
         status: job.status,
-        outputStorageId: job.outputStorageId,
+        outputR2Key: job.outputR2Key,
         expiresAt: job.expiresAt,
         createdAt: job.createdAt,
       })),
@@ -76,7 +76,7 @@ const jobForProcessingValidator = v.union(
       v.literal("failed"),
     ),
     vgffmpegJobId: v.union(v.string(), v.null()),
-    outputStorageId: v.union(v.id("_storage"), v.null()),
+    outputR2Key: v.union(v.string(), v.null()),
   }),
   v.null(),
 );
@@ -110,7 +110,7 @@ export const getJobForProcessing = internalQuery({
       _id: job._id,
       status: job.status,
       vgffmpegJobId: job.vgffmpegJobId ?? null,
-      outputStorageId: job.outputStorageId ?? null,
+      outputR2Key: job.outputR2Key ?? null,
     };
   },
 });

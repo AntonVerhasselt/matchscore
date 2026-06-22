@@ -5,6 +5,7 @@ import { DEFAULT_POSTING_CHANNEL_STATUSES } from "../automations/constants";
 import { listVeoPostJobsBySlug } from "./access";
 import { resolveExistingJob } from "./helpers";
 import { VGF_JOB_RETENTION_MS } from "./vgfHelpers";
+import { goalHighlightsR2 } from "./r2Client";
 
 const insertProcessingJobArgsValidator = v.object({
   organizationId: v.id("organizations"),
@@ -56,7 +57,7 @@ export const insertProcessingJob = internalMutation({
       existingJobs.map((job) => ({
         _id: job._id,
         status: job.status,
-        outputStorageId: job.outputStorageId,
+        outputR2Key: job.outputR2Key,
         expiresAt: job.expiresAt,
         createdAt: job.createdAt,
       })),
@@ -107,21 +108,21 @@ export const attachVgfJobId = internalMutation({
 export const markReady = internalMutation({
   args: {
     jobId: v.id("veoPostJobs"),
-    outputStorageId: v.id("_storage"),
+    outputR2Key: v.string(),
     outputByteSize: v.optional(v.number()),
     outputDurationSeconds: v.optional(v.number()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
     const job = await getJobOrThrow(ctx, args.jobId);
-    if (job.status === "ready" && job.outputStorageId) {
+    if (job.status === "ready" && job.outputR2Key) {
       return null;
     }
 
     const completedAt = Date.now();
     await ctx.db.patch(args.jobId, {
       status: "ready",
-      outputStorageId: args.outputStorageId,
+      outputR2Key: args.outputR2Key,
       outputByteSize: args.outputByteSize,
       outputDurationSeconds: args.outputDurationSeconds,
       completedAt,
@@ -181,14 +182,14 @@ export const resetJobForRegeneration = internalMutation({
       throw new ConvexError("This compilation is already in progress");
     }
 
-    if (job.outputStorageId) {
+    if (job.outputR2Key) {
       try {
-        await ctx.storage.delete(job.outputStorageId);
+        await goalHighlightsR2.deleteObject(ctx, job.outputR2Key);
       } catch (error) {
         console.warn(
-          "Failed to delete previous goal highlight video blob",
+          "Failed to delete previous goal highlight video from R2",
           job._id,
-          job.outputStorageId,
+          job.outputR2Key,
           error,
         );
         throw error;
@@ -206,7 +207,7 @@ export const resetJobForRegeneration = internalMutation({
       goalStartsSeconds: args.goalStartsSeconds,
       goalHighlightIds: args.goalHighlightIds,
       warningMessage: args.warningMessage,
-      outputStorageId: undefined,
+      outputR2Key: undefined,
       outputByteSize: undefined,
       outputDurationSeconds: undefined,
       vgffmpegJobId: undefined,
@@ -234,14 +235,14 @@ export const expireStoredVideos = internalMutation({
     let clearedCount = 0;
 
     for (const job of expiredJobs) {
-      if (!job.outputStorageId) {
+      if (!job.outputR2Key) {
         continue;
       }
 
       try {
-        await ctx.storage.delete(job.outputStorageId);
+        await goalHighlightsR2.deleteObject(ctx, job.outputR2Key);
         await ctx.db.patch(job._id, {
-          outputStorageId: undefined,
+          outputR2Key: undefined,
           outputByteSize: undefined,
           outputDurationSeconds: undefined,
           expiresAt: undefined,
@@ -249,14 +250,52 @@ export const expireStoredVideos = internalMutation({
         clearedCount += 1;
       } catch (error) {
         console.warn(
-          "Failed to delete expired goal highlight video blob",
+          "Failed to delete expired goal highlight video from R2",
           job._id,
-          job.outputStorageId,
+          job.outputR2Key,
           error,
         );
       }
     }
 
     return { clearedCount };
+  },
+});
+
+type LegacyVeoPostJob = Doc<"veoPostJobs"> & {
+  outputStorageId?: Id<"_storage">;
+};
+
+/** One-time cleanup for highlight videos stored in Convex file storage before R2 migration. */
+export const clearLegacyConvexHighlightVideos = internalMutation({
+  args: {},
+  returns: v.object({
+    deletedBlobCount: v.number(),
+  }),
+  handler: async (ctx) => {
+    const jobs = await ctx.db.query("veoPostJobs").collect();
+
+    let deletedBlobCount = 0;
+
+    for (const job of jobs) {
+      const legacyStorageId = (job as LegacyVeoPostJob).outputStorageId;
+      if (!legacyStorageId) {
+        continue;
+      }
+
+      try {
+        await ctx.storage.delete(legacyStorageId);
+        deletedBlobCount += 1;
+      } catch (error) {
+        console.warn(
+          "Failed to delete legacy goal highlight Convex blob",
+          job._id,
+          legacyStorageId,
+          error,
+        );
+      }
+    }
+
+    return { deletedBlobCount };
   },
 });

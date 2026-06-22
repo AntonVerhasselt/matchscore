@@ -212,7 +212,7 @@ export default defineSchema({
     goalHighlightIds: v.optional(v.array(v.string())),
     warningMessage: v.optional(v.string()),
     vgffmpegJobId: v.optional(v.string()),
-    outputStorageId: v.optional(v.id("_storage")),
+    outputR2Key: v.optional(v.string()),
     outputByteSize: v.optional(v.number()),
     outputDurationSeconds: v.optional(v.number()),
     errorMessage: v.optional(v.string()),

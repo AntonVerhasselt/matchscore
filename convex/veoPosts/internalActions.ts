@@ -11,7 +11,7 @@ import {
   VGF_OUTPUT_FILENAME,
 } from "./vgfHelpers";
 import { createVgfClient } from "./vgfClient";
-import { downloadVgfOutputToStorage } from "./downloadVgfOutput";
+import { downloadVgfOutputToR2 } from "./downloadVgfOutputToR2";
 
 async function processTerminalVgfJob(
   ctx: ActionCtx,
@@ -41,39 +41,29 @@ async function processTerminalVgfJob(
     return;
   }
 
-  let storageId: Id<"_storage">;
-  let byteSize: number;
-
   try {
-    ({ storageId, byteSize } = await downloadVgfOutputToStorage(
+    const { r2Key, byteSize } = await downloadVgfOutputToR2(
       ctx,
+      jobId,
       outputUrl,
       vgfJob.totalOutputBytes,
-    ));
-  } catch (firstError) {
-    try {
-      ({ storageId, byteSize } = await downloadVgfOutputToStorage(
-        ctx,
-        outputUrl,
-        vgfJob.totalOutputBytes,
-      ));
-    } catch {
-      await ctx.runMutation(internal.veoPosts.internalMutations.markFailed, {
-        jobId,
-        errorMessage:
-          firstError instanceof Error
-            ? firstError.message
-            : "Could not save the compiled video",
-      });
-      return;
-    }
-  }
+    );
 
-  await ctx.runMutation(internal.veoPosts.internalMutations.markReady, {
-    jobId,
-    outputStorageId: storageId,
-    outputByteSize: byteSize > 0 ? byteSize : (vgfJob.totalOutputBytes ?? undefined),
-  });
+    await ctx.runMutation(internal.veoPosts.internalMutations.markReady, {
+      jobId,
+      outputR2Key: r2Key,
+      outputByteSize:
+        byteSize > 0 ? byteSize : (vgfJob.totalOutputBytes ?? undefined),
+    });
+  } catch (error) {
+    await ctx.runMutation(internal.veoPosts.internalMutations.markFailed, {
+      jobId,
+      errorMessage:
+        error instanceof Error
+          ? error.message
+          : "Could not save the compiled video",
+    });
+  }
 }
 
 export const handleVgfWebhook = internalAction({
@@ -97,7 +87,7 @@ export const handleVgfWebhook = internalAction({
       return null;
     }
 
-    if (job.status === "ready" && job.outputStorageId) {
+    if (job.status === "ready" && job.outputR2Key) {
       return null;
     }
 

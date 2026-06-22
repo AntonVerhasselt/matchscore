@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@convex-dev/better-auth": "^0.12.2",
+    "@convex-dev/r2": "^0.10.2",
     "@convex-dev/resend": "^0.2.4",
     "@formatjs/intl-localematcher": "^0.8.10",
     "@react-email/components": "^1.0.12",

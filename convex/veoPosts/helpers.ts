@@ -81,7 +81,7 @@ export type VeoMatchSummary = {
 export type VeoPostJobDedupeRow<TId extends string = string> = {
   _id: TId;
   status: "pending" | "fetching" | "processing" | "ready" | "failed";
-  outputStorageId?: string;
+  outputR2Key?: string;
   expiresAt?: number;
   createdAt: number;
 };
@@ -228,7 +228,7 @@ export function resolveExistingJob<TId extends string>(
   for (const job of sorted) {
     if (
       job.status === "ready" &&
-      job.outputStorageId &&
+      job.outputR2Key &&
       job.expiresAt &&
       job.expiresAt > now
     ) {

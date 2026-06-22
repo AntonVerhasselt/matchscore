@@ -56,7 +56,8 @@ convex/
 │   ├── helpers.ts             # Veo client, goal filter, dedupe
 │   ├── vgfHelpers.ts          # FFmpeg command builder, webhook URL
 │   ├── vgfClient.ts           # "use node" — VGF SDK submit
-│   ├── downloadVgfOutput.ts   # "use node" — stream VGF output to storage
+│   ├── downloadVgfOutputToR2.ts # "use node" — stream VGF output to Cloudflare R2
+│   ├── r2Client.ts              # @convex-dev/r2 client for goal highlights
 │   ├── access.ts              # Org-scoped job access
 │   └── validators.ts
 │
