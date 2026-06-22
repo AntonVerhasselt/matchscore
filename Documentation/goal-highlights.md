@@ -5,6 +5,7 @@ Matchscore lets clubs paste a **public Veo match URL** and compile all goal clip
 This feature is separate from **Automations** (no template editor). It reuses the same social channel UI patterns and `postingChannels` shape as `organizationAutomations`.
 
 **Veo API details:** [veo-api-research.md](./veo-api-research.md)  
+**Video storage (R2):** [goal-highlights-r2-storage.md](./goal-highlights-r2-storage.md)  
 **Video processing:** [Very Good FFmpeg](https://verygoodffmpeg.com/docs) (external service; no ffmpeg binary on Convex)
 
 ---
@@ -101,22 +102,24 @@ Re-submitting the same URL never creates duplicate rows when a reusable job alre
                             │ schedule handleVgfWebhook
                             ▼
                 ┌───────────────────────┐
-                │ Download VGF output   │
-                │ → Convex file storage │
+                │ downloadVgfOutputToR2 │
+                │ VGF output → R2       │
                 │ → markReady           │
                 └───────────┬───────────┘
                             ▼
-                ┌───────────────────────┐
-                │ UI (useQuery getJob)  │
-                └───────────────────────┘
+                ┌───────────────────────┐    ┌──────────────────┐
+                │ UI (useQuery getJob)  │───▶│ Cloudflare R2    │
+                │ signed outputVideoUrl   │    │ (playback/CDN)   │
+                └───────────────────────┘    └──────────────────┘
 ```
 
 **Principles:**
 
 - Convex orchestrates only. Goal clip bytes never pass through mutations.
-- Individual goal clips are **never** stored in Convex — only the final compiled MP4 (in Cloudflare R2).
+- Individual goal clips are **never** stored in Convex — only the final compiled MP4 (in **Cloudflare R2** via `@convex-dev/r2`).
 - VGF downloads goal clips directly from Veo CDN URLs supplied at submit time.
 - Webhook handler returns `200` immediately; heavy work runs in an internal action.
+- Browser playback/download uses **signed R2 URLs** from `getJob`, not Convex file storage (see [goal-highlights-r2-storage.md](./goal-highlights-r2-storage.md)).
 
 **Polling fallback:** 10 minutes after VGF submit, `pollVgfJobIfPending` checks job status if the webhook was missed.
 
@@ -195,6 +198,8 @@ Daily cron (`convex/crons.ts`, 03:00 UTC) runs `expireStoredVideos`:
 
 Users can **Regenerate video** on expired jobs or delete the record manually.
 
+Full R2 setup, CORS, env vars, and migration steps: [goal-highlights-r2-storage.md](./goal-highlights-r2-storage.md).
+
 ---
 
 ## Very Good FFmpeg integration
@@ -216,8 +221,10 @@ Route: `POST /webhooks/vgffmpeg` in `convex/http.ts`.
 2. Schedule `internal.veoPosts.internalActions.handleVgfWebhook`.
 3. Validate `vgffmpegJobId` matches the stored job (when present).
 4. Idempotent: skip if already `ready` with a stored video.
-5. On success: stream-download output → Cloudflare R2 (with one retry) → `markReady`.
+5. On success: `downloadVgfOutputToR2` (stream or blob upload to R2) → `markReady`.
 6. On failure: `markFailed`.
+
+Ingest details (size cap, streaming vs blob fallback): [goal-highlights-r2-storage.md](./goal-highlights-r2-storage.md#ingest-pipeline-downloadvgfoutputtor2ts).
 
 VGF output URLs are signed and short-lived; we copy to Cloudflare R2 promptly and never link the UI to VGF URLs long-term.
 
@@ -235,7 +242,7 @@ Folder: `convex/veoPosts/` — see [convex-structure.md](./convex-structure.md).
 | `queries.getJob` | query | Job detail + signed `outputVideoUrl` |
 | `mutations.updateDraftCaption` | mutation | Save caption draft |
 | `mutations.setPostingChannelEnabled` | mutation | Toggle one posting channel |
-| `mutations.deleteJob` | mutation | Delete blob + row |
+| `mutations.deleteJob` | mutation | Delete R2 object + row |
 | `actions.createOrOpenJob` | action | Validate Veo, dedupe, insert, start VGF |
 | `actions.regenerateJob` | action | Re-validate Veo, reset row, start VGF |
 
@@ -310,6 +317,8 @@ Validation errors (before a job row exists) throw `ConvexError` with structured 
 
 ## Environment variables
 
+See [goal-highlights-r2-storage.md](./goal-highlights-r2-storage.md#setup-checklist) for the full R2 setup checklist.
+
 Set on the **Convex deployment** (not Next.js public env):
 
 ```bash
@@ -355,6 +364,7 @@ Goal clip URLs come only from server-side Veo fetches, never from client input.
 ```bash
 pnpm test convex/veoPosts/helpers.test.ts
 pnpm test convex/veoPosts/vgfHelpers.test.ts
+pnpm test convex/veoPosts/downloadVgfOutputToR2.test.ts
 ```
 
 Covers URL parsing, goal tag filter, dedupe logic, score-mismatch warning, and VGF command builder.
@@ -370,7 +380,7 @@ Covers URL parsing, goal tag filter, dedupe logic, score-mismatch warning, and V
 7. Download saves `.mp4` locally (not in-browser navigation).
 8. Delete from list and workspace.
 9. Regenerate after failure or simulated expiry.
-10. Cron: patch `expiresAt` to the past, run `npx convex run veoPosts/internalMutations:expireStoredVideos` — blob gone, row kept, regenerate works.
+10. Cron: patch `expiresAt` to the past, run `npx convex run veoPosts/internalMutations:expireStoredVideos` — R2 object gone, row kept, regenerate works.
 
 ---
 
@@ -416,6 +426,7 @@ Covers URL parsing, goal tag filter, dedupe logic, score-mismatch warning, and V
 
 ## Related documentation
 
+- [goal-highlights-r2-storage.md](./goal-highlights-r2-storage.md) — R2 migration, setup, ingest, costs
 - [veo-api-research.md](./veo-api-research.md) — Veo endpoints, response shapes, sample payloads
 - [automations-and-templates.md](./automations-and-templates.md) — Shared `postingChannels` model
 - [convex-structure.md](./convex-structure.md) — Convex folder conventions
