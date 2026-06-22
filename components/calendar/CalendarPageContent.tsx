@@ -40,8 +40,9 @@ export function CalendarPageContent() {
     );
 
     return {
-      matchAnnouncementEnabled: announcement?.isGloballyEnabled ?? false,
-      matchResultEnabled: result?.isGloballyEnabled ?? false,
+      matchAnnouncementEnabled:
+        announcement?.effectiveIsGloballyEnabled ?? false,
+      matchResultEnabled: result?.effectiveIsGloballyEnabled ?? false,
     };
   }, [automations]);
 

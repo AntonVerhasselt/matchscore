@@ -2,7 +2,10 @@ import { v } from "convex/values";
 import { query, type QueryCtx } from "../_generated/server";
 import { components } from "../_generated/api";
 import { authComponent } from "../auth/instance";
-import { getGoalHighlightsBlockReason } from "./access";
+import {
+  getAutomationsPostBlockReason,
+  getGoalHighlightsBlockReason,
+} from "./access";
 import { getOrgFeatureAccess } from "../lib/features";
 import { getMembershipForUser } from "../organizations/helpers";
 import { getStripeCatalogMode } from "./stripeCatalog";
@@ -128,6 +131,10 @@ export const getOrgBillingContext = query({
       subscriptionStatus: billing.subscriptionStatus,
       features,
       goalHighlightsBlockReason: getGoalHighlightsBlockReason({
+        plan: billing.plan,
+        subscriptionStatus: billing.subscriptionStatus,
+      }),
+      automationsPostBlockReason: getAutomationsPostBlockReason({
         plan: billing.plan,
         subscriptionStatus: billing.subscriptionStatus,
       }),

@@ -53,4 +53,5 @@ export const orgBillingContextValidator = v.object({
   subscriptionStatus: subscriptionStatusValidator,
   features: featureAccessValidator,
   goalHighlightsBlockReason: v.union(featureBlockReasonValidator, v.null()),
+  automationsPostBlockReason: v.union(featureBlockReasonValidator, v.null()),
 });

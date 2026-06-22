@@ -267,6 +267,22 @@
       "completeFailed": "Payment succeeded but setup could not be finished. Please refresh or contact support."
     },
     "billing": {
+      "subscriptionBanner": {
+        "upgradeRequired": "Subscribe to activate your automations and start posting to social media.",
+        "subscriptionPastDue": "Your subscription has an overdue payment. Reactivate billing to resume automations.",
+        "subscriptionInactive": "Your subscription is no longer active. Renew billing to resume automations.",
+        "choosePlan": "Choose a plan",
+        "manageSubscription": "Manage subscription",
+        "openingPortal": "Opening billing portal…"
+      },
+      "automationsUpgrade": {
+        "title": "Subscription required",
+        "upgradeRequiredDescription": "Choose a plan to activate automations and publish posts automatically.",
+        "subscriptionPastDueDescription": "Your club subscription has an overdue payment. Restore billing to activate automations again.",
+        "subscriptionCanceledDescription": "Your club subscription is no longer active. Renew billing to activate automations again.",
+        "manageSubscription": "Manage subscription",
+        "openingPortal": "Opening billing portal…"
+      },
       "upgrade": {
         "goalHighlightsTitle": "Goal highlights require Elite",
         "upgradeRequiredDescription": "Compile Veo goal clips into highlight videos with the Elite or Lifetime plan.",

@@ -267,6 +267,22 @@
       "completeFailed": "Zahlung erfolgreich, aber Setup konnte nicht abgeschlossen werden. Bitte Seite neu laden."
     },
     "billing": {
+      "subscriptionBanner": {
+        "upgradeRequired": "Abonniere, um deine Automatisierungen zu aktivieren und in Social Media zu posten.",
+        "subscriptionPastDue": "Dein Abonnement hat eine überfällige Zahlung. Stelle die Abrechnung wieder her, um Automatisierungen fortzusetzen.",
+        "subscriptionInactive": "Dein Abonnement ist nicht mehr aktiv. Erneuere die Abrechnung, um Automatisierungen fortzusetzen.",
+        "choosePlan": "Plan wählen",
+        "manageSubscription": "Abonnement verwalten",
+        "openingPortal": "Abrechnungsportal wird geöffnet…"
+      },
+      "automationsUpgrade": {
+        "title": "Abonnement erforderlich",
+        "upgradeRequiredDescription": "Wähle einen Plan, um Automatisierungen zu aktivieren und automatisch zu posten.",
+        "subscriptionPastDueDescription": "Das Abonnement deines Vereins hat eine überfällige Zahlung. Stelle die Abrechnung wieder her, um Automatisierungen erneut zu aktivieren.",
+        "subscriptionCanceledDescription": "Das Abonnement deines Vereins ist nicht mehr aktiv. Erneuere die Abrechnung, um Automatisierungen erneut zu aktivieren.",
+        "manageSubscription": "Abonnement verwalten",
+        "openingPortal": "Abrechnungsportal wird geöffnet…"
+      },
       "upgrade": {
         "goalHighlightsTitle": "Tor-Highlights erfordern Elite",
         "upgradeRequiredDescription": "Erstelle Tor-Highlight-Videos aus Veo-Clips mit dem Elite- oder Lifetime-Tarif.",

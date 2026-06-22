@@ -62,3 +62,16 @@ export function getGoalHighlightsBlockReason(org: {
     Feature.GoalHighlightsGenerate,
   );
 }
+
+export function getAutomationsPostBlockReason(org: {
+  plan?: ReturnType<typeof resolvePlanTier>;
+  subscriptionStatus?: ReturnType<typeof resolveSubscriptionStatus>;
+}) {
+  return getFeatureBlockReason(
+    {
+      plan: org.plan ?? "none",
+      subscriptionStatus: org.subscriptionStatus ?? "none",
+    },
+    Feature.AutomationsPost,
+  );
+}

@@ -267,6 +267,22 @@
       "completeFailed": "Betaling gelukt, maar afronden mislukt. Vernieuw de pagina of neem contact op."
     },
     "billing": {
+      "subscriptionBanner": {
+        "upgradeRequired": "Neem een abonnement om je automatiseringen te activeren en te posten op social media.",
+        "subscriptionPastDue": "Je abonnement heeft een achterstallige betaling. Herstel je facturatie om automatiseringen te hervatten.",
+        "subscriptionInactive": "Je abonnement is niet meer actief. Vernieuw je facturatie om automatiseringen te hervatten.",
+        "choosePlan": "Kies een plan",
+        "manageSubscription": "Abonnement beheren",
+        "openingPortal": "Facturatieportal openen…"
+      },
+      "automationsUpgrade": {
+        "title": "Abonnement vereist",
+        "upgradeRequiredDescription": "Kies een plan om automatiseringen te activeren en automatisch te posten.",
+        "subscriptionPastDueDescription": "Het abonnement van je club heeft een achterstallige betaling. Herstel je facturatie om automatiseringen opnieuw te activeren.",
+        "subscriptionCanceledDescription": "Het abonnement van je club is niet meer actief. Vernieuw je facturatie om automatiseringen opnieuw te activeren.",
+        "manageSubscription": "Abonnement beheren",
+        "openingPortal": "Facturatieportal openen…"
+      },
       "upgrade": {
         "goalHighlightsTitle": "Doelpunt highlights vereisen Elite",
         "upgradeRequiredDescription": "Stel Veo-doelpuntclips samen tot highlightvideo's met het Elite- of Lifetime-abonnement.",

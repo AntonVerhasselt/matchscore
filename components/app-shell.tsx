@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { AppUserMenu } from "@/components/app-nav-user";
 import { AppSidebar } from "@/components/app-sidebar";
 import { CheckoutFeedback } from "@/components/billing/CheckoutFeedback";
+import { SubscriptionBanner } from "@/components/billing/SubscriptionBanner";
 import {
   SidebarInset,
   SidebarProvider,
@@ -50,6 +51,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <SidebarTrigger className="size-9 text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground" />
             <AppUserMenu variant="header" />
           </header>
+          <SubscriptionBanner />
           <main
             className={cn(
               "flex flex-1 flex-col",

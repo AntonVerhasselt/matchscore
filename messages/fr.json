@@ -267,6 +267,22 @@
       "completeFailed": "Paiement réussi, mais la finalisation a échoué. Actualisez la page ou contactez le support."
     },
     "billing": {
+      "subscriptionBanner": {
+        "upgradeRequired": "Abonnez-vous pour activer vos automatisations et publier sur les réseaux sociaux.",
+        "subscriptionPastDue": "Votre abonnement a un paiement en retard. Réactivez la facturation pour reprendre les automatisations.",
+        "subscriptionInactive": "Votre abonnement n'est plus actif. Renouvelez la facturation pour reprendre les automatisations.",
+        "choosePlan": "Choisir un plan",
+        "manageSubscription": "Gérer l'abonnement",
+        "openingPortal": "Ouverture du portail de facturation…"
+      },
+      "automationsUpgrade": {
+        "title": "Abonnement requis",
+        "upgradeRequiredDescription": "Choisissez un plan pour activer les automatisations et publier automatiquement.",
+        "subscriptionPastDueDescription": "L'abonnement de votre club a un paiement en retard. Réactivez la facturation pour activer à nouveau les automatisations.",
+        "subscriptionCanceledDescription": "L'abonnement de votre club n'est plus actif. Renouvelez la facturation pour activer à nouveau les automatisations.",
+        "manageSubscription": "Gérer l'abonnement",
+        "openingPortal": "Ouverture du portail de facturation…"
+      },
       "upgrade": {
         "goalHighlightsTitle": "Les buts en vidéo nécessitent Elite",
         "upgradeRequiredDescription": "Compilez les clips de buts Veo en vidéos highlights avec l'offre Elite ou Lifetime.",

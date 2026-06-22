@@ -12,5 +12,7 @@ export function useOrgFeatures() {
     isLoading: context === undefined,
     hasGoalHighlights: context?.features.goalHighlightsGenerate ?? false,
     goalHighlightsBlockReason: context?.goalHighlightsBlockReason ?? null,
+    hasAutomationsPost: context?.features.automationsPost ?? false,
+    automationsPostBlockReason: context?.automationsPostBlockReason ?? null,
   };
 }
