@@ -6,6 +6,7 @@ import {
   FootballTeamSearch,
   type FootballTeamSearchResult,
 } from "@/components/football/FootballTeamSearch";
+import { OnboardingPlanStep } from "@/components/onboarding/OnboardingPlanStep";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,21 +17,53 @@ import {
 } from "@/components/ui/card";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { completeOnboarding } from "@/lib/onboarding/complete-onboarding-server";
 import {
   clearSelectedFootballTeamId,
   readSelectedFootballTeamId,
   storeSelectedFootballTeamId,
 } from "@/lib/football/selected-team-storage";
-import { useQuery } from "convex/react";
+import { showErrorToast } from "@/lib/user-feedback";
+import { useMutation, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
-import { unstable_rethrow } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, Suspense, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+
+function OnboardingCanceledFeedback() {
+  const t = useTranslations("onboarding.planStep");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const handledRef = useRef(false);
+
+  useEffect(() => {
+    if (handledRef.current || searchParams.get("checkout") !== "canceled") {
+      return;
+    }
+
+    handledRef.current = true;
+    showErrorToast(t("checkoutCanceled"));
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.delete("checkout");
+    const query = nextParams.toString();
+    router.replace(query ? `/onboarding?${query}` : "/onboarding", {
+      scroll: false,
+    });
+  }, [router, searchParams, t]);
+
+  return null;
+}
 
 export default function OnboardingPage() {
   const t = useTranslations("onboarding");
   const tHero = useTranslations("landing.hero");
+  const needsBillingOnboarding = useQuery(
+    api.billing.queries.needsBillingOnboarding,
+  );
+  const createOrganization = useMutation(
+    api.organizations.mutations.createOrganization,
+  );
+
   const initialSelectedFootballTeamId = readSelectedFootballTeamId();
   const [storedTeamId] = useState<Id<"footballTeams"> | null>(
     () => initialSelectedFootballTeamId,
@@ -46,8 +79,10 @@ export default function OnboardingPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const showPlanStep = needsBillingOnboarding === true;
+
   const shouldResolveStoredTeam =
-    storedTeamId !== null && !isChangingTeam;
+    !showPlanStep && storedTeamId !== null && !isChangingTeam;
 
   const storedTeam = useQuery(
     api.football.queries.getFootballTeamForSelection,
@@ -117,9 +152,8 @@ export default function OnboardingPage() {
 
     try {
       clearSelectedFootballTeamId();
-      await completeOnboarding(activeTeamId);
+      await createOrganization({ footballTeamId: activeTeamId });
     } catch (err) {
-      unstable_rethrow(err);
       if (activeTeamId) {
         storeSelectedFootballTeamId(activeTeamId);
       }
@@ -134,6 +168,28 @@ export default function OnboardingPage() {
       setLoading(false);
     }
   };
+
+  if (needsBillingOnboarding === undefined) {
+    return (
+      <main className="flex flex-1 flex-col items-center justify-center p-6 sm:p-10">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" />
+          {t("pleaseWait")}
+        </div>
+      </main>
+    );
+  }
+
+  if (showPlanStep) {
+    return (
+      <main className="flex flex-1 flex-col items-center justify-center p-6 sm:p-10">
+        <Suspense fallback={null}>
+          <OnboardingCanceledFeedback />
+        </Suspense>
+        <OnboardingPlanStep />
+      </main>
+    );
+  }
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center p-6 sm:p-10">

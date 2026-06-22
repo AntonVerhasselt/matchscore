@@ -243,6 +243,10 @@
     "signedInAs": "Signed in as",
     "accountLoadFailed": "We couldn't load your account. Please try again.",
     "retry": "Try again",
+    "checkout": {
+      "success": "Your plan is active. Welcome to Matchscore!",
+      "completeFailed": "Payment succeeded but setup could not be finished. Please refresh or contact support."
+    },
     "shell": {
       "nav": {
         "calendar": "Calendar",
@@ -724,7 +728,48 @@
     "teamRequired": "Select a team to continue.",
     "submit": "Continue",
     "pleaseWait": "Please wait...",
-    "createFailed": "Could not create your club. Please try again."
+    "createFailed": "Could not create your club. Please try again.",
+    "planStep": {
+      "title": "Choose your plan",
+      "description": "Pick a plan for your club, or continue with limited access.",
+      "countryLabel": "Billing country",
+      "vatNote": "Prices exclude VAT. Belgian clubs pay 21% VAT at checkout.",
+      "loading": "Loading plans…",
+      "perMonth": "/month",
+      "yearlyPrice": "{price} billed yearly",
+      "oneTime": "one-time",
+      "choosePlan": "Choose plan",
+      "skip": "Continue with limited access",
+      "pleaseWait": "Please wait...",
+      "checkoutFailed": "Could not start checkout. Please try again.",
+      "checkoutCanceled": "Checkout was canceled.",
+      "skipFailed": "Could not continue. Please try again.",
+      "countries": {
+        "BE": "Belgium",
+        "NL": "Netherlands",
+        "FR": "France",
+        "DE": "Germany",
+        "OTHER": "Other"
+      },
+      "plans": {
+        "minimum": {
+          "title": "Minimum",
+          "description": "Automated posting with a Matchscore watermark."
+        },
+        "pro": {
+          "title": "Pro",
+          "description": "Automated posting without a watermark."
+        },
+        "elite": {
+          "title": "Elite",
+          "description": "Everything in Pro, plus goal highlights."
+        },
+        "lifetime": {
+          "title": "Lifetime",
+          "description": "Pay once. Keep posting forever, including goal highlights."
+        }
+      }
+    }
   },
   "footballSearch": {
     "placeholder": "Search your club",

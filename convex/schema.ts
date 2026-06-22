@@ -117,6 +117,7 @@ export default defineSchema({
     subscriptionStatus: v.optional(subscriptionStatusValidator),
     stripeCustomerId: v.optional(v.string()),
     billingSyncedAt: v.optional(v.number()),
+    billingOnboardingCompletedAt: v.optional(v.number()),
   })
     .index("by_slug", ["slug"])
     .index("by_footballTeamId", ["footballTeamId"]),

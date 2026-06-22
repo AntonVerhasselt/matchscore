@@ -243,6 +243,10 @@
     "signedInAs": "Angemeldet als",
     "accountLoadFailed": "Dein Konto konnte nicht geladen werden. Bitte versuche es erneut.",
     "retry": "Erneut versuchen",
+    "checkout": {
+      "success": "Abonnement aktiviert. Willkommen bei Matchscore!",
+      "completeFailed": "Zahlung erfolgreich, aber Setup konnte nicht abgeschlossen werden. Bitte Seite neu laden."
+    },
     "shell": {
       "nav": {
         "calendar": "Kalender",
@@ -724,7 +728,48 @@
     "teamRequired": "Wähle ein Team, um fortzufahren.",
     "submit": "Weiter",
     "pleaseWait": "Bitte warten...",
-    "createFailed": "Dein Club konnte nicht erstellt werden. Bitte versuche es erneut."
+    "createFailed": "Dein Club konnte nicht erstellt werden. Bitte versuche es erneut.",
+    "planStep": {
+      "title": "Wähle deinen Plan",
+      "description": "Wähle einen Plan für deinen Club oder fahre mit eingeschränktem Zugang fort.",
+      "countryLabel": "Rechnungsland",
+      "vatNote": "Preise zzgl. MwSt. Belgische Clubs zahlen 21 % MwSt. beim Checkout.",
+      "loading": "Pläne werden geladen…",
+      "perMonth": "/Monat",
+      "yearlyPrice": "{price} jährlich abgerechnet",
+      "oneTime": "einmalig",
+      "choosePlan": "Plan wählen",
+      "skip": "Mit eingeschränktem Zugang fortfahren",
+      "pleaseWait": "Bitte warten...",
+      "checkoutFailed": "Checkout konnte nicht gestartet werden. Bitte versuche es erneut.",
+      "checkoutCanceled": "Checkout wurde abgebrochen.",
+      "skipFailed": "Fortfahren fehlgeschlagen. Bitte versuche es erneut.",
+      "countries": {
+        "BE": "Belgien",
+        "NL": "Niederlande",
+        "FR": "Frankreich",
+        "DE": "Deutschland",
+        "OTHER": "Andere"
+      },
+      "plans": {
+        "minimum": {
+          "title": "Minimum",
+          "description": "Automatisches Posten mit Matchscore-Wasserzeichen."
+        },
+        "pro": {
+          "title": "Pro",
+          "description": "Automatisches Posten ohne Wasserzeichen."
+        },
+        "elite": {
+          "title": "Elite",
+          "description": "Alles in Pro, plus Goal Highlights."
+        },
+        "lifetime": {
+          "title": "Lifetime",
+          "description": "Einmal zahlen. Für immer posten, inklusive Goal Highlights."
+        }
+      }
+    }
   },
   "footballSearch": {
     "placeholder": "Suche deinen Verein",

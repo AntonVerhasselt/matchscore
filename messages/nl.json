@@ -243,6 +243,10 @@
     "signedInAs": "Ingelogd als",
     "accountLoadFailed": "We konden je account niet laden. Probeer het opnieuw.",
     "retry": "Opnieuw proberen",
+    "checkout": {
+      "success": "Abonnement geactiveerd. Welkom bij Matchscore!",
+      "completeFailed": "Betaling gelukt, maar afronden mislukt. Vernieuw de pagina of neem contact op."
+    },
     "shell": {
       "nav": {
         "calendar": "Kalender",
@@ -724,7 +728,48 @@
     "teamRequired": "Selecteer een team om verder te gaan.",
     "submit": "Doorgaan",
     "pleaseWait": "Even geduld...",
-    "createFailed": "Je club kon niet worden aangemaakt. Probeer het opnieuw."
+    "createFailed": "Je club kon niet worden aangemaakt. Probeer het opnieuw.",
+    "planStep": {
+      "title": "Kies je plan",
+      "description": "Kies een plan voor je club, of ga verder met beperkte toegang.",
+      "countryLabel": "Facturatieland",
+      "vatNote": "Prijzen zijn exclusief btw. Belgische clubs betalen 21% btw bij het afrekenen.",
+      "loading": "Plannen laden…",
+      "perMonth": "/maand",
+      "yearlyPrice": "{price} per jaar gefactureerd",
+      "oneTime": "eenmalig",
+      "choosePlan": "Kies plan",
+      "skip": "Doorgaan met beperkte toegang",
+      "pleaseWait": "Even geduld...",
+      "checkoutFailed": "Afrekenen kon niet worden gestart. Probeer het opnieuw.",
+      "checkoutCanceled": "Afrekenen is geannuleerd.",
+      "skipFailed": "Doorgaan mislukt. Probeer het opnieuw.",
+      "countries": {
+        "BE": "België",
+        "NL": "Nederland",
+        "FR": "Frankrijk",
+        "DE": "Duitsland",
+        "OTHER": "Anders"
+      },
+      "plans": {
+        "minimum": {
+          "title": "Minimum",
+          "description": "Automatisch posten met een Matchscore-watermerk."
+        },
+        "pro": {
+          "title": "Pro",
+          "description": "Automatisch posten zonder watermerk."
+        },
+        "elite": {
+          "title": "Elite",
+          "description": "Alles in Pro, plus goal highlights."
+        },
+        "lifetime": {
+          "title": "Lifetime",
+          "description": "Eén keer betalen. Voor altijd posten, inclusief goal highlights."
+        }
+      }
+    }
   },
   "footballSearch": {
     "placeholder": "Zoek je club",

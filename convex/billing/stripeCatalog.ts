@@ -1,5 +1,18 @@
 export type PaidPlanTier = "minimum" | "pro" | "elite" | "lifetime";
 
+export type SubscriptionPlanTier = Exclude<PaidPlanTier, "lifetime">;
+
+export const planDisplayPricing = {
+  minimum: { monthlyEuros: 2, yearlyEuros: 24 },
+  pro: { monthlyEuros: 9, yearlyEuros: 108 },
+  elite: { monthlyEuros: 12, yearlyEuros: 144 },
+  lifetime: { oneTimeEuros: 250 },
+} as const satisfies Record<
+  PaidPlanTier,
+  | { monthlyEuros: number; yearlyEuros: number }
+  | { oneTimeEuros: number }
+>;
+
 type StripeCatalogEntry = {
   prices: Record<PaidPlanTier, string>;
   taxRates: {

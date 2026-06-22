@@ -1,11 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { Suspense, useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 
 import { AppUserMenu } from "@/components/app-nav-user";
 import { AppSidebar } from "@/components/app-sidebar";
+import { CheckoutFeedback } from "@/components/billing/CheckoutFeedback";
 import {
   SidebarInset,
   SidebarProvider,
@@ -61,6 +62,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                 isEditor ? "max-w-none" : "max-w-4xl",
               )}
             >
+              <Suspense fallback={null}>
+                <CheckoutFeedback />
+              </Suspense>
               {children}
             </div>
           </main>

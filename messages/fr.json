@@ -243,6 +243,10 @@
     "signedInAs": "Connecté en tant que",
     "accountLoadFailed": "Impossible de charger votre compte. Veuillez réessayer.",
     "retry": "Réessayer",
+    "checkout": {
+      "success": "Abonnement activé. Bienvenue sur Matchscore !",
+      "completeFailed": "Paiement réussi, mais la finalisation a échoué. Actualisez la page ou contactez le support."
+    },
     "shell": {
       "nav": {
         "calendar": "Calendrier",
@@ -724,7 +728,48 @@
     "teamRequired": "Sélectionnez une équipe pour continuer.",
     "submit": "Continuer",
     "pleaseWait": "Veuillez patienter...",
-    "createFailed": "Impossible de créer votre club. Veuillez réessayer."
+    "createFailed": "Impossible de créer votre club. Veuillez réessayer.",
+    "planStep": {
+      "title": "Choisissez votre formule",
+      "description": "Choisissez une formule pour votre club ou continuez avec un accès limité.",
+      "countryLabel": "Pays de facturation",
+      "vatNote": "Prix hors TVA. Les clubs belges paient 21 % de TVA au paiement.",
+      "loading": "Chargement des formules…",
+      "perMonth": "/mois",
+      "yearlyPrice": "{price} facturé par an",
+      "oneTime": "unique",
+      "choosePlan": "Choisir la formule",
+      "skip": "Continuer avec un accès limité",
+      "pleaseWait": "Veuillez patienter...",
+      "checkoutFailed": "Impossible de démarrer le paiement. Veuillez réessayer.",
+      "checkoutCanceled": "Le paiement a été annulé.",
+      "skipFailed": "Impossible de continuer. Veuillez réessayer.",
+      "countries": {
+        "BE": "Belgique",
+        "NL": "Pays-Bas",
+        "FR": "France",
+        "DE": "Allemagne",
+        "OTHER": "Autre"
+      },
+      "plans": {
+        "minimum": {
+          "title": "Minimum",
+          "description": "Publication automatique avec filigrane Matchscore."
+        },
+        "pro": {
+          "title": "Pro",
+          "description": "Publication automatique sans filigrane."
+        },
+        "elite": {
+          "title": "Elite",
+          "description": "Tout Pro, plus les goal highlights."
+        },
+        "lifetime": {
+          "title": "Lifetime",
+          "description": "Payez une fois. Publiez pour toujours, goal highlights inclus."
+        }
+      }
+    }
   },
   "footballSearch": {
     "placeholder": "Recherchez votre club",

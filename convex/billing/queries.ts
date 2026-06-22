@@ -12,6 +12,7 @@ import {
   stripeSubscriptionSnapshotValidator,
   subscriptionStatusValidator,
 } from "./validators";
+import { planDisplayPricing } from "./stripeCatalog";
 
 export const getOrgBillingState = query({
   args: {},
@@ -22,6 +23,7 @@ export const getOrgBillingState = query({
       subscriptionStatus: subscriptionStatusValidator,
       stripeCustomerId: v.union(v.string(), v.null()),
       billingSyncedAt: v.union(v.number(), v.null()),
+      billingOnboardingCompletedAt: v.union(v.number(), v.null()),
       stripeCatalogMode: v.union(v.literal("test"), v.literal("live")),
       stripeSubscription: v.union(stripeSubscriptionSnapshotValidator, v.null()),
     }),
@@ -56,6 +58,8 @@ export const getOrgBillingState = query({
       subscriptionStatus: organization.subscriptionStatus ?? "none",
       stripeCustomerId: organization.stripeCustomerId ?? null,
       billingSyncedAt: organization.billingSyncedAt ?? null,
+      billingOnboardingCompletedAt:
+        organization.billingOnboardingCompletedAt ?? null,
       stripeCatalogMode: getStripeCatalogMode(),
       stripeSubscription: stripeSubscription
         ? {
@@ -93,6 +97,68 @@ export const getOrgFeatures = query({
     return getOrgFeatureAccess({
       plan: organization.plan ?? "none",
       subscriptionStatus: organization.subscriptionStatus ?? "none",
+    });
+  },
+});
+
+export const needsBillingOnboarding = query({
+  args: {},
+  returns: v.boolean(),
+  handler: async (ctx) => {
+    const user = await authComponent.safeGetAuthUser(ctx);
+    if (!user) {
+      return false;
+    }
+
+    const membership = await getMembershipForUser(ctx, user._id);
+    if (!membership) {
+      return false;
+    }
+
+    const organization = await ctx.db.get(membership.organizationId);
+    if (!organization) {
+      return false;
+    }
+
+    return organization.billingOnboardingCompletedAt == null;
+  },
+});
+
+const onboardingPlanOptionValidator = v.object({
+  tier: planTierValidator,
+  monthlyPriceEuros: v.union(v.number(), v.null()),
+  yearlyPriceEuros: v.union(v.number(), v.null()),
+  oneTimePriceEuros: v.union(v.number(), v.null()),
+});
+
+export const getOnboardingPlanOptions = query({
+  args: {},
+  returns: v.array(onboardingPlanOptionValidator),
+  handler: async () => {
+    return (
+      [
+        "minimum",
+        "pro",
+        "elite",
+        "lifetime",
+      ] as const
+    ).map((tier) => {
+      const pricing = planDisplayPricing[tier];
+      if ("oneTimeEuros" in pricing) {
+        return {
+          tier,
+          monthlyPriceEuros: null,
+          yearlyPriceEuros: null,
+          oneTimePriceEuros: pricing.oneTimeEuros,
+        };
+      }
+
+      return {
+        tier,
+        monthlyPriceEuros: pricing.monthlyEuros,
+        yearlyPriceEuros: pricing.yearlyEuros,
+        oneTimePriceEuros: null,
+      };
     });
   },
 });

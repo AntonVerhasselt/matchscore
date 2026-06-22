@@ -7,6 +7,12 @@ export const planTierValidator = v.union(
   v.literal("lifetime"),
 );
 
+export const subscriptionPlanTierValidator = v.union(
+  v.literal("minimum"),
+  v.literal("pro"),
+  v.literal("elite"),
+);
+
 export const subscriptionStatusValidator = v.union(
   v.literal("active"),
   v.literal("past_due"),

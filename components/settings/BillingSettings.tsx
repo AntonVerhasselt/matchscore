@@ -121,9 +121,6 @@ export function BillingSettings() {
               </p>
             </div>
 
-            <Button type="button" disabled>
-              {t("subscribeComingSoon")}
-            </Button>
           </>
         )}
       </CardContent>
