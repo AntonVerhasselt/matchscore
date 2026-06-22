@@ -9,7 +9,7 @@ import {
 } from "./constants";
 import {
   getPrimaryOrganizationAutomation,
-  requireCurrentMembership,
+  getCurrentMembershipOrNull,
 } from "./helpers";
 import {
   automationTemplateDetailValidator,
@@ -40,7 +40,11 @@ export const listAutomations = query({
   args: {},
   returns: v.array(automationSummaryValidator),
   handler: async (ctx) => {
-    const { membership } = await requireCurrentMembership(ctx);
+    const membershipCtx = await getCurrentMembershipOrNull(ctx);
+    if (!membershipCtx) {
+      return [];
+    }
+    const { membership } = membershipCtx;
 
     const organization = await ctx.db.get(membership.organizationId);
     const { automationsPost } = getOrgFeatureAccess({
@@ -104,7 +108,11 @@ export const listTemplates = query({
   },
   returns: v.array(automationTemplateSummaryValidator),
   handler: async (ctx, args) => {
-    const { membership } = await requireCurrentMembership(ctx);
+    const membershipCtx = await getCurrentMembershipOrNull(ctx);
+    if (!membershipCtx) {
+      return [];
+    }
+    const { membership } = membershipCtx;
     const automationType = args.automationType;
 
     const templates = automationType
@@ -147,7 +155,11 @@ export const getTemplate = query({
   },
   returns: v.union(automationTemplateDetailValidator, v.null()),
   handler: async (ctx, args) => {
-    const { membership } = await requireCurrentMembership(ctx);
+    const membershipCtx = await getCurrentMembershipOrNull(ctx);
+    if (!membershipCtx) {
+      return null;
+    }
+    const { membership } = membershipCtx;
     const template = await ctx.db.get(args.templateId);
 
     if (!template || template.organizationId !== membership.organizationId) {

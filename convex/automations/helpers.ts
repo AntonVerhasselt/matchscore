@@ -19,6 +19,20 @@ type LegacyAutomationStatusFields = {
   postingChannels?: Partial<PostingChannelStatuses>;
 };
 
+export async function getCurrentMembershipOrNull(ctx: QueryCtx) {
+  const user = await authComponent.safeGetAuthUser(ctx);
+  if (!user) {
+    return null;
+  }
+
+  const membership = await getMembershipForUser(ctx, user._id);
+  if (!membership) {
+    return null;
+  }
+
+  return { user, membership };
+}
+
 export async function requireCurrentMembership(ctx: QueryCtx | MutationCtx) {
   const user = await authComponent.getAuthUser(ctx);
   const membership = await getMembershipForUser(ctx, user._id);

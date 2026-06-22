@@ -28,6 +28,7 @@ export function CalendarPageContent() {
 
   const isLoading =
     accessStatus === undefined ||
+    accessStatus === null ||
     matches === undefined ||
     automations === undefined;
 
