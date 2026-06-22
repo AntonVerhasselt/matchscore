@@ -41,41 +41,29 @@ async function processTerminalVgfJob(
     return;
   }
 
-  let r2Key: string;
-  let byteSize: number;
-
   try {
-    ({ r2Key, byteSize } = await downloadVgfOutputToR2(
+    const { r2Key, byteSize } = await downloadVgfOutputToR2(
       ctx,
       jobId,
       outputUrl,
       vgfJob.totalOutputBytes,
-    ));
-  } catch (firstError) {
-    try {
-      ({ r2Key, byteSize } = await downloadVgfOutputToR2(
-        ctx,
-        jobId,
-        outputUrl,
-        vgfJob.totalOutputBytes,
-      ));
-    } catch {
-      await ctx.runMutation(internal.veoPosts.internalMutations.markFailed, {
-        jobId,
-        errorMessage:
-          firstError instanceof Error
-            ? firstError.message
-            : "Could not save the compiled video",
-      });
-      return;
-    }
-  }
+    );
 
-  await ctx.runMutation(internal.veoPosts.internalMutations.markReady, {
-    jobId,
-    outputR2Key: r2Key,
-    outputByteSize: byteSize > 0 ? byteSize : (vgfJob.totalOutputBytes ?? undefined),
-  });
+    await ctx.runMutation(internal.veoPosts.internalMutations.markReady, {
+      jobId,
+      outputR2Key: r2Key,
+      outputByteSize:
+        byteSize > 0 ? byteSize : (vgfJob.totalOutputBytes ?? undefined),
+    });
+  } catch (error) {
+    await ctx.runMutation(internal.veoPosts.internalMutations.markFailed, {
+      jobId,
+      errorMessage:
+        error instanceof Error
+          ? error.message
+          : "Could not save the compiled video",
+    });
+  }
 }
 
 export const handleVgfWebhook = internalAction({

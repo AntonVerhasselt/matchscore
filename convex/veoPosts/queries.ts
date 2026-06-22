@@ -103,12 +103,11 @@ export const getJob = query({
       return null;
     }
 
-    const outputVideoUrl =
-      job.outputR2Key && jobHasStoredVideo(job)
-        ? await goalHighlightsR2.getUrl(job.outputR2Key, {
-            expiresIn: GOAL_HIGHLIGHT_URL_EXPIRES_SECONDS,
-          })
-        : null;
+    const outputVideoUrl = jobHasStoredVideo(job)
+      ? await goalHighlightsR2.getUrl(job.outputR2Key!, {
+          expiresIn: GOAL_HIGHLIGHT_URL_EXPIRES_SECONDS,
+        })
+      : null;
 
     return toJobDetail(job, outputVideoUrl);
   },

@@ -142,6 +142,12 @@ export async function downloadVgfOutputToR2(
 
   const resolvedByteSize = byteSizeHint ?? contentLength;
 
+  // Streaming cannot enforce the size cap without a known length; blob fallback
+  // validates blob.size after the full download completes.
+  if (resolvedByteSize === null) {
+    return await storeRemoteFileViaBlob(ctx, jobId, sourceResponse, null);
+  }
+
   try {
     return await streamRemoteFileToR2(
       ctx,
