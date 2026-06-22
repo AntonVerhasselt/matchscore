@@ -17,6 +17,9 @@ importers:
       '@convex-dev/resend':
         specifier: ^0.2.4
         version: 0.2.4(@react-email/render@2.0.8(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(convex-helpers@0.1.118(@standard-schema/spec@1.1.0)(convex@1.40.0(react@19.2.7))(hono@4.12.23)(react@19.2.7)(typescript@6.0.3)(zod@4.4.3))(convex@1.40.0(react@19.2.7))(react@19.2.7)
+      '@convex-dev/stripe':
+        specifier: ^0.1.4
+        version: 0.1.4(@types/node@24.13.1)(convex@1.40.0(react@19.2.7))(react@19.2.7)
       '@formatjs/intl-localematcher':
         specifier: ^0.8.10
         version: 0.8.10
@@ -515,6 +518,12 @@ packages:
     peerDependencies:
       convex: ^1.31.7
       convex-helpers: ^0.1.106
+
+  '@convex-dev/stripe@0.1.4':
+    resolution: {integrity: sha512-HnINm3K2QHGvP0X4YV7KruCjQ1Ni0HE1qpJ5rZYjfdUbMcqJsX4ZYTmOo7tL83qtokS3EahKVkhXLCH/9Ms/og==}
+    peerDependencies:
+      convex: ^1.29.3
+      react: ^18.3.1 || ^19.0.0
 
   '@convex-dev/workpool@0.4.7':
     resolution: {integrity: sha512-4O3VKcJXqYZ9icDgKdVPxjDGUAFK3oG0hbUwLcyYMYgsvVKlZDhvZRmczqSBZHLyrCGPpf925byh0dBigCfAGA==}
@@ -5125,6 +5134,15 @@ packages:
     resolution: {integrity: sha512-6fPc+R4ihwqP6N/aIv2f1gMH8lOVtWQHoqC4yK6oSDVVocumAsfCqjkXnqiYMhmMwS/mEHLp7Vehlt3ql6lEig==}
     engines: {node: '>=8'}
 
+  stripe@20.4.1:
+    resolution: {integrity: sha512-axCguHItc8Sxt0HC6aSkdVRPffjYPV7EQqZRb2GkIa8FzWDycE7nHJM19C6xAIynH1Qp1/BHiopSi96jGBxT0w==}
+    engines: {node: '>=16'}
+    peerDependencies:
+      '@types/node': '>=16'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+
   strnum@2.4.1:
     resolution: {integrity: sha512-M9eUSMT2dCB2cTNPG7UYj6KuK7RJR2SN2+yCV/fTW3xzTCS6EaGZ5pSMgDIjB7r8zSfTGk+dvvn9rTjpVS9Mwg==}
 
@@ -6107,6 +6125,14 @@ snapshots:
     transitivePeerDependencies:
       - '@react-email/render'
       - react
+
+  '@convex-dev/stripe@0.1.4(@types/node@24.13.1)(convex@1.40.0(react@19.2.7))(react@19.2.7)':
+    dependencies:
+      convex: 1.40.0(react@19.2.7)
+      react: 19.2.7
+      stripe: 20.4.1(@types/node@24.13.1)
+    transitivePeerDependencies:
+      - '@types/node'
 
   '@convex-dev/workpool@0.4.7(convex-helpers@0.1.118(@standard-schema/spec@1.1.0)(convex@1.40.0(react@19.2.7))(hono@4.12.23)(react@19.2.7)(typescript@6.0.3)(zod@4.4.3))(convex@1.40.0(react@19.2.7))':
     dependencies:
@@ -10662,6 +10688,10 @@ snapshots:
   strip-final-newline@4.0.0: {}
 
   strip-json-comments@3.1.1: {}
+
+  stripe@20.4.1(@types/node@24.13.1):
+    optionalDependencies:
+      '@types/node': 24.13.1
 
   strnum@2.4.1:
     dependencies:

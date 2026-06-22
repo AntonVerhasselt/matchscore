@@ -663,6 +663,29 @@
       "cancelInviteSuccess": "Invitation annulée.",
       "cancelFailed": "Impossible d'annuler l'invitation. Veuillez réessayer.",
       "joinedOn": "Membre depuis le {date}"
+    },
+    "billing": {
+      "title": "Facturation",
+      "description": "L'abonnement et l'accès aux fonctionnalités de votre club.",
+      "loading": "Chargement de la facturation…",
+      "unavailable": "Les détails de facturation ne sont pas disponibles.",
+      "plan": "Forfait",
+      "subscriptionStatus": "Statut de l'abonnement",
+      "stripeCatalogMode": "Mode Stripe",
+      "billingSyncedAt": "Dernière synchro billing",
+      "featuresTitle": "Accès aux fonctionnalités",
+      "featureAutomationsEdit": "Modifier les automatisations",
+      "featureAutomationsPost": "Publier les automatisations",
+      "featureGoalHighlights": "Highlights de buts",
+      "featureWatermark": "Filigrane sur les publications",
+      "enabled": "Activé",
+      "disabled": "Désactivé",
+      "debugTitle": "Debug Stripe",
+      "stripeCustomerId": "ID client",
+      "stripeSubscriptionId": "ID abonnement",
+      "stripePriceId": "ID prix",
+      "currentPeriodEnd": "Fin de la période en cours",
+      "subscribeComingSoon": "S'abonner (phase 2)"
     }
   },
   "acceptInvitation": {

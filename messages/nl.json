@@ -663,6 +663,29 @@
       "cancelInviteSuccess": "Uitnodiging geannuleerd.",
       "cancelFailed": "Uitnodiging annuleren mislukt. Probeer het opnieuw.",
       "joinedOn": "Lid sinds {date}"
+    },
+    "billing": {
+      "title": "Facturatie",
+      "description": "Het abonnement en de feature-toegang van je club.",
+      "loading": "Facturatie laden…",
+      "unavailable": "Facturatiegegevens zijn niet beschikbaar.",
+      "plan": "Plan",
+      "subscriptionStatus": "Abonnementsstatus",
+      "stripeCatalogMode": "Stripe-modus",
+      "billingSyncedAt": "Laatste billing-sync",
+      "featuresTitle": "Feature-toegang",
+      "featureAutomationsEdit": "Automatiseringen bewerken",
+      "featureAutomationsPost": "Automatiseringen posten",
+      "featureGoalHighlights": "Goal highlights",
+      "featureWatermark": "Watermerk op posts",
+      "enabled": "Ingeschakeld",
+      "disabled": "Uitgeschakeld",
+      "debugTitle": "Stripe debug",
+      "stripeCustomerId": "Customer ID",
+      "stripeSubscriptionId": "Subscription ID",
+      "stripePriceId": "Price ID",
+      "currentPeriodEnd": "Einde huidige periode",
+      "subscribeComingSoon": "Abonneren (fase 2)"
     }
   },
   "acceptInvitation": {

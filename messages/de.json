@@ -663,6 +663,29 @@
       "cancelInviteSuccess": "Einladung abgebrochen.",
       "cancelFailed": "Einladung konnte nicht abgebrochen werden. Bitte versuche es erneut.",
       "joinedOn": "Beigetreten am {date}"
+    },
+    "billing": {
+      "title": "Abrechnung",
+      "description": "Das Abonnement und der Feature-Zugang deines Vereins.",
+      "loading": "Abrechnung wird geladen…",
+      "unavailable": "Abrechnungsdetails sind nicht verfügbar.",
+      "plan": "Plan",
+      "subscriptionStatus": "Abonnementstatus",
+      "stripeCatalogMode": "Stripe-Modus",
+      "billingSyncedAt": "Letzte Billing-Synchronisation",
+      "featuresTitle": "Feature-Zugang",
+      "featureAutomationsEdit": "Automationen bearbeiten",
+      "featureAutomationsPost": "Automationen posten",
+      "featureGoalHighlights": "Tor-Highlights",
+      "featureWatermark": "Wasserzeichen auf Posts",
+      "enabled": "Aktiv",
+      "disabled": "Inaktiv",
+      "debugTitle": "Stripe-Debug",
+      "stripeCustomerId": "Kunden-ID",
+      "stripeSubscriptionId": "Abonnement-ID",
+      "stripePriceId": "Preis-ID",
+      "currentPeriodEnd": "Ende der aktuellen Periode",
+      "subscribeComingSoon": "Abonnieren (Phase 2)"
     }
   },
   "acceptInvitation": {

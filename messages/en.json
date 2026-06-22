@@ -663,6 +663,29 @@
       "cancelInviteSuccess": "Invitation cancelled.",
       "cancelFailed": "Could not cancel invitation. Please try again.",
       "joinedOn": "Joined {date}"
+    },
+    "billing": {
+      "title": "Billing",
+      "description": "Your club subscription and feature access.",
+      "loading": "Loading billing…",
+      "unavailable": "Billing details are unavailable.",
+      "plan": "Plan",
+      "subscriptionStatus": "Subscription status",
+      "stripeCatalogMode": "Stripe mode",
+      "billingSyncedAt": "Last billing sync",
+      "featuresTitle": "Feature access",
+      "featureAutomationsEdit": "Edit automations",
+      "featureAutomationsPost": "Post automations",
+      "featureGoalHighlights": "Goal highlights",
+      "featureWatermark": "Watermark on posts",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "debugTitle": "Stripe debug",
+      "stripeCustomerId": "Customer ID",
+      "stripeSubscriptionId": "Subscription ID",
+      "stripePriceId": "Price ID",
+      "currentPeriodEnd": "Current period end",
+      "subscribeComingSoon": "Subscribe (Phase 2)"
     }
   },
   "acceptInvitation": {

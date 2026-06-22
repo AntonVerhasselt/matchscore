@@ -1,12 +1,17 @@
 import { httpRouter } from "convex/server";
+import { registerRoutes } from "@convex-dev/stripe";
 import { httpAction } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { components, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { authComponent, createAuth } from "./auth/instance";
 
 const http = httpRouter();
 
 authComponent.registerRoutes(http, createAuth);
+
+registerRoutes(http, components.stripe, {
+  webhookPath: "/stripe/webhook",
+});
 
 http.route({
   path: "/webhooks/vgffmpeg",

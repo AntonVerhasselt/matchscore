@@ -70,14 +70,14 @@ convex/
 
 Convex maps file paths to API references:
 
-| File | Example API path |
-|------|------------------|
-| `users/settings.ts` | `api.users.settings.getUserLocale` |
-| `auth/queries.ts` | `api.auth.queries.getCurrentUser` |
+| File                         | Example API path                                 |
+| ---------------------------- | ------------------------------------------------ |
+| `users/settings.ts`          | `api.users.settings.getUserLocale`               |
+| `auth/queries.ts`            | `api.auth.queries.getCurrentUser`                |
 | `organizations/mutations.ts` | `api.organizations.mutations.createOrganization` |
-| `emails/actions.ts` | `internal.emails.actions.sendOtpEmail` |
-| `veoPosts/queries.ts` | `api.veoPosts.queries.listJobs` |
-| `veoPosts/actions.ts` | `api.veoPosts.actions.createOrOpenJob` |
+| `emails/actions.ts`          | `internal.emails.actions.sendOtpEmail`           |
+| `veoPosts/queries.ts`        | `api.veoPosts.queries.listJobs`                  |
+| `veoPosts/actions.ts`        | `api.veoPosts.actions.createOrOpenJob`           |
 
 ## Conventions
 

@@ -6,6 +6,10 @@ import {
   postingChannelStatusesValidator,
 } from "./automations/validators";
 import {
+  planTierValidator,
+  subscriptionStatusValidator,
+} from "./billing/validators";
+import {
   footballImportSourceValidator,
   footballTeamAddressValidator,
 } from "./football/validators";
@@ -109,6 +113,10 @@ export default defineSchema({
     footballTeamId: v.id("footballTeams"),
     createdByUserId: v.string(),
     createdAt: v.number(),
+    plan: v.optional(planTierValidator),
+    subscriptionStatus: v.optional(subscriptionStatusValidator),
+    stripeCustomerId: v.optional(v.string()),
+    billingSyncedAt: v.optional(v.number()),
   })
     .index("by_slug", ["slug"])
     .index("by_footballTeamId", ["footballTeamId"]),
